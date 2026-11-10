@@ -108,12 +108,12 @@ def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachmen
 
 
 MTS_CSS = """
-.mts-head { display: grid; grid-template-columns: 34mm minmax(0,1fr) 66mm; height: 30pt; border: 1px solid #1d2433; overflow: hidden; }
+.mts-head { display: grid; grid-template-columns: 38mm minmax(0,1fr) 66mm; height: 40pt; border: 1px solid #1d2433; overflow: hidden; }
 .mts-head > div { padding: 0 6px; display: flex; align-items: center; min-height: 0; }
 .mts-brand { justify-content: center; border-right: 1px solid #1d2433; }
-.mts-brand img { max-height: 24pt; max-width: 100%; display: block; }
+.mts-brand img { max-height: 32pt; max-width: 100%; display: block; }
 .mts-brand .txt { font-weight: 800; font-size: 12pt; color: #b3261e; letter-spacing: .04em; }
-.mts-title { justify-content: center; font-size: 11pt; font-weight: 600; background: #d9d2e9; text-align: center; line-height: 1.1; }
+.mts-title { justify-content: center; font-size: 10.5pt; white-space: nowrap; font-weight: 600; background: #d9d2e9; text-align: center; line-height: 1.1; }
 .mts-doc { border-left: 1px solid #1d2433; padding: 0 !important; align-items: stretch !important; }
 .mts .mts-doc table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
 .mts .mts-doc td { border: 0; padding: 0 3px; text-align: center; vertical-align: middle; font-size: 7pt; line-height: 1; white-space: nowrap;
@@ -123,13 +123,21 @@ MTS_CSS = """
 .mts table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .mts td, .mts th { border: 1px solid #1d2433; padding: 4px 6px; vertical-align: middle; width: auto; background: transparent; }
 .bar2 { background: #b7dde8; font-weight: 600; padding: 4px 6px; border: 1px solid #1d2433; border-top: 0; }
-.mts td.k { background: #fce4d6; width: 22%; } .mts tr.hdr th { background: #fce4d6; text-align: center; font-weight: 600; }
+.mts td.k { background: #fce4d6; width: 22%; font-weight: 600; } .mts tr.hdr th { background: #fce4d6; text-align: center; font-weight: 600; }
 .mts td.c { text-align: center; } .titleline { border: 1px solid #1d2433; border-top: 0; padding: 5px 6px; }
-.mts .viewbox { border: 1px solid #1d2433; border-top: 0; padding: 4px; }
-.wm-conf { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-38deg); font-size: 62pt; font-weight: 900;
-  color: rgba(220,60,50,.12); border: 6px solid rgba(220,60,50,.12); border-radius: 18px; padding: 4px 26px; letter-spacing: .08em; z-index: 0; }
-.wm-draft { position: fixed; top: 72%; left: 50%; transform: translate(-50%, -50%) rotate(-38deg); font-size: 15pt; font-weight: 800;
-  color: rgba(200,40,40,.17); white-space: nowrap; z-index: 0; }
+.mts table.views3 td { width: 33.33%; padding: 3px; text-align: center; vertical-align: bottom; border-top: 0; }
+.mts table.views3 .vimg { height: 46mm; display: flex; align-items: center; justify-content: center; }
+.mts table.views3 .vimg img { max-width: 100%; max-height: 100%; }
+.mts table.views3 .vimg.na { color: #8a5a00; font-style: italic; font-size: 8.5pt; }
+.mts table.views3 .cap { margin-top: 2px; }
+/* Section separators drawn heavier, as in the Project 1 sample */
+.mts-head { border-bottom-width: 1.75px; } .titleline { border-bottom: 1.75px solid #1d2433; }
+.mts .bar2 { border-top: 1.75px solid #1d2433; } .mts table.grid tr:last-child td { border-bottom-width: 1.75px; }
+.mts table.views3 td { border-bottom-width: 1.75px; } .mts tr.hdr th { border-bottom-width: 1.75px; }
+.wm-conf { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-52deg); z-index: 0; white-space: nowrap;
+  font: 900 84pt/1.05 Rockwell, "Rockwell Extra Bold", Georgia, "Times New Roman", serif; letter-spacing: .03em;
+  color: rgba(222,60,60,.16); -webkit-text-stroke: 1.6px rgba(214,40,40,.42);
+  border: 9px double rgba(214,40,40,.36); border-radius: 30px; padding: 10px 34px 6px; }
 """
 
 
@@ -142,8 +150,8 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
         return f'<span class="{"missing" if mk == "M" else ""}">{E(text)}</span> {mark_html(mk)}'
 
     views = "".join(
-        f'<div><div class="frame"><img src="{view_images[n]}" alt="{lbl} view"></div><div class="cap">{lbl} view</div></div>' if n in view_images
-        else f'<div><div class="frame na">View not available<br>{E(data["views"].get(n) or "")}</div><div class="cap">{lbl} view</div></div>'
+        f'<td><div class="vimg"><img src="{view_images[n]}" alt="{lbl} view"></div><div class="cap">{lbl} view</div></td>' if n in view_images
+        else f'<td><div class="vimg na">View not available<br>{E(data["views"].get(n) or "")}</div><div class="cap">{lbl} view</div></td>'
         for n, lbl in (("front", "Front"), ("top", "Top"), ("iso", "Isometric")))
     grid = m["grid"]
     grid_rows = "".join(f'<tr><td class="k">{E(grid[i][0])}</td><td class="c">{val(grid[i][1])}</td>'
@@ -151,7 +159,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
     q = m["quantities"]
     first = f'<td class="k c" rowspan="{len(q)}">Qty to be produced</td>'
     qty = "".join(f'<tr>{first if i == 0 else ""}<td class="c">{E(k)}</td><td class="c">{val(c)}</td></tr>' for i, (k, c) in enumerate(q))
-    proc = "".join(f'<tr><td class="c">{i}</td><td class="c"><b>{E(k)}</b></td><td>{val(c)}</td></tr>'
+    proc = "".join(f'<tr><td class="c">{i}</td><td class="c">{E(k)}</td><td>{val(c)}</td></tr>'
                    for i, (k, c) in enumerate(m["process"], 1))
     tests = "".join(f'<tr><td class="c">{i}</td><td class="c">{E(a) or "—"}</td><td class="c">{E(b) or "Not recorded"}</td>'
                     f'<td class="c">{E(c) or "Not recorded"}</td><td class="c">{E(d) or "Not recorded"}</td></tr>'
@@ -162,8 +170,6 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
     brand = (f'<img src="{logo}" alt="{E(branding["name"])}">' if logo else f'<span class="txt">{E(branding["name"])}</span>')
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}</style></head><body class="mts">',
            '<div class="wm-conf">CONFIDENTIAL</div>']
-    if not approved:
-        out.append(f'<div class="wm-draft">{WATERMARK}</div>')
     out.append(
         f'<div class="mts-head"><div class="mts-brand">{brand}</div>'
         f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
@@ -171,8 +177,8 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
         f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
         f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}{"" if approved else " (draft)"}</td></tr></table></div></div>'
         f'<div class="titleline"><b>Title:</b> {E(m["title"])}</div>'
-        f'<div class="bar2">Manufacturing Specifications:</div><table>{grid_rows}</table>'
-        f'<div class="viewbox"><div class="views">{views}</div></div>'
+        f'<div class="bar2">Manufacturing Specifications:</div><table class="grid">{grid_rows}</table>'
+        f'<table class="views3"><tr>{views}</tr></table>'
         f'<table>{qty}</table>'
         f'<div class="bar2">Manufacturing Process:</div>'
         f'<table><colgroup><col style="width:9%"><col style="width:22%"><col></colgroup>'
