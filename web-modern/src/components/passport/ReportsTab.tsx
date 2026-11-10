@@ -43,6 +43,18 @@ export function eligible(files: EngineeringFile[], audience: string): { file: En
   });
 }
 
+// Default attachment order (Project 1 sample): the 2D drawing first, then the QA / inspection report, then every other
+// supporting document in the order it was ticked. The order can still be changed with the arrows.
+const CLASS_RANK: Record<string, number> = { drawing: 0, inspection: 1 };
+const rankOf = (category?: string | null) => CLASS_RANK[category ?? ""] ?? 2;
+
+export function insertByClass<T extends { file: string }>(picks: T[], pick: T, categoryOf: (file: string) => string | null | undefined): T[] {
+  const rank = rankOf(categoryOf(pick.file));
+  let at = picks.length;
+  while (at > 0 && rankOf(categoryOf(picks[at - 1].file)) > rank) at -= 1;
+  return [...picks.slice(0, at), pick, ...picks.slice(at)];
+}
+
 export function move<T>(list: T[], index: number, delta: number): T[] {
   const j = index + delta;
   if (j < 0 || j >= list.length) return list;
@@ -144,7 +156,9 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
     window.setTimeout(() => document.querySelector(".report-builder")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
-  const toggle = (f: EngineeringFile, on: boolean) => setPicks(on ? [...picks, { file: f.id, version: f.latest_version?.version_number ?? 1 }] : picks.filter((p) => p.file !== f.id));
+  const toggle = (f: EngineeringFile, on: boolean) => setPicks(on
+    ? insertByClass(picks, { file: f.id, version: f.latest_version?.version_number ?? 1 }, (id) => byId[id]?.category)
+    : picks.filter((p) => p.file !== f.id));
 
   return (
     <div className="reports-tab">

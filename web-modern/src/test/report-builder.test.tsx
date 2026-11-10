@@ -7,7 +7,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ can: () => true, session: { membership: { role: "operator_engineer" } } }), useSessionKey: () => "s",
 }));
 
-import ReportsTab, { eligible, move } from "../components/passport/ReportsTab";
+import ReportsTab, { eligible, insertByClass, move } from "../components/passport/ReportsTab";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -23,6 +23,13 @@ describe("builder rules", () => {
     expect(eligible(FILES, "client")[1].reason).toBe("Not released to the client");
     expect(eligible(FILES, "internal").every((d) => d.allowed)).toBe(true);
   });
+  it("puts the drawing first, then the QA / inspection report, then other documents", () => {
+    const cat: Record<string, string> = { lab: "lab_test", qa: "inspection", dwg: "drawing", mtc: "mat_cert" };
+    let picks: { file: string }[] = [];
+    for (const file of ["lab", "qa", "mtc", "dwg"]) picks = insertByClass(picks, { file }, (id) => cat[id]);
+    expect(picks.map((p) => p.file)).toEqual(["dwg", "qa", "lab", "mtc"]);
+  });
+
   it("reorders attachments", () => {
     expect(move([1, 2, 3], 2, -1)).toEqual([1, 3, 2]);
     expect(move([1, 2, 3], 0, -1)).toEqual([1, 2, 3]);
