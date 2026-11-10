@@ -111,8 +111,22 @@ def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachmen
 # Chromium prints borders in whole pixels (1.25pt would print as 0.75pt), so the thick lines are drawn as 1.25pt-high
 # rules (div.hr) and the frame as a 1.25pt box-shadow, which print at their exact size.
 MTS_CSS = """
-.mts-frame { margin: 1.25pt; box-shadow: 0 0 0 1.25pt #1d2433; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.mts-frame { margin: 0 1.25pt; }
 .mts-frame .hr { height: 1.25pt; background: #1d2433; break-after: avoid; }
+/* Thick left/right frame lines are drawn per block and per table row, so a page that ends inside a table closes on the
+   row line only: no frame bottom and no empty frame strip down to the page end. */
+.mts-frame > div { box-shadow: -1.25pt 0 0 #1d2433, 1.25pt 0 0 #1d2433; }
+.mts-frame > table > tbody > tr > :first-child, .mts-frame > table > tr > :first-child { box-shadow: -1.25pt 0 0 #1d2433; }
+.mts-frame > table > tbody > tr > :last-child, .mts-frame > table > tr > :last-child { box-shadow: 1.25pt 0 0 #1d2433; }
+.mts-frame > table > tbody > tr > :only-child { box-shadow: -1.25pt 0 0 #1d2433, 1.25pt 0 0 #1d2433; }
+.mts-frame > table > tbody > tr.qty2 > :first-child { box-shadow: none; }
+/* Header rows sit in the same table as their data rows (so a header is never left alone at a page end); the thick line
+   under a header is an inset 1.25pt shadow inside the header cells. */
+.mts-frame tr.hdr { break-after: avoid; }
+.mts-frame tr.hdr > th { border-bottom: 0; box-shadow: inset 0 -1.25pt 0 #1d2433; }
+.mts-frame > table > tbody > tr.hdr > :first-child { box-shadow: -1.25pt 0 0 #1d2433, inset 0 -1.25pt 0 #1d2433; }
+.mts-frame > table > tbody > tr.hdr > :last-child { box-shadow: 1.25pt 0 0 #1d2433, inset 0 -1.25pt 0 #1d2433; }
+.mts-frame tr.hdr + tr > td { border-top: 0; }
 .mts-head { display: grid; grid-template-columns: 38mm minmax(0,1fr) 66mm; height: 40pt; overflow: hidden; }
 .mts-head > div { padding: 0 6px; display: flex; align-items: center; min-height: 0; }
 .mts-brand { justify-content: center; border-right: 1px solid #1d2433; }
@@ -135,7 +149,6 @@ MTS_CSS = """
 .mts-frame tr.qty1 > td:first-child { border-bottom: 0; }
 .bar2 { background: #b7dde8; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid #1d2433; break-after: avoid; }
 .mts td.k { background: #fce4d6; width: 22%; font-weight: 600; } .mts tr.hdr th { background: #fce4d6; text-align: center; font-weight: 600; }
-.mts table.head { break-after: avoid; }
 .mts td.c { text-align: center; } .titleline { padding: 5px 6px; }
 .views3 { display: flex; height: 120pt; break-inside: avoid; }
 .views3 .v { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3px; }
@@ -185,7 +198,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
     return "".join([
         f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}</style></head><body class="mts">',
         '<div class="wm-conf">CONFIDENTIAL</div>',
-        (f'<div class="mts-frame"><div class="mts-head"><div class="mts-brand">{brand}</div>'
+        (f'<div class="mts-frame"><div class="hr"></div><div class="mts-head"><div class="mts-brand">{brand}</div>'
          f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
          f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
          f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
@@ -195,12 +208,10 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
         f'<div class="views3">{views}</div>', hr,
         f'<table class="qty">{qty}</table>', hr,
         '<div class="bar2">Manufacturing Process:</div>',
-        f'<table class="head">{proc_cols}<tr class="hdr"><th>Sr. No</th><th>Process</th><th>Description</th></tr></table>', hr,
-        f'<table class="proc">{proc_cols}{proc}</table>', hr,
+        f'<table class="proc">{proc_cols}<tr class="hdr"><th>Sr. No</th><th>Process</th><th>Description</th></tr>{proc}</table>', hr,
         '<div class="bar2">Inspection and Test Specifications:</div>',
-        (f'<table class="head">{test_cols}<tr class="hdr"><th>Sr. No</th><th>Test Method</th><th>Reference Document</th>'
-         '<th>Acceptance Criteria</th><th>Inspection frequency</th></tr></table>'), hr,
-        f'<table class="tests">{test_cols}{tests}</table></div>',
+        (f'<table class="tests">{test_cols}<tr class="hdr"><th>Sr. No</th><th>Test Method</th><th>Reference Document</th>'
+         f'<th>Acceptance Criteria</th><th>Inspection frequency</th></tr>{tests}</table>{hr}</div>'),
         '</body></html>'])
 
 
