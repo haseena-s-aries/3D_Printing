@@ -2,14 +2,15 @@
  * Aries Admin panels for one client organisation (CN-002): audited company details, assigning Aries engineers, and
  * each engineer's access scope (whole company or selected scanning projects). All checks are enforced server-side.
  */
-import type { Client } from "@passport/api-types";
-import { useState, type FormEvent } from "react";
+import type { Client, Member, Paginated } from "@passport/api-types";
+import { useMemo, useState, type FormEvent } from "react";
 
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { CompanyProfileFields, PROFILE_FIELDS, type CompanyProfile, type ProfileKey } from "./CompanyProfileFields";
 import { assignableRoles, fourRoles, roleLabel, roleOptionLabel } from "./roles";
+import { StaffPicker, type StaffOption } from "./StaffPicker";
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, formatDate } from "./ui";
 
 interface StaffRow {
@@ -183,14 +184,24 @@ function CompanyProfileCard({ client, d, onSaved }: { client: Client; d: ClientD
   );
 }
 
-function AssignStaff({ client, onDone }: { client: Client; onDone: (msg: string) => void }) {
+function AssignStaff({ client, assigned, onDone }: { client: Client; assigned: Set<string>; onDone: (msg: string) => void }) {
   const { session } = useAuth();
   const roles = assignableRoles(session, "operator_in_client");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("operator_engineer");
   const [error, setError] = useState<unknown>(null);
+  // Aries staff accounts (members of the Aries organisation), for the picker
+  const staff = useApi<Paginated<Member>>("/users/", { query: { page_size: 200 } });
+  const options: StaffOption[] = useMemo(() => (staff.data?.results ?? [])
+    .filter((m) => m.is_active !== false)
+    .map((m) => ({ email: m.email, name: [m.first_name, m.last_name].filter(Boolean).join(" "), role: m.role })), [staff.data]);
+  const roleName = roleOptionLabel(role);
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!email) {
+      setError(new Error(`Choose a ${roleName} from the list.`));
+      return;
+    }
     setError(null);
     try {
       await api(`/clients/${client.id}/members/`, { body: { email, role } });
@@ -201,20 +212,20 @@ function AssignStaff({ client, onDone }: { client: Client; onDone: (msg: string)
     }
   }
   return (
-    <form className="form-grid" onSubmit={submit} aria-label="Assign Aries engineer">
-      <ErrorNotice error={error} />
-      <Field label="Aries staff email" hint={roles.length === 1 ? "An existing Aries Engineer account (create it on the Users page). QA is a permission given after assignment."
-        : "An existing Aries Engineer, QA or Support account (create it on the Users page)."}>
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </Field>
+    <form className="form-grid single" onSubmit={submit} aria-label="Assign Aries engineer">
+      <ErrorNotice error={error ?? staff.error} />
       <Field label="Role in this company">
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
+        <select value={role} onChange={(e) => { setRole(e.target.value); setEmail(""); }}>
           {roles.map((r) => <option key={r} value={r}>{roleOptionLabel(r)}</option>)}
         </select>
       </Field>
+      <Field label="Aries staff" hint={`Click to list every ${roleName}, or type part of a name or email. Accounts are created on the Users page.`
+        + (roles.length === 1 ? " QA is a permission given after assignment." : "")}>
+        <StaffPicker options={options} role={role} value={email} onChange={setEmail} assigned={assigned} loading={staff.loading} roleName={roleName} />
+      </Field>
       <p className="muted small">New Aries staff start with access to <strong>no projects</strong>. Then give them specific projects (or, as an
         exception, all projects) in the list on the left. Engineering review is also limited to the projects given.</p>
-      <div className="form-actions"><button className="btn btn-primary">Assign to {client.name}</button></div>
+      <div className="form-actions"><button className="btn btn-primary" disabled={!email}>Assign to {client.name}</button></div>
     </form>
   );
 }
@@ -291,7 +302,8 @@ export function ClientEngineers({ client, details, onChanged }: { client: Client
         ))}
       </Card>
       <Card title="Assign Aries staff">
-        <AssignStaff client={client} onDone={(msg) => { void details.reload(); onChanged(msg); }} />
+        <AssignStaff client={client} assigned={new Set((d?.aries_staff ?? []).filter((r) => r.is_active).map((r) => r.email.toLowerCase()))}
+          onDone={(msg) => { void details.reload(); onChanged(msg); }} />
       </Card>
     </div>
   );
