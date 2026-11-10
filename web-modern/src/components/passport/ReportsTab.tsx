@@ -319,14 +319,17 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
   );
 }
 
+const DEFAULT_UPLOAD_CLASS = "lab_test";
+
 function UploadSupporting({ passportId, partId, onUploaded }: { passportId: string; partId: string; onUploaded: () => void }) {
   const [file, setFile] = useState<File | null>(null);
-  const [category, setCategory] = useState("lab_test");
+  const [category, setCategory] = useState(DEFAULT_UPLOAD_CLASS);
   const [title, setTitle] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState("");
+  const [inputKey, setInputKey] = useState(0); // remounts the file input, so it is empty again after an upload
   async function send() {
     if (!file) return;
     setBusy(true);
@@ -343,7 +346,10 @@ function UploadSupporting({ passportId, partId, onUploaded }: { passportId: stri
       await upload("/files/", form);
       setOk(`${title.trim() || file.name} uploaded${visible ? " and released to the client" : " (Aries only)"}.`);
       setFile(null);
+      setCategory(DEFAULT_UPLOAD_CLASS);
       setTitle("");
+      setVisible(false);
+      setInputKey((k) => k + 1);
       onUploaded();
     } catch (err) {
       setError(err);
@@ -356,16 +362,16 @@ function UploadSupporting({ passportId, partId, onUploaded }: { passportId: stri
       <summary>Upload a supporting PDF document</summary>
       <div className="form-grid" role="group" aria-label="Upload supporting document">
         <ErrorNotice error={error} />
-        {ok && <p className="small" role="status">{ok}</p>}
+        {ok && <p className="small span-2" role="status">{ok}</p>}
         <Field label="PDF document" hint="Checked on upload: readable, not encrypted, no scripts or embedded files, page limit.">
-          <input type="file" accept=".pdf,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input key={inputKey} type="file" accept=".pdf,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </Field>
         <Field label="Document class">
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
             {DOC_CLASSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </Field>
-        <Field label="Title (optional)"><input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <div className="span-2"><Field label="Title (optional)"><input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} /></Field></div>
         <label className="inline-check span-2"><input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} />
           Release to the client now (otherwise Aries only; can be released later)</label>
         <div className="form-actions"><button type="button" className="btn btn-primary" disabled={busy || !file} onClick={() => void send()}>

@@ -9,7 +9,7 @@ vi.mock("../auth/AuthContext", () => ({
 
 import ReportsTab, { eligible, insertByClass, move } from "../components/passport/ReportsTab";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const pdf = (id: string, title: string, category: string, visible: boolean, versions = 1) => ({
   id, title, kind: "pdf", category, client_visible: visible, latest_version: { version_number: versions, page_count: 2 },
@@ -69,5 +69,32 @@ describe("report builder", () => {
     await waitFor(() => expect(screen.getByTitle("Assembled report preview")).toBeInTheDocument());
     expect(posts[0][0]).toMatch(/\/passports\/p1\/reports\/preview\/$/);
     expect(posts[0][1]).toEqual({ template: "mts", revision: 1, attachments: [{ file: "c", version: 1 }, { file: "b", version: 1 }] });
+  });
+
+  it("clears the upload form after a supporting document is uploaded", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("[]", { status: 200 }));
+    const sent: FormData[] = [];
+    class FakeXhr {
+      status = 201; responseText = '{"id":"new"}'; upload = {}; onload: () => void = () => {};
+      open() {} setRequestHeader() {}
+      send(form: FormData) { sent.push(form); queueMicrotask(() => this.onload()); }
+    }
+    vi.stubGlobal("XMLHttpRequest", FakeXhr);
+    const onFilesChanged = vi.fn();
+    render(<ReportsTab passportId="p1" partId="part1" revisions={[{ revision_number: 1, status: "draft" }] as never} files={FILES}
+      onFilesChanged={onFilesChanged} />);
+    const group = screen.getByRole("group", { name: "Upload supporting document" });
+    const fileInput = within(group).getByLabelText("PDF document") as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["%PDF-1.4"], "qa.pdf", { type: "application/pdf" })] } });
+    fireEvent.change(within(group).getByLabelText("Document class"), { target: { value: "inspection" } });
+    fireEvent.change(within(group).getByLabelText("Title (optional)"), { target: { value: "Final QA" } });
+    fireEvent.click(within(group).getByRole("button", { name: "Upload document" }));
+    await waitFor(() => expect(onFilesChanged).toHaveBeenCalled());
+    expect(sent[0].get("category")).toBe("inspection");
+    expect(within(group).getByRole("status")).toHaveTextContent("Final QA uploaded (Aries only).");
+    expect((within(group).getByLabelText("PDF document") as HTMLInputElement).files?.length ?? 0).toBe(0);
+    expect(within(group).getByLabelText("Document class")).toHaveValue("lab_test");
+    expect(within(group).getByLabelText("Title (optional)")).toHaveValue("");
+    expect(within(group).getByRole("button", { name: "Upload document" })).toBeDisabled();
   });
 });
