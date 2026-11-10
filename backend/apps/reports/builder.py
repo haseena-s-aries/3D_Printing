@@ -166,8 +166,6 @@ def fingerprint(data: dict) -> str:
 CSS = """
 * { box-sizing: border-box; } body { font: 9.5pt/1.35 "Segoe UI", Arial, sans-serif; color: #1d2433; margin: 0; }
 section { break-inside: avoid; }
-.wm { position: fixed; top: 46%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 19pt; font-weight: 800;
-  color: rgba(200,40,40,.13); white-space: nowrap; z-index: 0; }
 header { display: grid; grid-template-columns: 30mm minmax(0,1fr) 70mm; border: 1px solid #1d2433; }
 header > div { padding: 6px 8px; } .brand { background: #1f3a5f; color: #fff; font-weight: 700; font-size: 13pt; display: flex; align-items: center; }
 .title { font-size: 13pt; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #e7edf5; text-align: center; }
@@ -246,19 +244,16 @@ PASSPORT_CSS = """
 .mts-frame > .note { font-size: 8.5pt; padding: 5px 6px; background: #f7f9fc; border-top: 1px solid #1d2433; }
 .mts-frame > .note.first { border-top: 0; }
 .mts-frame table.docs td, .mts-frame table.docs th { font-size: 8pt; padding: 3px 4px; }
-.mts-title small { display: block; font-size: 7.5pt; font-weight: 600; color: #8a1c15; margin-top: 2px; }
-.mts-title { flex-direction: column; }
 .views3 .v { flex-direction: column; } .views3 .v .vi { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
 .views3 .v .vi img { max-width: 100%; max-height: 100%; } .views3 .cap { font-size: 8pt; font-style: normal; color: #1d2433; margin-top: 2px; }
 .mts-frame .bar { display: inline-block; height: 6px; background: #d5dbe4; width: 22mm; vertical-align: middle; }
-.wm { position: fixed; top: 46%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 19pt; font-weight: 800;
-  color: rgba(200,40,40,.13); white-space: nowrap; z-index: 0; }
 """
 
 
 def render_html(data: dict, meta: dict, view_images: dict, branding: dict) -> str:
     """Standard (client) and Aries-internal Digital Passport report, in the framed layout of the MTS template (same
-    header, logo, line weights, tables and footer); the content is unchanged."""
+    header, logo, line weights, tables and footer). No draft watermark: the client report has none, the internal report
+    only the CONFIDENTIAL stamp; the draft status is in the revision number and the status notice."""
     from .mts import ATTACH_NOTE, MTS_CSS, logo_data_uri
 
     internal = data["variant"] == "internal"
@@ -282,13 +277,11 @@ def render_html(data: dict, meta: dict, view_images: dict, branding: dict) -> st
     logo = logo_data_uri()
     brand = (f'<img src="{logo}" alt="{E(branding["name"])}">' if logo else f'<span class="txt">{E(branding["name"])}</span>')
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}{PASSPORT_CSS}</style></head><body class="mts">']
-    if internal:
+    if internal:  # the only watermark: the client-facing report has none, as the MTS has no draft watermark
         out.append('<div class="wm-conf">CONFIDENTIAL</div>')
-    if not approved:
-        out.append(f'<div class="wm"{" style=\"top:80%\"" if internal else ""}>{WATERMARK}</div>')
     out.append(
         f'<div class="mts-frame">{hr}<div class="mts-head"><div class="mts-brand">{brand}</div>'
-        f'<div class="mts-title">Digital Passport Report<small>{"Aries internal · confidential" if internal else "Client-facing"}</small></div>'
+        f'<div class="mts-title">{"Aries Internal Engineering Report" if internal else "Digital Passport Report"}</div>'
         f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
         f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
         f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}{"" if approved else " (draft)"}</td></tr></table></div></div>{hr}')
