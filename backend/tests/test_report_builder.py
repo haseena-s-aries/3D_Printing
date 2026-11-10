@@ -83,7 +83,9 @@ def test_mts_template_with_ordered_attachments_pinned_versions_and_preview(world
               "Substrate plate material", "Not recorded", "does not mean Aries has verified it", "ISO 6892-1"):
         assert s in head, s
     assert "SECRET-ENGINEERING-NOTE" not in " ".join(pages)  # engineering notes never printed
-    assert all(f"of {rep['page_count']}" in t for t in pages[:body])  # footer counts the whole assembled document
+    # footer: centred "Page N" only (Project 1 sample); no report number, status line or "of N"
+    assert all(f"Page {n}" in t for n, t in enumerate(pages[:body], 1))
+    assert not any(f"of {rep['page_count']}" in t or "ARIES CONFIDENTIAL" in t for t in pages[:body])
     att = rep["attachments"]
     assert [a["order"] for a in att] == [1, 2, 3] and [a["file"] for a in att] == [dwg["id"], qc["id"], lab["id"]]
     assert att[2]["version"] == 1 and att[1]["pages"] == 2 and att[0]["first_page"] == body + 1 and att[2]["first_page"] == body + 4

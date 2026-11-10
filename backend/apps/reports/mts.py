@@ -6,6 +6,10 @@ test specifications, CONFIDENTIAL stamp, attached documents after the body). It 
 passport: missing values read "Not recorded" and are never filled in. The template is Aries-internal: it contains the
 manufacturing specification and is never produced for clients. Job sheets and engineering notes are not included.
 """
+import base64
+from functools import lru_cache
+from pathlib import Path
+
 from django.conf import settings
 
 from apps.files.models import EngineeringFile
@@ -18,6 +22,22 @@ ATTACH_NOTE = ("Attached documents are reproduced as uploaded. Attaching a certi
 
 # Report-builder class names (same wording as the builder UI); other categories keep their file-category label.
 CLASS_NAMES = {**CATEGORY_NAMES, "drawing": "Engineering drawing", "inspection": "QC / inspection report", "other": "Other supporting document"}
+
+
+LOGO = Path(__file__).resolve().parent / "assets" / "aries_logo.png"
+
+
+@lru_cache(maxsize=4)
+def _logo_data_uri(path: str) -> str:
+    """The logo as a data: URI (the renderer loads nothing from outside the HTML); blank when the file is missing."""
+    try:
+        return "data:image/png;base64," + base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+
+
+def logo_data_uri() -> str:
+    return _logo_data_uri(str(getattr(settings, "REPORT_LOGO_PATH", "") or LOGO))
 
 
 def attachment_rows(attachments: list) -> list:
@@ -88,12 +108,18 @@ def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachmen
 
 
 MTS_CSS = """
-.mts-head { display: grid; grid-template-columns: 34mm minmax(0,1fr) 62mm; border: 1px solid #1d2433; }
-.mts-head > div { padding: 6px 8px; display: flex; align-items: center; }
-.mts-brand { font-weight: 800; font-size: 14pt; color: #b3261e; letter-spacing: .04em; }
-.mts-title { justify-content: center; font-size: 14pt; font-weight: 600; background: #d9d2e9; text-align: center; }
-.mts-doc { border-left: 1px solid #1d2433; padding: 0 !important; display: grid !important; grid-template-columns: 1fr 1fr; font-size: 8pt; }
-.mts-doc span { border: 0.5px solid #1d2433; padding: 3px 5px; text-align: center; overflow-wrap: anywhere; } .mts-doc b { font-weight: 600; }
+.mts-head { display: grid; grid-template-columns: 34mm minmax(0,1fr) 66mm; height: 30pt; border: 1px solid #1d2433; overflow: hidden; }
+.mts-head > div { padding: 0 6px; display: flex; align-items: center; min-height: 0; }
+.mts-brand { justify-content: center; border-right: 1px solid #1d2433; }
+.mts-brand img { max-height: 24pt; max-width: 100%; display: block; }
+.mts-brand .txt { font-weight: 800; font-size: 12pt; color: #b3261e; letter-spacing: .04em; }
+.mts-title { justify-content: center; font-size: 11pt; font-weight: 600; background: #d9d2e9; text-align: center; line-height: 1.1; }
+.mts-doc { border-left: 1px solid #1d2433; padding: 0 !important; align-items: stretch !important; }
+.mts .mts-doc table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+.mts .mts-doc td { border: 0; padding: 0 3px; text-align: center; vertical-align: middle; font-size: 7pt; line-height: 1; white-space: nowrap;
+  overflow: hidden; height: 50%; }
+.mts .mts-doc td + td { border-left: 1px solid #1d2433; } .mts .mts-doc tr + tr td { border-top: 1px solid #1d2433; }
+.mts .mts-doc b { font-weight: 600; } .mts .mts-doc td.num { font-size: 6.5pt; }
 .mts table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .mts td, .mts th { border: 1px solid #1d2433; padding: 4px 6px; vertical-align: middle; width: auto; background: transparent; }
 .bar2 { background: #b7dde8; font-weight: 600; padding: 4px 6px; border: 1px solid #1d2433; border-top: 0; }
@@ -132,15 +158,18 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
                     for i, (a, b, c, d) in enumerate(m["tests"], 1))
     if not tests:
         tests = '<tr><td colspan="5" class="missing c">No inspection and test specifications recorded in the passport</td></tr>'
+    logo = logo_data_uri()
+    brand = (f'<img src="{logo}" alt="{E(branding["name"])}">' if logo else f'<span class="txt">{E(branding["name"])}</span>')
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}</style></head><body class="mts">',
            '<div class="wm-conf">CONFIDENTIAL</div>']
     if not approved:
         out.append(f'<div class="wm-draft">{WATERMARK}</div>')
     out.append(
-        f'<div class="mts-head"><div class="mts-brand">{E(branding["name"])}</div>'
+        f'<div class="mts-head"><div class="mts-brand">{brand}</div>'
         f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
-        f'<div class="mts-doc"><span><b>Document No.</b></span><span><b>Revision No</b></span><span>{E(meta["number"])}</span>'
-        f'<span>{data["revision"]}{"" if approved else " (draft)"}</span></div></div>'
+        f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
+        f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
+        f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}{"" if approved else " (draft)"}</td></tr></table></div></div>'
         f'<div class="titleline"><b>Title:</b> {E(m["title"])}</div>'
         f'<div class="bar2">Manufacturing Specifications:</div><table>{grid_rows}</table>'
         f'<div class="viewbox"><div class="views">{views}</div></div>'
@@ -166,9 +195,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
 
 
 def mts_footer(meta: dict, data: dict) -> str:
-    total = meta.get("total_pages")
-    of = f" of {total}" if total else ' of <span class="totalPages"></span>'
-    status = "approved" if data["approved"] else "DRAFT - NOT APPROVED FOR MANUFACTURING"  # plain hyphen: footer font
-    return (f'<div style="font-size:7pt;width:100%;padding:0 12mm;display:flex;justify-content:space-between;color:#555">'
-            f'<span>{E(meta["number"])} · ARIES CONFIDENTIAL · {status}</span>'
-            f'<span>Page <span class="pageNumber"></span>{of}</span></div>')
+    """Page number only, centred, in Times New Roman ("Page 1", "Page 2", as in the Project 1 sample). The report number
+    and the confidentiality and draft status are printed on the page body and its watermarks, not in the footer."""
+    return ('<div style="width:100%;text-align:center;font-family:\'Times New Roman\',Times,serif;font-size:8pt;color:#000">'
+            'Page <span class="pageNumber"></span></div>')
