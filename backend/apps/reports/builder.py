@@ -203,13 +203,71 @@ def _rows(rows) -> str:
                    for label, value, m in rows)
 
 
+def _kv(label, value, m=None, marks=True) -> str:
+    """One label/value(/mark) group of cells in the framed (MTS-style) layout."""
+    cls = "c missing" if m == "M" or value in ("Not recorded", "Not linked") else "c"
+    if not marks:
+        return f'<td class="k">{E(label)}</td><td class="{cls}" colspan="2">{E(value)}</td>'
+    return f'<td class="k">{E(label)}</td><td class="{cls}">{E(value)}</td><td class="m">{mark_html(m) if m else ""}</td>'
+
+
+def _pairs(left: list, right: list) -> str:
+    """Two label/value lists side by side (left: label, value, mark; right: label, value[, mark]). The shorter side ends
+    in one merged blank cell instead of empty label/value rows."""
+    cols = ('<colgroup><col style="width:19%"><col style="width:24%"><col style="width:7%"><col style="width:19%"><col style="width:24%">'
+            '<col style="width:7%"></colgroup>')
+    n = max(len(left), len(right))
+
+    def side(items, i):
+        if i < len(items):
+            it = items[i]
+            return _kv(it[0], it[1], it[2] if len(it) > 2 else None, marks=len(it) > 2)
+        if i == len(items):
+            return f'<td class="blank" colspan="3" rowspan="{n - len(items)}"></td>'
+        return ""
+    rows = "".join(f"<tr>{side(left, i)}{side(right, i)}</tr>" for i in range(n))
+    return f'<table class="grid">{cols}{rows}</table>'
+
+
+def _single(rows: list) -> str:
+    cols = '<colgroup><col style="width:32%"><col><col style="width:7%"></colgroup>'
+    return f'<table class="grid">{cols}{"".join(f"<tr>{_kv(label, value, m)}</tr>" for label, value, m in rows)}</table>'
+
+
+def _hdr(headers: list) -> str:
+    return f'<tr class="hdr">{"".join(f"<th>{E(h)}</th>" for h in headers)}</tr>'
+
+
+PASSPORT_CSS = """
+.mts-frame .bar2 { font-size: 9.5pt; }
+.mts-frame td.blank { background: #fff; }
+.mts-frame td.m { width: auto; text-align: center; padding: 3px 2px; }
+.mts-frame > .conf, .mts-frame > .status { margin: 0; border: 0; border-bottom: 1px solid #1d2433; }
+.mts-frame > .note { font-size: 8.5pt; padding: 5px 6px; background: #f7f9fc; border-top: 1px solid #1d2433; }
+.mts-frame > .note.first { border-top: 0; }
+.mts-frame table.docs td, .mts-frame table.docs th { font-size: 8pt; padding: 3px 4px; }
+.mts-title small { display: block; font-size: 7.5pt; font-weight: 600; color: #8a1c15; margin-top: 2px; }
+.mts-title { flex-direction: column; }
+.views3 .v { flex-direction: column; } .views3 .v .vi { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.views3 .v .vi img { max-width: 100%; max-height: 100%; } .views3 .cap { font-size: 8pt; font-style: normal; color: #1d2433; margin-top: 2px; }
+.mts-frame .bar { display: inline-block; height: 6px; background: #d5dbe4; width: 22mm; vertical-align: middle; }
+.wm { position: fixed; top: 46%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 19pt; font-weight: 800;
+  color: rgba(200,40,40,.13); white-space: nowrap; z-index: 0; }
+"""
+
+
 def render_html(data: dict, meta: dict, view_images: dict, branding: dict) -> str:
+    """Standard (client) and Aries-internal Digital Passport report, in the framed layout of the MTS template (same
+    header, logo, line weights, tables and footer); the content is unchanged."""
+    from .mts import ATTACH_NOTE, MTS_CSS, logo_data_uri
+
     internal = data["variant"] == "internal"
     approved = data["approved"]
-    views_html = "".join(
-        f'<div><div class="frame"><img src="{view_images[n]}" alt="{label} view"></div><div class="cap">{label} view</div></div>'
+    hr = '<div class="hr"></div>'
+    views_html = '<div class="vsep"></div>'.join(
+        f'<div class="v"><div class="vi"><img src="{view_images[n]}" alt="{label} view"></div><div class="cap">{label} view</div></div>'
         if n in view_images else
-        f'<div><div class="frame na">View not available<br>{E(data["views"].get(n) or "")}</div><div class="cap">{label} view</div></div>'
+        f'<div class="v na"><div class="vi">View not available<br>{E(data["views"].get(n) or "")}</div><div class="cap">{label} view</div></div>'
         for n, label in (("front", "Front"), ("top", "Top"), ("iso", "Isometric")))
     status = (f'<div class="status ok">Passport revision {data["revision"]} is APPROVED.<small>This report is not a manufacturing '
               f'authorisation. {E(data["eligibility"])}.</small></div>') if approved else (
@@ -219,64 +277,77 @@ def render_html(data: dict, meta: dict, view_images: dict, branding: dict) -> st
         f'are not verified engineering data.</small></div>')
     info = [("Client company", data["tenant"]), ("Project", data["project"] or "No project"), ("Passport number", data["passport"]),
             ("Passport revision", f'rev {data["revision"]} · {data["revision_status"]}'), ("Publication", data["publication"]),
-            ("Evidence level", data["evidence"]), ("Manufacturing", data["eligibility"])]
-    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>']
+            ("Evidence level", data["evidence"]), ("Manufacturing", data["eligibility"]),
+            ("Generated", meta["generated"]), ("By", meta["by_role"])]
+    logo = logo_data_uri()
+    brand = (f'<img src="{logo}" alt="{E(branding["name"])}">' if logo else f'<span class="txt">{E(branding["name"])}</span>')
+    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}{PASSPORT_CSS}</style></head><body class="mts">']
+    if internal:
+        out.append('<div class="wm-conf">CONFIDENTIAL</div>')
     if not approved:
-        out.append(f'<div class="wm">{WATERMARK}</div>')
-    out.append(f'''<header><div class="brand">{E(branding["name"])}</div>
-      <div class="title">Digital Passport Report{"<small>Aries internal · confidential</small>" if internal else "<small>Client-facing</small>"}</div>
-      <div class="meta"><b>Report no.</b> {E(meta["number"])}<br><b>Passport</b> {E(data["passport"])}<br>
-      <b>Revision</b> rev {data["revision"]} · {E(data["revision_status"])}<br><b>Generated</b> {E(meta["generated"])}<br>
-      <b>By</b> {E(meta["by_role"])}</div></header>''')
+        out.append(f'<div class="wm"{" style=\"top:80%\"" if internal else ""}>{WATERMARK}</div>')
+    out.append(
+        f'<div class="mts-frame">{hr}<div class="mts-head"><div class="mts-brand">{brand}</div>'
+        f'<div class="mts-title">Digital Passport Report<small>{"Aries internal · confidential" if internal else "Client-facing"}</small></div>'
+        f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
+        f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
+        f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}{"" if approved else " (draft)"}</td></tr></table></div></div>{hr}')
     if internal:
         out.append('<div class="conf">ARIES CONFIDENTIAL · contains manufacturing parameters · not for client or third-party distribution</div>')
-    out.append(status)
-    out.append(f'''<section><h2>1. Part identification</h2><div class="grid2"><table>{_rows(data["identification"])}</table>
-      <table>{"".join(f"<tr><th>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in info)}</table></div></section>''')
-    model_note = f'<p class="notice">Views rendered from {E(meta["model"])}.</p>' if meta.get("model") else ""
-    out.append(f'<section><h2>2. Model views</h2><div class="views">{views_html}</div>{model_note}</section>')
-    out.append(f'<section><h2>3. Material and dimensions</h2><div class="grid2"><table>{_rows(data["material"])}</table>'
-               f'<table>{_rows(data["context"])}</table></div></section>')
-    acc = "".join(f'<tr><td>{E(a)}</td><td class="{"missing" if b == "Not recorded" else ""}">{E(b)}</td><td>{E(c)}</td><td>{E(s)}</td>'
-                  f'<td class="{"missing" if f == "Not recorded" else ""}">{E(f)}</td><td class="m">{mark_html(m)}</td></tr>'
-                  for a, b, c, s, f, m in data["acceptance"]) or '<tr><td colspan="6" class="missing">No acceptance criteria recorded</td></tr>'
-    out.append(f'''<section><h2>4. Quality and acceptance requirements</h2><table>{_rows(data["quality"])}</table>
-      <table class="wide" style="margin-top:4px"><tr><th>Mechanical property</th><th>Requirement</th><th>Unit</th><th>Standard</th>
-      <th>Inspection frequency</th><th style="width:9mm"></th></tr>{acc}</table></section>''')
+    out.append(status + hr)
+    out.append(f'<div class="bar2">1. Part identification</div>{_pairs(data["identification"], info)}{hr}')
+    model_note = f'<div class="note">Views rendered from {E(meta["model"])}.</div>' if meta.get("model") else ""
+    out.append(f'<div class="bar2">2. Model views</div><div class="views3">{views_html}</div>{model_note}{hr}')
+    out.append(f'<div class="bar2">3. Material and dimensions</div>{_pairs(data["material"], data["context"])}{hr}')
+    acc_cols = ('<colgroup><col style="width:21%"><col style="width:18%"><col style="width:10%"><col style="width:22%">'
+                '<col style="width:22%"><col style="width:7%"></colgroup>')
+    acc = "".join(f'<tr><td class="c">{E(a)}</td><td class="c{" missing" if b == "Not recorded" else ""}">{E(b)}</td><td class="c">{E(c)}</td>'
+                  f'<td class="c">{E(st)}</td><td class="c{" missing" if f == "Not recorded" else ""}">{E(f)}</td><td class="m">{mark_html(m)}</td></tr>'
+                  for a, b, c, st, f, m in data["acceptance"]) or '<tr><td colspan="6" class="c missing">No acceptance criteria recorded</td></tr>'
+    out.append(f'<div class="bar2">4. Quality and acceptance requirements</div>{_single(data["quality"])}{hr}'
+               f'<table class="acc">{acc_cols}{_hdr(["Mechanical property", "Requirement", "Unit", "Standard", "Inspection frequency", ""])}'
+               f'{acc}</table>{hr}')
     n = 5
     if internal:
-        params = "".join(f'<tr><td>{E(a)}</td><td>{E(b)}</td><td>{E(c)}</td><td class="m">{mark_html(m)}</td></tr>' for a, b, c, m in data["params"]) \
-            or '<tr><td colspan="4" class="missing">No process parameters recorded</td></tr>'
-        out.append(f'''<section><h2>{n}. Manufacturing specification (BR-026) · Aries confidential</h2>
-          <table>{_rows([data["process"]] + data["spec"])}</table>
-          <table class="wide" style="margin-top:4px"><tr><th>Process parameter (BR-041)</th><th>Value</th><th>Unit</th><th style="width:9mm"></th></tr>{params}</table></section>
-          <section><h2>{n + 1}. Manufacturing solution · Aries confidential</h2><table>{_rows([data["solution"]])}</table></section>''')
+        p_cols = '<colgroup><col style="width:38%"><col style="width:30%"><col style="width:25%"><col style="width:7%"></colgroup>'
+        params = "".join(f'<tr><td class="c">{E(a)}</td><td class="c">{E(b)}</td><td class="c">{E(c)}</td><td class="m">{mark_html(m)}</td></tr>'
+                         for a, b, c, m in data["params"]) or '<tr><td colspan="4" class="c missing">No process parameters recorded</td></tr>'
+        out.append(f'<div class="bar2">{n}. Manufacturing specification (BR-026) · Aries confidential</div>{_single([data["process"]] + data["spec"])}{hr}'
+                   f'<table>{p_cols}{_hdr(["Process parameter (BR-041)", "Value", "Unit", ""])}{params}</table>{hr}'
+                   f'<div class="bar2">{n + 1}. Manufacturing solution · Aries confidential</div>{_single([data["solution"]])}{hr}')
         n += 2
+    d_cols = "<colgroup>" + "".join(f'<col style="width:{w}%">' for w in (21, 17, 6, 7, 10, 12, 9, 8, 10)) + "</colgroup>"
     docs = "".join(f'<tr><td>{E(a)}</td><td class="{"missing" if b == "Not linked" else ""}">{E(b)}</td><td>{E(c)}</td><td>{E(v)}</td>'
-                   f'<td>{E(u)}</td><td>{E(h)}</td><td>{E(r)}</td><td>{"<span class=missing>Missing</span>" if s == "Missing" else E(s)}</td>'
-                   f'<td>{"" if s == "Missing" else "Pending (OQ-35)"}</td></tr>' for a, b, c, v, u, h, r, s in data["documents"])
-    cols = "".join(f'<col style="width:{w}%">' for w in (21, 17, 6, 7, 10, 12, 9, 8, 10))
-    out.append(f'''<section><h2>{n}. Document references</h2><table class="wide docs"><colgroup>{cols}</colgroup><tr><th>Document</th><th>Title</th><th>Type</th>
-      <th>Version</th><th>Uploaded</th><th>SHA-256</th><th>R-L3 evidence</th><th>In report</th><th>QA verification</th></tr>{docs}</table>
-      <p class="notice">Files are listed as references. Original STEP and DWG files are never attached; engineering notes and
-      job sheets are never included.</p></section>''')
-    from .mts import attachment_index
-
-    out.append(attachment_index(data, f"{n + 1}. Attached documents (in page order)"))
+                   f'<td>{E(u)}</td><td>{E(h)}</td><td>{E(r)}</td><td>{"<span class=missing>Missing</span>" if st == "Missing" else E(st)}</td>'
+                   f'<td>{"" if st == "Missing" else "Pending (OQ-35)"}</td></tr>' for a, b, c, v, u, h, r, st in data["documents"])
+    out.append(f'<div class="bar2">{n}. Document references</div>'
+               f'<table class="docs">{d_cols}{_hdr(["Document", "Title", "Type", "Version", "Uploaded", "SHA-256", "R-L3 evidence", "In report", "QA verification"])}'
+               f'{docs}</table>'
+               '<div class="note">Files are listed as references. Original STEP and DWG files are never attached; engineering notes and '
+               f'job sheets are never included.</div>{hr}')
+    a_cols = "<colgroup>" + "".join(f'<col style="width:{w}%">' for w in (5, 20, 37, 7, 15, 7, 9)) + "</colgroup>"
+    rows = data.get("attachments") or []
+    out.append(f'<div class="bar2">{n + 1}. Attached documents (in page order)</div>')
+    if rows:
+        body = "".join(f'<tr><td class="c">{o}</td><td>{E(c)}</td><td>{E(t)}</td><td class="c">{E(v)}</td><td>{E(h)}</td><td class="c">{pg}</td>'
+                       f'<td class="c">{f}</td></tr>' for o, c, t, v, h, pg, f in rows)
+        out.append(f'<table class="docs">{a_cols}{_hdr(["#", "Document class", "Title", "Version", "SHA-256", "Pages", "From page"])}{body}</table>'
+                   f'<div class="note">{E(ATTACH_NOTE)}</div>{hr}')
+    else:
+        out.append(f'<div class="note first">No documents are attached to this report.</div>{hr}')
     n += 1
-    comp = "".join(f'<td><b>{k.upper().replace("RL", "R-L")}</b> {a}/{b} <span class="bar"><i style="width:{round(100 * a / b) if b else 0}%"></i></span></td>'
+    comp = "".join(f'<td class="c"><b>{k.upper().replace("RL", "R-L")}</b> {a}/{b} <span class="bar"><i style="width:{round(100 * a / b) if b else 0}%"></i></span></td>'
                    for k, (a, b) in data["completeness"].items())
-    out.append(f'''<section><h2>{n + 1}. Data completeness (guidance only) and verification legend</h2><table class="wide"><tr>{comp}</tr></table>
-      <div class="legend">{"".join(f"<span>{mark_html(m)} {E(t)}</span>" for m, t in LEGEND)}</div>
-      <p class="notice">Content fingerprint {meta["fingerprint"][:16]}… · generated from passport {E(data["passport"])} rev {data["revision"]}
-      ({E(data["revision_status"])}) · {"Aries-internal variant" if internal else "client-facing variant: excludes Aries manufacturing parameters, job numbers, job sheets and engineering notes"}.
-      External sharing is subject to the open IP and redistribution rules (OQ-33, OQ-38).</p></section></body></html>''')
+    out.append(f'<div class="bar2">{n + 1}. Data completeness (guidance only) and verification legend</div><table><tr>{comp}</tr></table>'
+               f'<div class="note legend">{"".join(f"<span>{mark_html(m)} {E(t)}</span>" for m, t in LEGEND)}</div>'
+               f'<div class="note">Content fingerprint {meta["fingerprint"][:16]}… · generated from passport {E(data["passport"])} rev {data["revision"]} '
+               f'({E(data["revision_status"])}) · {"Aries-internal variant" if internal else "client-facing variant: excludes Aries manufacturing parameters, job numbers, job sheets and engineering notes"}. '
+               f'External sharing is subject to the open IP and redistribution rules (OQ-33, OQ-38).</div>{hr}</div></body></html>')
     return "".join(out)
 
 
 def footer(meta: dict, data: dict) -> str:
-    label = "ARIES CONFIDENTIAL" if data["variant"] == "internal" else "client-facing"
-    status = "approved" if data["approved"] else "NOT APPROVED"
-    return (f'<div style="font-size:7pt;width:100%;padding:0 12mm;display:flex;justify-content:space-between;color:#555">'
-            f'<span>{E(meta["number"])} · {label} · {E(data["passport"])} rev {data["revision"]} ({status}) · {E(meta["generated"])}</span>'
-            f'<span>Page <span class="pageNumber"></span> of {meta.get("total_pages") or "<span class=totalPages></span>"}</span></div>')
+    """Same footer as the MTS template: "Page N", centred, Times New Roman."""
+    from .mts import mts_footer
+
+    return mts_footer(meta, data)
