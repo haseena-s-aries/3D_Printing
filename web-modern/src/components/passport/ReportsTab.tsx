@@ -163,7 +163,7 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
   return (
     <div className="reports-tab">
       <Notice>
-        Reports are generated from one passport revision. Unapproved revisions are watermarked <strong>DRAFT — NOT APPROVED FOR MANUFACTURING</strong>.
+        Reports are generated from one passport revision. Reports from unapproved revisions are marked <strong>draft</strong> in the revision number and status notice.
         Every value carries a mark: V verified, D draft, C client-submitted, M missing. Attached documents are reproduced as uploaded: attaching
         a certificate or test report does not verify it. External sharing is subject to the open IP and redistribution rules (OQ-33, OQ-38).
       </Notice>
@@ -278,7 +278,7 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
                     {r.replaced_by && <div className="small">Replaced by <strong>{r.replaced_by}</strong></div>}
                     {r.replaces && <div className="small">Replaces withdrawn <strong>{r.replaces}</strong></div>}</td>
                   <td>{r.template_label}<div>{r.variant === "internal" ? <Badge tone="danger">Aries confidential</Badge> : <Badge tone="info">Client-facing</Badge>}</div></td>
-                  <td>rev {r.revision_number} · {r.revision_status}{r.watermarked && <div><Badge tone="warning">Draft watermark</Badge></div>}
+                  <td>rev {r.revision_number} · {r.revision_status}{r.watermarked && <div><Badge tone="warning">Draft</Badge></div>}
                     {r.superseded && <div><Badge>Superseded</Badge></div>}</td>
                   <td className="small">{(r.attachments as { order?: number; title: string; version: number; first_page?: number }[]).length === 0 ? <span className="muted">None</span> : (
                     <ol className="ref-list">{(r.attachments as { order?: number; title: string; version: number; first_page?: number }[]).map((a, i) => (
