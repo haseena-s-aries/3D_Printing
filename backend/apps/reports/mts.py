@@ -130,14 +130,27 @@ MTS_CSS = """
 .mts table.views3 .vimg img { max-width: 100%; max-height: 100%; }
 .mts table.views3 .vimg.na { color: #8a5a00; font-style: italic; font-size: 8.5pt; }
 .mts table.views3 .cap { margin-top: 2px; }
-/* Section separators drawn heavier, as in the Project 1 sample */
-.mts-head { border-bottom-width: 1.75px; } .titleline { border-bottom: 1.75px solid #1d2433; }
-.mts .bar2 { border-top: 1.75px solid #1d2433; } .mts table.grid tr:last-child td { border-bottom-width: 1.75px; }
-.mts table.views3 td { border-bottom-width: 1.75px; } .mts tr.hdr th { border-bottom-width: 1.75px; }
-.wm-conf { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-52deg); z-index: 0; white-space: nowrap;
-  font: 900 84pt/1.05 Rockwell, "Rockwell Extra Bold", Georgia, "Times New Roman", serif; letter-spacing: .03em;
-  color: rgba(222,60,60,.16); -webkit-text-stroke: 1.6px rgba(214,40,40,.42);
-  border: 9px double rgba(214,40,40,.36); border-radius: 30px; padding: 10px 34px 6px; }
+/* Line weights as in the Project 1 sample: heavy outer frame and section separators, thin lines under the section bars */
+.mts-frame { border: 2px solid #1d2433; }
+.mts-frame > div, .mts-frame > table { border-left: 0 !important; border-right: 0 !important; }
+.mts-frame > .mts-head { border-top: 0; border-bottom: 2px solid #1d2433; }
+.mts-frame > .mts-head .mts-brand { border-right: 2px solid #1d2433; }
+.mts-frame td:first-child, .mts-frame th:first-child { border-left: 0; }
+.mts-frame td:last-child, .mts-frame th:last-child { border-right: 0; }
+.mts-frame tr.qty1 td:first-child + td, .mts-frame tr.qty2 td:first-child { border-left: 1px solid #1d2433; }
+.mts-frame > table:last-child tr:last-child td { border-bottom: 0; }
+.titleline { border-bottom: 2px solid #1d2433; }
+.mts .bar2 { border-top: 0; border-bottom: 1px solid #1d2433; }
+.mts-frame > .bar2 + table tr:first-child td, .mts-frame > .bar2 + table tr:first-child th { border-top: 0; }
+.mts table.grid tr:last-child td { border-bottom: 2px solid #1d2433; }
+.mts table.views3 td { border-bottom: 2px solid #1d2433; }
+.mts-frame > table.qty tr:last-child td { border-bottom: 2px solid #1d2433; }
+.mts tr.hdr th { border-bottom: 2px solid #1d2433; }
+.mts-frame > table.proc tr:last-child td { border-bottom: 2px solid #1d2433; }
+.wm-conf { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-52deg) scaleX(.9); z-index: 0; white-space: nowrap;
+  font: 900 66pt/1.05 Rockwell, "Rockwell Extra Bold", Georgia, "Times New Roman", serif; letter-spacing: 0;
+  color: rgba(225,80,80,.07); -webkit-text-stroke: 1.2px rgba(214,50,50,.26);
+  border: 4px solid rgba(214,50,50,.22); border-radius: 24px; padding: 6px 26px 2px; }
 """
 
 
@@ -158,8 +171,8 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
                         f'<td class="k">{E(grid[i + 1][0])}</td><td class="c">{val(grid[i + 1][1])}</td></tr>' for i in range(0, len(grid), 2))
     q = m["quantities"]
     first = f'<td class="k c" rowspan="{len(q)}">Qty to be produced</td>'
-    qty = "".join(f'<tr>{first if i == 0 else ""}<td class="c">{E(k)}</td><td class="c">{val(c)}</td></tr>' for i, (k, c) in enumerate(q))
-    proc = "".join(f'<tr><td class="c">{i}</td><td class="c">{E(k)}</td><td>{val(c)}</td></tr>'
+    qty = "".join(f'<tr class="qty{1 if i == 0 else 2}">{first if i == 0 else ""}<td class="c">{E(k)}</td><td class="c">{val(c)}</td></tr>' for i, (k, c) in enumerate(q))
+    proc = "".join(f'<tr><td class="c">{i}</td><td class="c"><b>{E(k)}</b></td><td>{val(c)}</td></tr>'
                    for i, (k, c) in enumerate(m["process"], 1))
     tests = "".join(f'<tr><td class="c">{i}</td><td class="c">{E(a) or "—"}</td><td class="c">{E(b) or "Not recorded"}</td>'
                     f'<td class="c">{E(c) or "Not recorded"}</td><td class="c">{E(d) or "Not recorded"}</td></tr>'
@@ -171,7 +184,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}</style></head><body class="mts">',
            '<div class="wm-conf">CONFIDENTIAL</div>']
     out.append(
-        f'<div class="mts-head"><div class="mts-brand">{brand}</div>'
+        f'<div class="mts-frame"><div class="mts-head"><div class="mts-brand">{brand}</div>'
         f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
         f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
         f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
@@ -179,14 +192,14 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
         f'<div class="titleline"><b>Title:</b> {E(m["title"])}</div>'
         f'<div class="bar2">Manufacturing Specifications:</div><table class="grid">{grid_rows}</table>'
         f'<table class="views3"><tr>{views}</tr></table>'
-        f'<table>{qty}</table>'
+        f'<table class="qty">{qty}</table>'
         f'<div class="bar2">Manufacturing Process:</div>'
-        f'<table><colgroup><col style="width:9%"><col style="width:22%"><col></colgroup>'
+        f'<table class="proc"><colgroup><col style="width:9%"><col style="width:22%"><col></colgroup>'
         f'<tr class="hdr"><th>Sr. No</th><th>Process</th><th>Description</th></tr>{proc}</table>'
         f'<div class="bar2">Inspection and Test Specifications:</div>'
         f'<table><colgroup><col style="width:9%"><col style="width:22%"><col style="width:21%"><col style="width:24%"><col></colgroup>'
         f'<tr class="hdr"><th>Sr. No</th><th>Test Method</th><th>Reference Document</th><th>Acceptance Criteria</th>'
-        f'<th>Inspection frequency</th></tr>{tests}</table>')
+        f'<th>Inspection frequency</th></tr>{tests}</table></div>')
     if not approved:
         out.append(f'<div class="status">Passport revision {data["revision"]} is not approved ({E(data["revision_status"])}).'
                    f'<small>{WATERMARK}. Values marked D, C or M are not verified engineering data. This document is not a '
