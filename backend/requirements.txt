@@ -1,0 +1,17 @@
+# Runtime (pinned to tested versions)
+Django==6.1.2
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.30.0
+psycopg[binary]==3.3.6
+azure-storage-blob==12.31.0
+python-dotenv==1.2.4
+# Part photographs: verify uploads decode as real JPEG/PNG and build small, metadata-free thumbnails (W2)
+pillow==12.3.0
+# Digital Passport PDF reports (CN-005): merge permitted drawing PDFs; render preview page images for preview-only roles
+pypdf==6.21.2
+pypdfium2==5.14.0
+# CN-007 bulk inventory import: reading Excel workbooks (pure Python)
+openpyxl==3.1.5
+# CN-007 Phase 2 part intelligence: optional external AI (Gemini) through the official Google Gen AI SDK
+google-genai==2.33.0

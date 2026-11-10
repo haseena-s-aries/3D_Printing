@@ -1,0 +1,302 @@
+{
+ "method_version": "rec-method-2026-10-28.1",
+ "as_of": "2026-10-28",
+ "weights": {
+  "cost": "0.5000",
+  "lead_time": "0.3000",
+  "evidence": "0.2000"
+ },
+ "weights_applied": false,
+ "weights_note": "Commercial weights not applied: no option meets the mandatory technical requirements.",
+ "options": {
+  "oem": {
+   "label": "OEM procurement",
+   "technical": {
+    "status": "not_verified",
+    "status_label": "Identification / availability not verified",
+    "qualified": false,
+    "excluded": false
+   },
+   "requirements": [
+    {
+     "code": "oem_identity",
+     "label": "OEM identity and part number verified",
+     "kind": "technical",
+     "met": false,
+     "detail": "Identification / availability not verified"
+    }
+   ],
+   "eligible": false,
+   "failed_requirements": [
+    "OEM identity and part number verified: Identification / availability not verified"
+   ],
+   "excluded": false,
+   "commercial": {
+    "available": true,
+    "complete": true,
+    "total": "635.25",
+    "effective_unit_cost": "211.75",
+    "known_costs_total": "635.25",
+    "lead_days": 30,
+    "lead_complete": true,
+    "confidence": "Medium: includes historical costs",
+    "evidence": "historical",
+    "evidence_label": "Historical costs (not current quotations)",
+    "expired_quotations": [],
+    "missing_inputs": [],
+    "ordered_quantity": 5,
+    "savings_vs_baseline": null,
+    "savings_percent": null,
+    "baseline": "oem"
+   },
+   "flags": {
+    "potentially_suitable": false,
+    "engineering_approved": false,
+    "commercially_cheapest": true,
+    "cheapest_definitive": false,
+    "fastest": false,
+    "fastest_definitive": false
+   }
+  },
+  "additive": {
+   "label": "Additive manufacturing",
+   "technical": {
+    "status": "insufficient_information",
+    "status_label": "Insufficient technical information",
+    "qualified": false,
+    "excluded": false
+   },
+   "requirements": [
+    {
+     "code": "screening",
+     "label": "Technical screening potentially suitable",
+     "kind": "technical",
+     "met": false,
+     "detail": "Insufficient technical information"
+    },
+    {
+     "code": "no_verified_exclusion",
+     "label": "No verified disqualifying constraint",
+     "kind": "technical",
+     "met": true,
+     "detail": "None recorded"
+    },
+    {
+     "code": "safety",
+     "label": "Safety / equipment criticality assessed and not critical",
+     "kind": "safety",
+     "met": false,
+     "detail": "Criticality not assessed (the customer ABC indicator is not used)"
+    },
+    {
+     "code": "certification",
+     "label": "Applicable standards and certification requirements established",
+     "kind": "certification",
+     "met": true,
+     "detail": "ASME B73.1"
+    },
+    {
+     "code": "ip",
+     "label": "OEM IP / reproduction restrictions assessed and not active",
+     "kind": "ip",
+     "met": true,
+     "detail": "obsolete"
+    }
+   ],
+   "eligible": false,
+   "failed_requirements": [
+    "Technical screening potentially suitable: Insufficient technical information",
+    "Safety / equipment criticality assessed and not critical: Criticality not assessed (the customer ABC indicator is not used)"
+   ],
+   "excluded": false,
+   "commercial": {
+    "available": true,
+    "complete": true,
+    "total": "1340.00",
+    "effective_unit_cost": "446.67",
+    "known_costs_total": "1340.00",
+    "lead_days": 28,
+    "lead_complete": true,
+    "confidence": "Low: includes engineering estimates",
+    "evidence": "estimates",
+    "evidence_label": "Engineering estimates",
+    "expired_quotations": [],
+    "missing_inputs": [],
+    "ordered_quantity": 4,
+    "savings_vs_baseline": "-704.75",
+    "savings_percent": "-110.9",
+    "baseline": "oem"
+   },
+   "flags": {
+    "potentially_suitable": false,
+    "engineering_approved": false,
+    "commercially_cheapest": false,
+    "cheapest_definitive": false,
+    "fastest": true,
+    "fastest_definitive": false
+   }
+  },
+  "conventional": {
+   "label": "Conventional manufacturing",
+   "technical": {
+    "status": "insufficient_information",
+    "status_label": "Insufficient technical information",
+    "qualified": false,
+    "excluded": false
+   },
+   "requirements": [
+    {
+     "code": "screening",
+     "label": "Technical screening potentially suitable",
+     "kind": "technical",
+     "met": false,
+     "detail": "Insufficient technical information"
+    },
+    {
+     "code": "no_verified_exclusion",
+     "label": "No verified disqualifying constraint",
+     "kind": "technical",
+     "met": true,
+     "detail": "None recorded"
+    },
+    {
+     "code": "safety",
+     "label": "Safety / equipment criticality assessed and not critical",
+     "kind": "safety",
+     "met": false,
+     "detail": "Criticality not assessed (the customer ABC indicator is not used)"
+    },
+    {
+     "code": "certification",
+     "label": "Applicable standards and certification requirements established",
+     "kind": "certification",
+     "met": true,
+     "detail": "ASME B73.1"
+    },
+    {
+     "code": "ip",
+     "label": "OEM IP / reproduction restrictions assessed and not active",
+     "kind": "ip",
+     "met": true,
+     "detail": "obsolete"
+    }
+   ],
+   "eligible": false,
+   "failed_requirements": [
+    "Technical screening potentially suitable: Insufficient technical information",
+    "Safety / equipment criticality assessed and not critical: Criticality not assessed (the customer ABC indicator is not used)"
+   ],
+   "excluded": false,
+   "commercial": {
+    "available": true,
+    "complete": false,
+    "total": null,
+    "effective_unit_cost": null,
+    "known_costs_total": "1648.44",
+    "lead_days": null,
+    "lead_complete": false,
+    "confidence": "Incomplete: missing inputs",
+    "evidence": "incomplete",
+    "evidence_label": "Incomplete: missing inputs",
+    "expired_quotations": [],
+    "missing_inputs": [
+     "Testing and qualification",
+     "Lead time: additional engineering / qualification time"
+    ],
+    "ordered_quantity": 10,
+    "savings_vs_baseline": null,
+    "savings_percent": null,
+    "baseline": "oem"
+   },
+   "flags": {
+    "potentially_suitable": false,
+    "engineering_approved": false,
+    "commercially_cheapest": false,
+    "cheapest_definitive": false,
+    "fastest": false,
+    "fastest_definitive": false
+   }
+  }
+ },
+ "ranking": [],
+ "statuses": {
+  "commercially_cheapest": {
+   "option": "oem",
+   "options": [
+    "oem"
+   ],
+   "definitive": false,
+   "text": "OEM procurement: lowest total cost among options with complete figures, not definitive because Conventional manufacturing is incomplete. OEM procurement does not meet the mandatory technical requirements; OEM procurement cost evidence: historical costs (not current quotations).",
+   "value": "635.25"
+  },
+  "fastest": {
+   "option": "additive",
+   "options": [
+    "additive"
+   ],
+   "definitive": false,
+   "text": "Additive manufacturing: lowest lead time among options with complete figures, not definitive because Conventional manufacturing is incomplete. Additive manufacturing does not meet the mandatory technical requirements.",
+   "value": "28"
+  },
+  "potentially_suitable": {
+   "options": [],
+   "text": "None: no option meets the mandatory requirements."
+  },
+  "engineering_approved": {
+   "options": [],
+   "text": "Engineering approval is not available: formal approval, manufacturing authorisation, passport publication and production release stay blocked (OQ-35, OQ-36)."
+  }
+ },
+ "outcome": {
+  "code": "no_qualified_recommendation",
+  "label": "No qualified recommendation \u2014 additional engineering review required",
+  "option": null,
+  "reasons": [
+   "OEM procurement: OEM identity and part number verified: Identification / availability not verified",
+   "Additive manufacturing: Technical screening potentially suitable: Insufficient technical information; Safety / equipment criticality assessed and not critical: Criticality not assessed (the customer ABC indicator is not used)",
+   "Conventional manufacturing: Technical screening potentially suitable: Insufficient technical information; Safety / equipment criticality assessed and not critical: Criticality not assessed (the customer ABC indicator is not used)"
+  ]
+ },
+ "statement": "Preliminary until reviewed. Not an engineering approval, manufacturing authorisation, passport publication or production release (OQ-35, OQ-36). A lower cost never overrides a technical constraint.",
+ "phase2": {
+  "family": "Wear ring",
+  "rules_category": "mechanical",
+  "category": "unknown",
+  "category_verified": false,
+  "completeness": 45,
+  "missing": [],
+  "duplicates": [],
+  "manufacturer_possibly_truncated": true,
+  "ai_suggestion": null
+ },
+ "risks": [
+  "OEM procurement: The manufacturer name may be truncated."
+ ],
+ "missing_information": [
+  "Engineering drawing"
+ ],
+ "confidence": {
+  "technical": "Low: 21 evidence items missing or unverified",
+  "commercial": "Incomplete: missing inputs",
+  "overall": "Low"
+ },
+ "sources": {
+  "feasibility": {
+   "id": "f",
+   "version": 5,
+   "methodology": "m"
+  },
+  "cost_comparison": {
+   "id": "c",
+   "version": 2,
+   "name": "SYNTHETIC",
+   "synthetic": true,
+   "quantity": 3,
+   "currency": "USD",
+   "method": "x",
+   "as_of": "2026-10-27",
+   "feasibility_version": 5
+  },
+  "intelligence": null
+ }
+}

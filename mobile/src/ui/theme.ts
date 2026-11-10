@@ -1,0 +1,41 @@
+import {StyleSheet} from 'react-native';
+
+export const colors = {
+  bg: '#f3f5f8',
+  surface: '#ffffff',
+  ink: '#18212f',
+  ink2: '#3c4758',
+  muted: '#667085',
+  line: '#d9dee6',
+  brand: '#1f3a5f',
+  brand2: '#2c5282',
+  accent: '#c26b1a',
+  errBg: '#fdecec',
+  errInk: '#9b1c1c',
+  warnBg: '#fff4e0',
+  warnInk: '#8a5300',
+  infoBg: '#e8f0fb',
+  infoInk: '#1d4e89',
+};
+
+export const s = StyleSheet.create({
+  screen: {flex: 1, backgroundColor: colors.bg},
+  pad: {padding: 16},
+  card: {backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.line, padding: 14, marginBottom: 12},
+  h1: {fontSize: 20, fontWeight: '600', color: colors.ink, marginBottom: 4},
+  h2: {fontSize: 16, fontWeight: '600', color: colors.ink, marginBottom: 8},
+  text: {fontSize: 15, color: colors.ink},
+  muted: {fontSize: 13, color: colors.muted},
+  label: {fontSize: 13, fontWeight: '600', color: colors.ink2, marginBottom: 4},
+  input: {borderWidth: 1, borderColor: colors.line, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, backgroundColor: '#fff', color: colors.ink, marginBottom: 12},
+  button: {backgroundColor: colors.brand2, borderRadius: 6, paddingVertical: 12, alignItems: 'center', minHeight: 44, justifyContent: 'center'},
+  buttonText: {color: '#fff', fontWeight: '600', fontSize: 15},
+  buttonGhost: {borderWidth: 1, borderColor: colors.line, borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12, alignItems: 'center', minHeight: 44, justifyContent: 'center', marginBottom: 8, backgroundColor: '#fff'},
+  error: {backgroundColor: colors.errBg, borderRadius: 6, padding: 10, marginBottom: 12},
+  errorText: {color: colors.errInk},
+  notice: {backgroundColor: colors.warnBg, borderRadius: 6, padding: 10, marginBottom: 12},
+  noticeText: {color: colors.warnInk},
+  badge: {alignSelf: 'flex-start', backgroundColor: colors.infoBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4},
+  badgeText: {color: colors.infoInk, fontSize: 12, fontWeight: '600'},
+  row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+});

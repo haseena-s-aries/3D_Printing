@@ -1,0 +1,849 @@
+{
+ "scenario": {
+  "name": "SYNTHETIC TEST",
+  "synthetic": true,
+  "quantity": 3,
+  "reporting_currency": "USD",
+  "baseline": "oem",
+  "exchange_rates": [
+   {
+    "from": "EUR",
+    "to": "USD",
+    "rate": "1.10",
+    "rate_date": "2026-10-27",
+    "source": "Entered test rate"
+   },
+   {
+    "from": "USD",
+    "to": "AED",
+    "rate": "3.6725",
+    "rate_date": "2026-10-27",
+    "source": "Entered test rate"
+   }
+  ],
+  "alternatives": {
+   "oem": {
+    "moq": 5,
+    "costs": {
+     "unit_cost": {
+      "amount": "100",
+      "currency": "EUR",
+      "source": "quotation",
+      "reference": "REF-1",
+      "valid_until": "2026-12-31"
+     },
+     "post_processing": {
+      "not_applicable": true
+     },
+     "engineering_setup": {
+      "not_applicable": true
+     },
+     "tooling": {
+      "not_applicable": true
+     },
+     "testing_qualification": {
+      "not_applicable": true
+     },
+     "logistics": {
+      "amount": "50",
+      "currency": "EUR",
+      "source": "quotation",
+      "reference": "REF-1",
+      "valid_until": "2026-12-31",
+      "basis": "per_order"
+     },
+     "duties": {
+      "percent": "5",
+      "source": "historical",
+      "reference": "Customs 2025"
+     }
+    },
+    "lead_time": {
+     "supplier_days": {
+      "days": 30,
+      "source": "quotation",
+      "reference": "REF-L"
+     },
+     "engineering_days": {
+      "not_applicable": true
+     }
+    }
+   },
+   "additive": {
+    "qualification_units": 1,
+    "costs": {
+     "unit_cost": {
+      "amount": "80",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "post_processing": {
+      "amount": "20",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "engineering_setup": {
+      "amount": "300",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "tooling": {
+      "not_applicable": true
+     },
+     "testing_qualification": {
+      "amount": "600",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "logistics": {
+      "amount": "10",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": "",
+      "basis": "per_unit"
+     },
+     "duties": {
+      "not_applicable": true
+     }
+    },
+    "lead_time": {
+     "supplier_days": {
+      "days": 7,
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "engineering_days": {
+      "days": 21,
+      "source": "engineering_estimate",
+      "reference": ""
+     }
+    }
+   },
+   "conventional": {
+    "moq": 10,
+    "costs": {
+     "unit_cost": {
+      "amount": "150",
+      "currency": "AED",
+      "source": "historical",
+      "reference": "REF-1"
+     },
+     "post_processing": {
+      "not_applicable": true
+     },
+     "engineering_setup": {
+      "amount": "200",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "tooling": {
+      "amount": "1000",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": ""
+     },
+     "testing_qualification": {
+      "source": "missing"
+     },
+     "logistics": {
+      "amount": "40",
+      "currency": "USD",
+      "source": "engineering_estimate",
+      "reference": "",
+      "basis": "per_order"
+     },
+     "duties": {
+      "not_applicable": true
+     }
+    },
+    "lead_time": {
+     "supplier_days": {
+      "days": 35,
+      "source": "historical",
+      "reference": "REF-L"
+     },
+     "engineering_days": {
+      "source": "missing"
+     }
+    }
+   }
+  }
+ },
+ "technical": {
+  "oem": {
+   "status": "not_verified",
+   "status_label": "Identification / availability not verified",
+   "label": "Not verified: OEM identity / availability",
+   "qualified": false,
+   "excluded": false,
+   "corrected_by_review": false,
+   "feasibility_version": 2
+  },
+  "additive": {
+   "status": "specialist_assessment",
+   "status_label": "Specialist engineering assessment required",
+   "label": "Not technically qualified: specialist engineering assessment required",
+   "qualified": false,
+   "excluded": false,
+   "corrected_by_review": false,
+   "feasibility_version": 2
+  },
+  "conventional": {
+   "status": "insufficient_information",
+   "status_label": "Insufficient technical information",
+   "label": "Not technically qualified: insufficient technical information",
+   "qualified": false,
+   "excluded": false,
+   "corrected_by_review": false,
+   "feasibility_version": 2
+  }
+ },
+ "results": {
+  "method_version": "cost-method-2026-10-28.2",
+  "as_of": "2026-10-27",
+  "quantity": 3,
+  "reporting_currency": "USD",
+  "baseline": "oem",
+  "alternatives": {
+   "oem": {
+    "key": "oem",
+    "label": "OEM procurement",
+    "required_quantity": 3,
+    "ordered_quantity": 5,
+    "moq": 5,
+    "order_multiple": 1,
+    "qualification_units": 0,
+    "surplus_units": 2,
+    "lines": [
+     {
+      "key": "unit_cost",
+      "label": "Unit purchase / manufacturing cost",
+      "category": "material_production",
+      "basis": "per unit",
+      "source": "quotation",
+      "source_label": "Verified supplier quotation",
+      "reference": "REF-1",
+      "note": "",
+      "amount": "100.00",
+      "currency": "EUR",
+      "multiplier": 5,
+      "not_applicable": false,
+      "valid_until": "2026-12-31",
+      "reporting_amount": "550.00",
+      "reporting_unit_amount": "110.00",
+      "conversion": {
+       "from": "EUR",
+       "to": "USD",
+       "rate": "1.10",
+       "inverse": false,
+       "rate_date": "2026-10-27",
+       "source": "Entered test rate"
+      }
+     },
+     {
+      "key": "post_processing",
+      "label": "Post-processing",
+      "category": "material_production",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "engineering_setup",
+      "label": "Engineering and setup",
+      "category": "setup_tooling",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "tooling",
+      "label": "Tooling",
+      "category": "setup_tooling",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "testing_qualification",
+      "label": "Testing and qualification",
+      "category": "testing_qualification",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "logistics",
+      "label": "Packaging and logistics",
+      "category": "logistics",
+      "basis": "one-time",
+      "source": "quotation",
+      "source_label": "Verified supplier quotation",
+      "reference": "REF-1",
+      "note": "",
+      "amount": "50.00",
+      "currency": "EUR",
+      "multiplier": 1,
+      "not_applicable": false,
+      "valid_until": "2026-12-31",
+      "reporting_amount": "55.00",
+      "reporting_unit_amount": "55.00",
+      "conversion": {
+       "from": "EUR",
+       "to": "USD",
+       "rate": "1.10",
+       "inverse": false,
+       "rate_date": "2026-10-27",
+       "source": "Entered test rate"
+      }
+     },
+     {
+      "key": "duties",
+      "label": "Duties and taxes",
+      "category": "duties_taxes",
+      "basis": "percentage of goods and logistics",
+      "source": "historical",
+      "source_label": "Historical purchase/manufacturing cost",
+      "reference": "Customs 2025",
+      "note": "",
+      "percent": "5.0",
+      "not_applicable": false,
+      "reporting_amount": "30.25"
+     }
+    ],
+    "categories": {
+     "material_production": {
+      "label": "Material and production / purchase",
+      "amount": "550.00"
+     },
+     "setup_tooling": {
+      "label": "Setup and tooling",
+      "amount": "0.00"
+     },
+     "testing_qualification": {
+      "label": "Testing and qualification",
+      "amount": "0.00"
+     },
+     "logistics": {
+      "label": "Packaging and logistics",
+      "amount": "55.00"
+     },
+     "duties_taxes": {
+      "label": "Duties and taxes",
+      "amount": "30.25"
+     }
+    },
+    "one_time_total": "55.00",
+    "quantity_dependent_total": "550.00",
+    "duties_total": "30.25",
+    "complete": true,
+    "total": "635.25",
+    "known_costs_total": "635.25",
+    "effective_unit_cost": "211.75",
+    "cost_per_ordered_unit": "127.05",
+    "setup_tooling_per_usable_unit": "0.00",
+    "missing_inputs": [],
+    "warnings": [],
+    "exchange_rates_used": [
+     {
+      "from": "EUR",
+      "to": "USD",
+      "rate": "1.10",
+      "inverse": false,
+      "rate_date": "2026-10-27",
+      "source": "Entered test rate"
+     }
+    ],
+    "confidence": "Medium: includes historical costs",
+    "lead_time": {
+     "components": [
+      {
+       "key": "supplier_days",
+       "label": "Supplier / manufacturer lead time",
+       "days": 30,
+       "source": "quotation",
+       "source_label": "Verified supplier quotation",
+       "reference": "REF-L",
+       "note": "",
+       "not_applicable": false
+      },
+      {
+       "key": "engineering_days",
+       "label": "Additional engineering / qualification time",
+       "not_applicable": true,
+       "source_label": "Not applicable",
+       "days": 0
+      }
+     ],
+     "total_days": 30,
+     "complete": true,
+     "confidence": "High: verified supplier quotations",
+     "assumption": "Engineering / qualification time and supplier lead time run one after the other."
+    },
+    "notes": "",
+    "explanation": [
+     "Unit purchase / manufacturing cost: 100.00 EUR \u00d7 1.10 = 110.00 USD \u00d7 5 ordered = 550.00 USD",
+     "Packaging and logistics: 50.00 EUR \u00d7 1.10 = 55.00 USD = 55.00 USD",
+     "Duties and taxes: 5% \u00d7 (550.00 goods + 55.00 logistics) = 30.25 USD",
+     "Total: 550.00 + 55.00 + 30.25 = 635.25 USD (each figure rounded for display; the total uses unrounded values)",
+     "Effective cost per usable unit: 635.25 \u00f7 3 required = 211.75 USD"
+    ],
+    "technical": {
+     "status": "not_verified",
+     "status_label": "Identification / availability not verified",
+     "label": "Not verified: OEM identity / availability",
+     "qualified": false,
+     "excluded": false,
+     "corrected_by_review": false,
+     "feasibility_version": 2
+    },
+    "comparison": {
+     "baseline": "oem",
+     "baseline_label": "OEM procurement",
+     "savings": null,
+     "savings_percent": null,
+     "lead_time_difference_days": null,
+     "provisional": true,
+     "reason": "Baseline"
+    }
+   },
+   "additive": {
+    "key": "additive",
+    "label": "Additive manufacturing",
+    "required_quantity": 3,
+    "ordered_quantity": 4,
+    "moq": 1,
+    "order_multiple": 1,
+    "qualification_units": 1,
+    "surplus_units": 0,
+    "lines": [
+     {
+      "key": "unit_cost",
+      "label": "Unit purchase / manufacturing cost",
+      "category": "material_production",
+      "basis": "per unit",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "80.00",
+      "currency": "USD",
+      "multiplier": 4,
+      "not_applicable": false,
+      "reporting_amount": "320.00",
+      "reporting_unit_amount": "80.00",
+      "conversion": null
+     },
+     {
+      "key": "post_processing",
+      "label": "Post-processing",
+      "category": "material_production",
+      "basis": "per unit",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "20.00",
+      "currency": "USD",
+      "multiplier": 4,
+      "not_applicable": false,
+      "reporting_amount": "80.00",
+      "reporting_unit_amount": "20.00",
+      "conversion": null
+     },
+     {
+      "key": "engineering_setup",
+      "label": "Engineering and setup",
+      "category": "setup_tooling",
+      "basis": "one-time",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "300.00",
+      "currency": "USD",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": "300.00",
+      "reporting_unit_amount": "300.00",
+      "conversion": null
+     },
+     {
+      "key": "tooling",
+      "label": "Tooling",
+      "category": "setup_tooling",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "testing_qualification",
+      "label": "Testing and qualification",
+      "category": "testing_qualification",
+      "basis": "one-time",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "600.00",
+      "currency": "USD",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": "600.00",
+      "reporting_unit_amount": "600.00",
+      "conversion": null
+     },
+     {
+      "key": "logistics",
+      "label": "Packaging and logistics",
+      "category": "logistics",
+      "basis": "per unit",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "10.00",
+      "currency": "USD",
+      "multiplier": 4,
+      "not_applicable": false,
+      "reporting_amount": "40.00",
+      "reporting_unit_amount": "10.00",
+      "conversion": null
+     },
+     {
+      "key": "duties",
+      "label": "Duties and taxes",
+      "category": "duties_taxes",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     }
+    ],
+    "categories": {
+     "material_production": {
+      "label": "Material and production / purchase",
+      "amount": "400.00"
+     },
+     "setup_tooling": {
+      "label": "Setup and tooling",
+      "amount": "300.00"
+     },
+     "testing_qualification": {
+      "label": "Testing and qualification",
+      "amount": "600.00"
+     },
+     "logistics": {
+      "label": "Packaging and logistics",
+      "amount": "40.00"
+     },
+     "duties_taxes": {
+      "label": "Duties and taxes",
+      "amount": "0.00"
+     }
+    },
+    "one_time_total": "900.00",
+    "quantity_dependent_total": "440.00",
+    "duties_total": "0.00",
+    "complete": true,
+    "total": "1340.00",
+    "known_costs_total": "1340.00",
+    "effective_unit_cost": "446.67",
+    "cost_per_ordered_unit": "335.00",
+    "setup_tooling_per_usable_unit": "100.00",
+    "missing_inputs": [],
+    "warnings": [],
+    "exchange_rates_used": [],
+    "confidence": "Low: includes engineering estimates",
+    "lead_time": {
+     "components": [
+      {
+       "key": "supplier_days",
+       "label": "Supplier / manufacturer lead time",
+       "days": 7,
+       "source": "engineering_estimate",
+       "source_label": "Engineering estimate",
+       "reference": "",
+       "note": "",
+       "not_applicable": false
+      },
+      {
+       "key": "engineering_days",
+       "label": "Additional engineering / qualification time",
+       "days": 21,
+       "source": "engineering_estimate",
+       "source_label": "Engineering estimate",
+       "reference": "",
+       "note": "",
+       "not_applicable": false
+      }
+     ],
+     "total_days": 28,
+     "complete": true,
+     "confidence": "Low: includes engineering estimates",
+     "assumption": "Engineering / qualification time and supplier lead time run one after the other."
+    },
+    "notes": "",
+    "explanation": [
+     "Unit purchase / manufacturing cost: 80.00 USD \u00d7 4 ordered = 320.00 USD",
+     "Post-processing: 20.00 USD \u00d7 4 ordered = 80.00 USD",
+     "Engineering and setup: 300.00 USD",
+     "Testing and qualification: 600.00 USD",
+     "Packaging and logistics: 10.00 USD \u00d7 4 ordered = 40.00 USD",
+     "Total: 400.00 + 300.00 + 600.00 + 40.00 = 1,340.00 USD (each figure rounded for display; the total uses unrounded values)",
+     "Effective cost per usable unit: 1,340.00 \u00f7 3 required = 446.67 USD"
+    ],
+    "technical": {
+     "status": "specialist_assessment",
+     "status_label": "Specialist engineering assessment required",
+     "label": "Not technically qualified: specialist engineering assessment required",
+     "qualified": false,
+     "excluded": false,
+     "corrected_by_review": false,
+     "feasibility_version": 2
+    },
+    "comparison": {
+     "baseline": "oem",
+     "baseline_label": "OEM procurement",
+     "savings": "-704.75",
+     "savings_percent": "-110.9",
+     "lead_time_difference_days": -2,
+     "provisional": true,
+     "reason": "Provisional: this alternative is not technically qualified."
+    }
+   },
+   "conventional": {
+    "key": "conventional",
+    "label": "Conventional manufacturing",
+    "required_quantity": 3,
+    "ordered_quantity": 10,
+    "moq": 10,
+    "order_multiple": 1,
+    "qualification_units": 0,
+    "surplus_units": 7,
+    "lines": [
+     {
+      "key": "unit_cost",
+      "label": "Unit purchase / manufacturing cost",
+      "category": "material_production",
+      "basis": "per unit",
+      "source": "historical",
+      "source_label": "Historical purchase/manufacturing cost",
+      "reference": "REF-1",
+      "note": "",
+      "amount": "150.00",
+      "currency": "AED",
+      "multiplier": 10,
+      "not_applicable": false,
+      "reporting_amount": "408.44",
+      "reporting_unit_amount": "40.84",
+      "conversion": {
+       "from": "AED",
+       "to": "USD",
+       "rate": "3.6725",
+       "inverse": true,
+       "rate_date": "2026-10-27",
+       "source": "Entered test rate"
+      }
+     },
+     {
+      "key": "post_processing",
+      "label": "Post-processing",
+      "category": "material_production",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     },
+     {
+      "key": "engineering_setup",
+      "label": "Engineering and setup",
+      "category": "setup_tooling",
+      "basis": "one-time",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "200.00",
+      "currency": "USD",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": "200.00",
+      "reporting_unit_amount": "200.00",
+      "conversion": null
+     },
+     {
+      "key": "tooling",
+      "label": "Tooling",
+      "category": "setup_tooling",
+      "basis": "one-time",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "1000.00",
+      "currency": "USD",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": "1000.00",
+      "reporting_unit_amount": "1000.00",
+      "conversion": null
+     },
+     {
+      "key": "testing_qualification",
+      "label": "Testing and qualification",
+      "category": "testing_qualification",
+      "basis": "one-time",
+      "source": "missing",
+      "source_label": "Missing / unavailable",
+      "reference": "",
+      "note": "",
+      "amount": null,
+      "currency": "",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": null
+     },
+     {
+      "key": "logistics",
+      "label": "Packaging and logistics",
+      "category": "logistics",
+      "basis": "one-time",
+      "source": "engineering_estimate",
+      "source_label": "Engineering estimate",
+      "reference": "",
+      "note": "",
+      "amount": "40.00",
+      "currency": "USD",
+      "multiplier": 1,
+      "not_applicable": false,
+      "reporting_amount": "40.00",
+      "reporting_unit_amount": "40.00",
+      "conversion": null
+     },
+     {
+      "key": "duties",
+      "label": "Duties and taxes",
+      "category": "duties_taxes",
+      "not_applicable": true,
+      "source_label": "Not applicable"
+     }
+    ],
+    "categories": {
+     "material_production": {
+      "label": "Material and production / purchase",
+      "amount": "408.44"
+     },
+     "setup_tooling": {
+      "label": "Setup and tooling",
+      "amount": "1200.00"
+     },
+     "testing_qualification": {
+      "label": "Testing and qualification",
+      "amount": null
+     },
+     "logistics": {
+      "label": "Packaging and logistics",
+      "amount": "40.00"
+     },
+     "duties_taxes": {
+      "label": "Duties and taxes",
+      "amount": "0.00"
+     }
+    },
+    "one_time_total": null,
+    "quantity_dependent_total": null,
+    "duties_total": null,
+    "complete": false,
+    "total": null,
+    "known_costs_total": "1648.44",
+    "effective_unit_cost": null,
+    "cost_per_ordered_unit": null,
+    "setup_tooling_per_usable_unit": "400.00",
+    "missing_inputs": [
+     "Testing and qualification",
+     "Lead time: additional engineering / qualification time"
+    ],
+    "warnings": [],
+    "exchange_rates_used": [
+     {
+      "from": "AED",
+      "to": "USD",
+      "rate": "3.6725",
+      "inverse": true,
+      "rate_date": "2026-10-27",
+      "source": "Entered test rate"
+     }
+    ],
+    "confidence": "Incomplete: missing inputs",
+    "lead_time": {
+     "components": [
+      {
+       "key": "supplier_days",
+       "label": "Supplier / manufacturer lead time",
+       "days": 35,
+       "source": "historical",
+       "source_label": "Historical purchase/manufacturing cost",
+       "reference": "REF-L",
+       "note": "",
+       "not_applicable": false
+      },
+      {
+       "key": "engineering_days",
+       "label": "Additional engineering / qualification time",
+       "days": null,
+       "source": "missing",
+       "source_label": "Missing / unavailable",
+       "reference": "",
+       "note": "",
+       "not_applicable": false
+      }
+     ],
+     "total_days": null,
+     "complete": false,
+     "confidence": "Incomplete: missing inputs",
+     "assumption": "Engineering / qualification time and supplier lead time run one after the other."
+    },
+    "notes": "",
+    "explanation": [
+     "Unit purchase / manufacturing cost: 150.00 AED \u00f7 3.6725 (entered USD\u2192AED rate) = 40.84 USD \u00d7 10 ordered = 408.44 USD",
+     "Engineering and setup: 200.00 USD",
+     "Tooling: 1,000.00 USD",
+     "Packaging and logistics: 40.00 USD",
+     "Total not calculated: Testing and qualification."
+    ],
+    "technical": {
+     "status": "insufficient_information",
+     "status_label": "Insufficient technical information",
+     "label": "Not technically qualified: insufficient technical information",
+     "qualified": false,
+     "excluded": false,
+     "corrected_by_review": false,
+     "feasibility_version": 2
+    },
+    "comparison": {
+     "baseline": "oem",
+     "baseline_label": "OEM procurement",
+     "savings": null,
+     "savings_percent": null,
+     "lead_time_difference_days": null,
+     "provisional": true,
+     "reason": "Totals incomplete: savings cannot be calculated."
+    }
+   }
+  },
+  "exchange_rates": [
+   {
+    "from": "EUR",
+    "to": "USD",
+    "rate": "1.10",
+    "rate_date": "2026-10-27",
+    "source": "Entered test rate"
+   },
+   {
+    "from": "USD",
+    "to": "AED",
+    "rate": "3.6725",
+    "rate_date": "2026-10-27",
+    "source": "Entered test rate"
+   }
+  ],
+  "statement": "Comparison only. No procurement recommendation, manufacturing authorisation or release is made; a lower cost never overrides technical constraints or missing engineering approval."
+ }
+}

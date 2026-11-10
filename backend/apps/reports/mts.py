@@ -1,0 +1,174 @@
+"""Manufacturing & Test Specification template and the attached-documents index (CN-005 enhancement, 27 Oct 2026).
+
+The MTS layout follows the structure of the supplied 8-page sample (header block with document number and revision,
+title line, manufacturing-specification grid, three views, quantities, manufacturing process steps, inspection and
+test specifications, CONFIDENTIAL stamp, attached documents after the body). It prints only values recorded in the
+passport: missing values read "Not recorded" and are never filled in. The template is Aries-internal: it contains the
+manufacturing specification and is never produced for clients. Job sheets and engineering notes are not included.
+"""
+from django.conf import settings
+
+from apps.files.models import EngineeringFile
+
+from .builder import CATEGORY_NAMES, CSS, LEGEND, PROPERTY_NAMES, WATERMARK, E, _filled, _text, mark_html
+
+ATTACH_NOTE = ("Attached documents are reproduced as uploaded. Attaching a certificate, test or inspection report does not mean "
+               "Aries has verified it; verification and approval rules are pending (OQ-35).")
+
+
+# Report-builder class names (same wording as the builder UI); other categories keep their file-category label.
+CLASS_NAMES = {**CATEGORY_NAMES, "drawing": "Engineering drawing", "inspection": "QC / inspection report", "other": "Other supporting document"}
+
+
+def attachment_rows(attachments: list) -> list:
+    return [[a["order"], CLASS_NAMES.get(a["category"], a["category"]), a["title"], f'v{a["version"]}',
+             f'{a["sha256"][:8]}…{a["sha256"][-4:]}', a["pages"], a.get("first_page") or ""] for a in attachments]
+
+
+def attachment_index(data: dict, heading: str) -> str:
+    rows = data.get("attachments") or []
+    if not rows:
+        return f'<section><h2>{E(heading)}</h2><p class="notice">No documents are attached to this report.</p></section>'
+    body = "".join(f"<tr><td>{o}</td><td>{E(c)}</td><td>{E(t)}</td><td>{E(v)}</td><td>{E(h)}</td><td>{p}</td><td>{f}</td></tr>"
+                   for o, c, t, v, h, p, f in rows)
+    cols = "".join(f'<col style="width:{w}%">' for w in (5, 20, 37, 7, 15, 7, 9))
+    return (f'<section><h2>{E(heading)}</h2><table class="wide docs"><colgroup>{cols}</colgroup><tr><th>#</th><th>Document class</th>'
+            f'<th>Title</th><th>Version</th><th>SHA-256</th><th>Pages</th><th>From page</th></tr>{body}</table>'
+            f'<p class="notice">{E(ATTACH_NOTE)}</p></section>')
+
+
+def company_location(tenant) -> str:
+    """The client company's location from its profile (post-UAT D-08); blank when the profile has none."""
+    return ", ".join(x for x in (tenant.address, tenant.city, tenant.state, tenant.country) if (x or "").strip())
+
+
+def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachments: list) -> dict:
+    def v(x):
+        return [_text(x), "V" if approved else "D"] if _filled(x) else ["Not recorded", "M"]
+
+    drawings = [a for a in attachments if a["category"] == EngineeringFile.Category.DRAWING]
+    if drawings:
+        dwg = ", ".join(f'{a["title"]} (v{a["version"]})' for a in drawings)
+    else:
+        f = (EngineeringFile.objects.filter(tenant=part.tenant, part=part, category=EngineeringFile.Category.DRAWING)
+             .order_by("-updated_at").first())
+        latest = f.versions.order_by("-version_number").first() if f else None
+        dwg = f"{f.title} (v{latest.version_number})" if latest else ""
+    process = rl2.get("manufacturing_process") or ""
+    params = "; ".join(f'{p.get("name")}: {p.get("value", "")} {p.get("unit", "")}'.strip() for p in (spec.get("process_parameters") or []))
+    printing = "; ".join(x for x in (spec.get("machine") and f'Machine: {spec["machine"]}',
+                                     spec.get("layer_thickness") and f'Layer thickness: {spec["layer_thickness"]}',
+                                     spec.get("inert_gas") and f'Inert gas: {spec["inert_gas"]}', params) if x)
+    design = "; ".join(x for x in (spec.get("support_strategy") and f'Supports: {spec["support_strategy"]}',
+                                   spec.get("build_orientation") and f'Orientation: {spec["build_orientation"]}') if x)
+    tests = [[PROPERTY_NAMES.get(r.get("property", ""), r.get("property", "")) + " testing", r.get("standard") or "",
+              " ".join(x for x in (r.get("requirement"), r.get("unit")) if x), r.get("frequency") or ""]
+             for r in (rl2.get("mechanical_acceptance") or [])]
+    if rl2.get("ndt"):
+        tests.append(["Non-destructive testing", "", rl2["ndt"], ""])
+    if rl2.get("dimensional_tolerances"):
+        tests.append(["Dimensional inspection", rl2.get("inspection_test_plan") or "", rl2["dimensional_tolerances"], ""])
+    return {
+        "title": ("In this document manufacturing and testing requirements are mentioned to produce "
+                  f"{part.name}" + (f" via {process}" if process else "") + "."),
+        "grid": [("Job No", v(spec.get("job_number"))),
+                 ("Revision", [f"Passport rev {revision.revision_number} ({revision.get_status_display()})", "V" if approved else "D"]),
+                 ("Company name", v(getattr(settings, "REPORT_COMPANY_NAME", "") or part.tenant.name)),
+                 ("Location", v(getattr(settings, "REPORT_COMPANY_LOCATION", "") or company_location(part.tenant))),
+                 ("Part name", v(part.name)), ("Dwg No", v(dwg)),
+                 ("3D printing technology", v(process)), ("Feedstock specification", v(spec.get("feedstock") or rl2.get("feedstock"))),
+                 ("Applicable standards", v(rl2.get("applicable_standards"))), ("Substrate plate material", ["Not recorded (no passport field)", "M"])],
+        "quantities": [("Part", ["Not recorded (job-specific; see the manufacturing job)", "M"]),
+                       ("Test coupons / specimens", v(rl2.get("test_coupons")))],
+        "process": [("Feedstock", v(spec.get("feedstock") or rl2.get("feedstock"))), ("Design for additive manufacturing", v(design)),
+                    ("3D printing", v(printing)), ("Heat treatment", v(spec.get("heat_treatment"))),
+                    ("Support removal and post-processing", v(spec.get("post_processing"))), ("Machining", v(spec.get("machining")))],
+        "tests": tests,
+    }
+
+
+MTS_CSS = """
+.mts-head { display: grid; grid-template-columns: 34mm minmax(0,1fr) 62mm; border: 1px solid #1d2433; }
+.mts-head > div { padding: 6px 8px; display: flex; align-items: center; }
+.mts-brand { font-weight: 800; font-size: 14pt; color: #b3261e; letter-spacing: .04em; }
+.mts-title { justify-content: center; font-size: 14pt; font-weight: 600; background: #d9d2e9; text-align: center; }
+.mts-doc { border-left: 1px solid #1d2433; padding: 0 !important; display: grid !important; grid-template-columns: 1fr 1fr; font-size: 8pt; }
+.mts-doc span { border: 0.5px solid #1d2433; padding: 3px 5px; text-align: center; overflow-wrap: anywhere; } .mts-doc b { font-weight: 600; }
+.mts table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.mts td, .mts th { border: 1px solid #1d2433; padding: 4px 6px; vertical-align: middle; width: auto; background: transparent; }
+.bar2 { background: #b7dde8; font-weight: 600; padding: 4px 6px; border: 1px solid #1d2433; border-top: 0; }
+.mts td.k { background: #fce4d6; width: 22%; } .mts tr.hdr th { background: #fce4d6; text-align: center; font-weight: 600; }
+.mts td.c { text-align: center; } .titleline { border: 1px solid #1d2433; border-top: 0; padding: 5px 6px; }
+.mts .viewbox { border: 1px solid #1d2433; border-top: 0; padding: 4px; }
+.wm-conf { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-38deg); font-size: 62pt; font-weight: 900;
+  color: rgba(220,60,50,.12); border: 6px solid rgba(220,60,50,.12); border-radius: 18px; padding: 4px 26px; letter-spacing: .08em; z-index: 0; }
+.wm-draft { position: fixed; top: 72%; left: 50%; transform: translate(-50%, -50%) rotate(-38deg); font-size: 15pt; font-weight: 800;
+  color: rgba(200,40,40,.17); white-space: nowrap; z-index: 0; }
+"""
+
+
+def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str:
+    m = data["mts"]
+    approved = data["approved"]
+
+    def val(cell):
+        text, mk = cell
+        return f'<span class="{"missing" if mk == "M" else ""}">{E(text)}</span> {mark_html(mk)}'
+
+    views = "".join(
+        f'<div><div class="frame"><img src="{view_images[n]}" alt="{lbl} view"></div><div class="cap">{lbl} view</div></div>' if n in view_images
+        else f'<div><div class="frame na">View not available<br>{E(data["views"].get(n) or "")}</div><div class="cap">{lbl} view</div></div>'
+        for n, lbl in (("front", "Front"), ("top", "Top"), ("iso", "Isometric")))
+    grid = m["grid"]
+    grid_rows = "".join(f'<tr><td class="k">{E(grid[i][0])}</td><td class="c">{val(grid[i][1])}</td>'
+                        f'<td class="k">{E(grid[i + 1][0])}</td><td class="c">{val(grid[i + 1][1])}</td></tr>' for i in range(0, len(grid), 2))
+    q = m["quantities"]
+    first = f'<td class="k c" rowspan="{len(q)}">Qty to be produced</td>'
+    qty = "".join(f'<tr>{first if i == 0 else ""}<td class="c">{E(k)}</td><td class="c">{val(c)}</td></tr>' for i, (k, c) in enumerate(q))
+    proc = "".join(f'<tr><td class="c">{i}</td><td class="c"><b>{E(k)}</b></td><td>{val(c)}</td></tr>'
+                   for i, (k, c) in enumerate(m["process"], 1))
+    tests = "".join(f'<tr><td class="c">{i}</td><td class="c">{E(a) or "—"}</td><td class="c">{E(b) or "Not recorded"}</td>'
+                    f'<td class="c">{E(c) or "Not recorded"}</td><td class="c">{E(d) or "Not recorded"}</td></tr>'
+                    for i, (a, b, c, d) in enumerate(m["tests"], 1))
+    if not tests:
+        tests = '<tr><td colspan="5" class="missing c">No inspection and test specifications recorded in the passport</td></tr>'
+    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{MTS_CSS}</style></head><body class="mts">',
+           '<div class="wm-conf">CONFIDENTIAL</div>']
+    if not approved:
+        out.append(f'<div class="wm-draft">{WATERMARK}</div>')
+    out.append(
+        f'<div class="mts-head"><div class="mts-brand">{E(branding["name"])}</div>'
+        f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
+        f'<div class="mts-doc"><span><b>Document No.</b></span><span><b>Revision No</b></span><span>{E(meta["number"])}</span>'
+        f'<span>{data["revision"]}{"" if approved else " (draft)"}</span></div></div>'
+        f'<div class="titleline"><b>Title:</b> {E(m["title"])}</div>'
+        f'<div class="bar2">Manufacturing Specifications:</div><table>{grid_rows}</table>'
+        f'<div class="viewbox"><div class="views">{views}</div></div>'
+        f'<table>{qty}</table>'
+        f'<div class="bar2">Manufacturing Process:</div>'
+        f'<table><colgroup><col style="width:9%"><col style="width:22%"><col></colgroup>'
+        f'<tr class="hdr"><th>Sr. No</th><th>Process</th><th>Description</th></tr>{proc}</table>'
+        f'<div class="bar2">Inspection and Test Specifications:</div>'
+        f'<table><colgroup><col style="width:9%"><col style="width:22%"><col style="width:21%"><col style="width:24%"><col></colgroup>'
+        f'<tr class="hdr"><th>Sr. No</th><th>Test Method</th><th>Reference Document</th><th>Acceptance Criteria</th>'
+        f'<th>Inspection frequency</th></tr>{tests}</table>')
+    if not approved:
+        out.append(f'<div class="status">Passport revision {data["revision"]} is not approved ({E(data["revision_status"])}).'
+                   f'<small>{WATERMARK}. Values marked D, C or M are not verified engineering data. This document is not a '
+                   'manufacturing authorisation, QA certificate or material certificate.</small></div>')
+    out.append(attachment_index(data, "Attached documents (in page order)"))
+    out.append(f'<div class="legend">{"".join(f"<span>{mark_html(k)} {E(t)}</span>" for k, t in LEGEND)}</div>'
+               f'<p class="notice">Aries confidential: contains manufacturing parameters; not for client or third-party distribution. '
+               f'Generated from passport {E(data["passport"])} rev {data["revision"]} ({E(data["revision_status"])}) · content fingerprint '
+               f'{meta["fingerprint"][:16]}… · {E(meta["generated"])} · {E(meta["by_role"])}. Job sheets and engineering notes are not included.</p>'
+               '</body></html>')
+    return "".join(out)
+
+
+def mts_footer(meta: dict, data: dict) -> str:
+    total = meta.get("total_pages")
+    of = f" of {total}" if total else ' of <span class="totalPages"></span>'
+    status = "approved" if data["approved"] else "DRAFT - NOT APPROVED FOR MANUFACTURING"  # plain hyphen: footer font
+    return (f'<div style="font-size:7pt;width:100%;padding:0 12mm;display:flex;justify-content:space-between;color:#555">'
+            f'<span>{E(meta["number"])} · ARIES CONFIDENTIAL · {status}</span>'
+            f'<span>Page <span class="pageNumber"></span>{of}</span></div>')

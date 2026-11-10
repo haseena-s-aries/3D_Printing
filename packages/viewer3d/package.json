@@ -1,0 +1,12 @@
+{
+  "name": "@passport/viewer3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Three.js GLB viewer for web and mobile (WebView).",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": { "typecheck": "tsc --noEmit -p .", "test": "vitest run" },
+  "dependencies": { "three": "0.186.1" },
+  "devDependencies": { "@types/three": "0.186.0", "vitest": "^3.2.4" }
+}

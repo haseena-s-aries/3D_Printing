@@ -1,0 +1,5 @@
+# Microsoft SQL Server deployment (Windows Server): the runtime requirements plus the SQL Server backend and a Windows
+# WSGI server. Tested 4 Nov 2026 with Django 6.1.2, Python 3.12, SQL Server 2022, ODBC Driver 18 (see deploy/windows-sqlserver).
+-r requirements.txt
+mssql-django==2.0.0
+waitress==3.0.2

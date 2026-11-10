@@ -1,0 +1,11 @@
+* text=auto
+# Shell scripts must keep LF (CI runs on Linux); Windows batch files keep CRLF
+*.sh text eol=lf
+mobile/android/gradlew text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Engineering file fixtures are compared byte-for-byte: never convert line endings
+*.stp -text
+*.step -text
+*.dwg binary
+*.glb binary

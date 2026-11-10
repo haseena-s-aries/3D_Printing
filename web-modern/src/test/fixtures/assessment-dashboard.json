@@ -1,0 +1,733 @@
+{
+ "runs": [
+  {
+   "id": "50ce94e3-4d1c-45e5-9cb9-0f0f5cd61c4e",
+   "number": 1,
+   "kind": "manual",
+   "kind_label": "Manual",
+   "quarter": "2026-Q4",
+   "status": "completed",
+   "status_label": "Completed",
+   "scope": {
+    "parts": "imported inventory",
+    "projects": null
+   },
+   "ai_tier": "",
+   "methodology": {
+    "run": "run-method-2026-10-28.1",
+    "cost": "cost-method-2026-10-28.3",
+    "rules": "rules-2026-10-27.1",
+    "cost_prompt": "cost-prompt-2026-10-28.2",
+    "feasibility": "mf-method-2026-10-27.2",
+    "recommendation": "rec-method-2026-10-28.2",
+    "feasibility_prompt": "mf-prompt-2026-10-27.1",
+    "recommendation_prompt": "rec-prompt-2026-10-28.2"
+   },
+   "part_count": 4,
+   "done_count": 4,
+   "reused_count": 0,
+   "failed_count": 0,
+   "started_at": null,
+   "finished_at": "2026-10-28T04:50:06.494482Z",
+   "created_at": "2026-10-28T04:45:58.308789Z",
+   "previous_run": null,
+   "error": "",
+   "fault_injection": false,
+   "requested_by": "Elias Engineer"
+  }
+ ],
+ "latest": {
+  "run": {
+   "id": "50ce94e3-4d1c-45e5-9cb9-0f0f5cd61c4e",
+   "number": 1,
+   "kind": "manual",
+   "kind_label": "Manual",
+   "quarter": "2026-Q4",
+   "status": "completed",
+   "status_label": "Completed",
+   "scope": {
+    "parts": "imported inventory",
+    "projects": null
+   },
+   "ai_tier": "",
+   "methodology": {
+    "run": "run-method-2026-10-28.1",
+    "cost": "cost-method-2026-10-28.3",
+    "rules": "rules-2026-10-27.1",
+    "cost_prompt": "cost-prompt-2026-10-28.2",
+    "feasibility": "mf-method-2026-10-27.2",
+    "recommendation": "rec-method-2026-10-28.2",
+    "feasibility_prompt": "mf-prompt-2026-10-27.1",
+    "recommendation_prompt": "rec-prompt-2026-10-28.2"
+   },
+   "part_count": 4,
+   "done_count": 4,
+   "reused_count": 0,
+   "failed_count": 0,
+   "started_at": null,
+   "finished_at": "2026-10-28T04:50:06.494482Z",
+   "created_at": "2026-10-28T04:45:58.308789Z",
+   "previous_run": null,
+   "error": "",
+   "fault_injection": false,
+   "requested_by": "Elias Engineer"
+  },
+  "items": [
+   {
+    "id": "9205a4a6-ba9a-445f-af01-7f471c80d684",
+    "part_id": "85c68fdd-3a8e-4537-ba71-2ec7024117bf",
+    "part_number": "990100000101",
+    "name": "COVER,BRG HSG,CNTRFGL PMP",
+    "project": "PILOT-A",
+    "status": "done",
+    "status_label": "Assessed",
+    "attempts": 1,
+    "error_code": "",
+    "error_message": "",
+    "sources": {
+     "notes": [],
+     "feasibility": {
+      "id": "5fd2b7c3-6962-49bd-8687-8a10b47144ba",
+      "version": 3
+     },
+     "intelligence": "c3be30f2-8815-4bf4-a480-8edf9f1088e8",
+     "recommendation": {
+      "id": "0e3ceb8c-9788-40c7-9b7b-baffefc1d451",
+      "version": 4
+     },
+     "cost_comparison": {
+      "id": "b9f54950-1b6e-45e9-bc8a-910440ea4b0b",
+      "name": "SYNTHETIC TEST SCENARIO: bearing housing cover (not real prices)",
+      "version": 4,
+      "synthetic": true
+     }
+    },
+    "result": {
+     "oem": {
+      "expired": [],
+      "identity": "not_verified",
+      "cost_evidence": "historical",
+      "lead_evidence": "verified_current",
+      "identity_verified": false,
+      "availability_documented": false
+     },
+     "name": "COVER,BRG HSG,CNTRFGL PMP",
+     "savings": {
+      "verified": null,
+      "estimated": null
+     },
+     "commercial": {
+      "name": "SYNTHETIC TEST SCENARIO: bearing housing cover (not real prices)",
+      "options": {
+       "oem": {
+        "total": "4351.94",
+        "complete": true,
+        "eligible": false,
+        "evidence": "historical",
+        "excluded": false,
+        "lead_days": 84
+       },
+       "additive": {
+        "total": "5820.00",
+        "complete": true,
+        "eligible": false,
+        "evidence": "estimates",
+        "excluded": false,
+        "lead_days": 31
+       },
+       "conventional": {
+        "total": "5080.00",
+        "complete": true,
+        "eligible": false,
+        "evidence": "estimates",
+        "excluded": false,
+        "lead_days": 56
+       }
+      },
+      "currency": "USD",
+      "quantity": 2,
+      "synthetic": true,
+      "comparison_version": 4
+     },
+     "feasibility": {
+      "oem": {
+       "label": "Identification / availability not verified",
+       "status": "not_verified"
+      },
+      "version": 3,
+      "additive": {
+       "label": "Insufficient technical information",
+       "status": "insufficient_information"
+      },
+      "conventional": {
+       "label": "Insufficient technical information",
+       "status": "insufficient_information"
+      }
+     },
+     "part_number": "990100000101",
+     "am_candidate": false,
+     "completeness": 35,
+     "am_specialist": false,
+     "evidence_gaps": [
+      "Manufacturer / OEM identity: verification needed (recorded, not verified)",
+      "OEM part number",
+      "Authorised supplier",
+      "Availability / obsolescence",
+      "Replacement / supersession",
+      "Dimensions",
+      "3D CAD / STEP model",
+      "Engineering drawing",
+      "Material grade",
+      "Verified AM build envelope",
+      "Dimensional tolerances",
+      "Surface finish",
+      "Mechanical property requirements",
+      "Temperature, pressure and load",
+      "Wear and corrosion exposure",
+      "Service conditions (application, atmosphere, motion)",
+      "Inspection and testing requirements",
+      "Applicable standards and certification",
+      "OEM IP / reproduction restrictions",
+      "Safety / equipment criticality",
+      "Required quantity"
+     ],
+     "recommendation": {
+      "id": "0e3ceb8c-9788-40c7-9b7b-baffefc1d451",
+      "label": "No qualified recommendation — additional engineering review required",
+      "option": "",
+      "outcome": "no_qualified_recommendation",
+      "version": 4
+     },
+     "obsolescence_signals": [],
+     "conventional_candidate": false,
+     "conventional_specialist": false,
+     "insufficient_technical_data": true
+    },
+    "processed_at": "2026-10-28T04:50:06.137675Z",
+    "review_state": {
+     "code": "preliminary",
+     "label": "Preliminary: not reviewed",
+     "reviewed": false
+    }
+   },
+   {
+    "id": "cd082959-c706-4434-9d69-f58439532015",
+    "part_id": "82198b78-3c4a-45b9-962c-0b823aa1e821",
+    "part_number": "990100000102",
+    "name": "SEAL,MECH,CARTRIDGE,DBL",
+    "project": "PILOT-A",
+    "status": "done",
+    "status_label": "Assessed",
+    "attempts": 1,
+    "error_code": "",
+    "error_message": "",
+    "sources": {
+     "notes": [],
+     "feasibility": {
+      "id": "4edc986a-0a1c-4bf1-a7c5-2cfa43824ac9",
+      "version": 3
+     },
+     "intelligence": "bbc97745-ca2f-4173-af91-f3cbc09a68b7",
+     "recommendation": {
+      "id": "fa7a22c7-6d20-4aa2-91d7-4f1c280e2f7b",
+      "version": 4
+     },
+     "cost_comparison": {
+      "id": "f7178941-1416-44d2-8f1b-3b45400316fe",
+      "name": "SYNTHETIC TEST SCENARIO: cartridge mechanical seal (not real prices)",
+      "version": 4,
+      "synthetic": true
+     }
+    },
+    "result": {
+     "oem": {
+      "expired": [],
+      "identity": "not_verified",
+      "cost_evidence": "historical",
+      "lead_evidence": "historical",
+      "identity_verified": false,
+      "availability_documented": false
+     },
+     "name": "SEAL,MECH,CARTRIDGE,DBL",
+     "savings": {
+      "verified": null,
+      "estimated": null
+     },
+     "commercial": {
+      "name": "SYNTHETIC TEST SCENARIO: cartridge mechanical seal (not real prices)",
+      "options": {
+       "oem": {
+        "total": "912.21",
+        "complete": true,
+        "eligible": false,
+        "evidence": "historical",
+        "excluded": false,
+        "lead_days": 56
+       },
+       "additive": {
+        "total": null,
+        "complete": false,
+        "eligible": false,
+        "evidence": "incomplete",
+        "excluded": false,
+        "lead_days": null
+       },
+       "conventional": {
+        "total": null,
+        "complete": false,
+        "eligible": false,
+        "evidence": "incomplete",
+        "excluded": false,
+        "lead_days": null
+       }
+      },
+      "currency": "USD",
+      "quantity": 1,
+      "synthetic": true,
+      "comparison_version": 4
+     },
+     "feasibility": {
+      "oem": {
+       "label": "Identification / availability not verified",
+       "status": "not_verified"
+      },
+      "version": 3,
+      "additive": {
+       "label": "Specialist engineering assessment required",
+       "status": "specialist_assessment"
+      },
+      "conventional": {
+       "label": "Specialist engineering assessment required",
+       "status": "specialist_assessment"
+      }
+     },
+     "part_number": "990100000102",
+     "am_candidate": false,
+     "completeness": 10,
+     "am_specialist": true,
+     "evidence_gaps": [
+      "Manufacturer / OEM identity",
+      "OEM part number",
+      "Authorised supplier",
+      "Availability / obsolescence",
+      "Replacement / supersession",
+      "Dimensions",
+      "3D CAD / STEP model",
+      "Engineering drawing",
+      "Material grade",
+      "Verified AM build envelope",
+      "Dimensional tolerances",
+      "Surface finish",
+      "Mechanical property requirements",
+      "Temperature, pressure and load",
+      "Wear and corrosion exposure",
+      "Service conditions (application, atmosphere, motion)",
+      "Inspection and testing requirements",
+      "Applicable standards and certification",
+      "OEM IP / reproduction restrictions",
+      "Safety / equipment criticality",
+      "Required quantity"
+     ],
+     "recommendation": {
+      "id": "fa7a22c7-6d20-4aa2-91d7-4f1c280e2f7b",
+      "label": "No qualified recommendation — additional engineering review required",
+      "option": "",
+      "outcome": "no_qualified_recommendation",
+      "version": 4
+     },
+     "obsolescence_signals": [],
+     "conventional_candidate": false,
+     "conventional_specialist": true,
+     "insufficient_technical_data": true
+    },
+    "processed_at": "2026-10-28T04:50:06.202077Z",
+    "review_state": {
+     "code": "preliminary",
+     "label": "Preliminary: not reviewed",
+     "reviewed": false
+    }
+   },
+   {
+    "id": "fb4efe2a-cfe6-4408-b5aa-0159e020fbed",
+    "part_id": "13468bb3-075a-4f36-981b-deec563e7581",
+    "part_number": "990100000103",
+    "name": "INSERT,CTNGTL,CRBDE",
+    "project": "PILOT-A",
+    "status": "done",
+    "status_label": "Assessed",
+    "attempts": 1,
+    "error_code": "",
+    "error_message": "",
+    "sources": {
+     "notes": [],
+     "feasibility": {
+      "id": "345af5b6-94de-4fd0-aa07-64a37d8cb47c",
+      "version": 3
+     },
+     "intelligence": "0a022b2a-2dd3-4f76-8920-4dc548f8e86c",
+     "recommendation": {
+      "id": "c2b0688a-2834-4b95-88a9-c36dfec03fb7",
+      "version": 4
+     },
+     "cost_comparison": {
+      "id": "f96c06af-4af4-42f0-bec2-e2291bcd603f",
+      "name": "SYNTHETIC TEST SCENARIO: carbide cutting insert (not real prices)",
+      "version": 4,
+      "synthetic": true
+     }
+    },
+    "result": {
+     "oem": {
+      "expired": [],
+      "identity": "not_verified",
+      "cost_evidence": "historical",
+      "lead_evidence": "verified_current",
+      "identity_verified": false,
+      "availability_documented": false
+     },
+     "name": "INSERT,CTNGTL,CRBDE",
+     "savings": {
+      "verified": null,
+      "estimated": null
+     },
+     "commercial": {
+      "name": "SYNTHETIC TEST SCENARIO: carbide cutting insert (not real prices)",
+      "options": {
+       "oem": {
+        "total": "665.76",
+        "complete": true,
+        "eligible": false,
+        "evidence": "historical",
+        "excluded": false,
+        "lead_days": 21
+       },
+       "additive": {
+        "total": "6250.00",
+        "complete": true,
+        "eligible": false,
+        "evidence": "ai_estimates",
+        "excluded": false,
+        "lead_days": 56
+       },
+       "conventional": {
+        "total": "19650.00",
+        "complete": true,
+        "eligible": false,
+        "evidence": "estimates",
+        "excluded": false,
+        "lead_days": 90
+       }
+      },
+      "currency": "USD",
+      "quantity": 25,
+      "synthetic": true,
+      "comparison_version": 4
+     },
+     "feasibility": {
+      "oem": {
+       "label": "Identification / availability not verified",
+       "status": "not_verified"
+      },
+      "version": 3,
+      "additive": {
+       "label": "Specialist engineering assessment required",
+       "status": "specialist_assessment"
+      },
+      "conventional": {
+       "label": "Insufficient technical information",
+       "status": "insufficient_information"
+      }
+     },
+     "part_number": "990100000103",
+     "am_candidate": false,
+     "completeness": 30,
+     "am_specialist": true,
+     "evidence_gaps": [
+      "Manufacturer / OEM identity: verification needed (recorded, not verified)",
+      "OEM part number",
+      "Authorised supplier",
+      "Availability / obsolescence",
+      "Replacement / supersession",
+      "Dimensions",
+      "3D CAD / STEP model",
+      "Engineering drawing",
+      "Material grade: verification needed (mentioned in description only)",
+      "Verified AM build envelope",
+      "Dimensional tolerances",
+      "Surface finish",
+      "Mechanical property requirements",
+      "Temperature, pressure and load",
+      "Wear and corrosion exposure",
+      "Service conditions (application, atmosphere, motion)",
+      "Inspection and testing requirements",
+      "Applicable standards and certification",
+      "OEM IP / reproduction restrictions",
+      "Safety / equipment criticality",
+      "Required quantity"
+     ],
+     "recommendation": {
+      "id": "c2b0688a-2834-4b95-88a9-c36dfec03fb7",
+      "label": "No qualified recommendation — additional engineering review required",
+      "option": "",
+      "outcome": "no_qualified_recommendation",
+      "version": 4
+     },
+     "obsolescence_signals": [],
+     "conventional_candidate": false,
+     "conventional_specialist": false,
+     "insufficient_technical_data": true
+    },
+    "processed_at": "2026-10-28T04:50:06.362870Z",
+    "review_state": {
+     "code": "preliminary",
+     "label": "Preliminary: not reviewed",
+     "reviewed": false
+    }
+   },
+   {
+    "id": "a31968b3-d20c-4665-a7a8-2d56d1226f7b",
+    "part_id": "609bd21c-073b-43af-9646-7dba3613ebfd",
+    "part_number": "990100000104",
+    "name": "RING,WEAR,95MM,135MM,30MM,A48-40",
+    "project": "PILOT-A",
+    "status": "done",
+    "status_label": "Assessed",
+    "attempts": 1,
+    "error_code": "",
+    "error_message": "",
+    "sources": {
+     "notes": [],
+     "feasibility": {
+      "id": "5cdf54ca-9709-4192-b582-39cc2e953050",
+      "version": 4
+     },
+     "intelligence": "d242c81e-2e55-4167-9e2c-3ad146bfcd42",
+     "recommendation": {
+      "id": "80f26d44-f3f9-4682-88d7-c387b7001bba",
+      "version": 4
+     },
+     "cost_comparison": {
+      "id": "e1a5dca2-e7bf-42fa-9b41-cef49dc73de5",
+      "name": "SYNTHETIC TEST SCENARIO: wear ring (not real prices)",
+      "version": 5,
+      "synthetic": true
+     }
+    },
+    "result": {
+     "oem": {
+      "expired": [
+       "Unit purchase / manufacturing cost: quotation SYN-Q-OEM-104 expired on 2026-09-30",
+       "Packaging and logistics: quotation SYN-Q-OEM-104 expired on 2026-09-30",
+       "Supplier / manufacturer lead time: quoted lead time expired on 2026-09-30 (with quotation SYN-Q-OEM-104)"
+      ],
+      "identity": "not_verified",
+      "cost_evidence": "includes_expired_quotation",
+      "lead_evidence": "includes_expired_quotation",
+      "identity_verified": false,
+      "availability_documented": false
+     },
+     "name": "RING,WEAR,95MM,135MM,30MM,A48-40",
+     "savings": {
+      "verified": null,
+      "estimated": {
+       "amount": "753.87",
+       "option": "conventional",
+       "percent": "22.3",
+       "currency": "USD",
+       "evidence": "estimates",
+       "qualified": false
+      }
+     },
+     "commercial": {
+      "name": "SYNTHETIC TEST SCENARIO: wear ring (not real prices)",
+      "options": {
+       "oem": {
+        "total": "3375.75",
+        "complete": true,
+        "eligible": false,
+        "evidence": "includes_expired_quotation",
+        "excluded": false,
+        "lead_days": 70
+       },
+       "additive": {
+        "total": "6650.00",
+        "complete": true,
+        "eligible": false,
+        "evidence": "estimates",
+        "excluded": false,
+        "lead_days": 40
+       },
+       "conventional": {
+        "total": "2621.88",
+        "complete": true,
+        "eligible": false,
+        "evidence": "estimates",
+        "excluded": false,
+        "lead_days": 42
+       }
+      },
+      "currency": "USD",
+      "quantity": 4,
+      "synthetic": true,
+      "comparison_version": 5
+     },
+     "feasibility": {
+      "oem": {
+       "label": "Identification / availability not verified",
+       "status": "not_verified"
+      },
+      "version": 4,
+      "additive": {
+       "label": "Specialist engineering assessment required",
+       "status": "specialist_assessment"
+      },
+      "conventional": {
+       "label": "Insufficient technical information",
+       "status": "insufficient_information"
+      }
+     },
+     "part_number": "990100000104",
+     "am_candidate": false,
+     "completeness": 45,
+     "am_specialist": true,
+     "evidence_gaps": [
+      "Manufacturer / OEM identity: verification needed (recorded, not verified)",
+      "OEM part number",
+      "Authorised supplier",
+      "Availability / obsolescence",
+      "Replacement / supersession",
+      "Dimensions: verification needed (mentioned in description only)",
+      "3D CAD / STEP model",
+      "Engineering drawing",
+      "Material grade: verification needed (mentioned in description only)",
+      "Verified AM build envelope",
+      "Dimensional tolerances",
+      "Surface finish",
+      "Mechanical property requirements",
+      "Temperature, pressure and load",
+      "Wear and corrosion exposure: verification needed (mentioned in description only)",
+      "Service conditions (application, atmosphere, motion)",
+      "Inspection and testing requirements",
+      "Applicable standards and certification",
+      "OEM IP / reproduction restrictions",
+      "Safety / equipment criticality",
+      "Required quantity"
+     ],
+     "recommendation": {
+      "id": "80f26d44-f3f9-4682-88d7-c387b7001bba",
+      "label": "No qualified recommendation — additional engineering review required",
+      "option": "",
+      "outcome": "no_qualified_recommendation",
+      "version": 4
+     },
+     "obsolescence_signals": [],
+     "conventional_candidate": false,
+     "conventional_specialist": false,
+     "insufficient_technical_data": true
+    },
+    "processed_at": "2026-10-28T04:50:06.457759Z",
+    "review_state": {
+     "code": "preliminary",
+     "label": "Preliminary: not reviewed",
+     "reviewed": false
+    }
+   }
+  ],
+  "progress": {
+   "pending": 0,
+   "done": 4,
+   "reused": 0,
+   "failed": 0
+  },
+  "summary": {
+   "total_parts": 5,
+   "in_scope": 4,
+   "outside_scope": 1,
+   "assessed": 4,
+   "unassessed": 0,
+   "insufficient_technical_data": 4,
+   "am_candidates": 0,
+   "am_specialist": 3,
+   "conventional_candidates": 0,
+   "conventional_specialist": 1,
+   "oem": {
+    "identity_verified": 0,
+    "identity_not_verified": 4,
+    "cost_evidence": {
+     "historical": {
+      "count": 3,
+      "label": "Historical costs (not current quotations)"
+     },
+     "includes_expired_quotation": {
+      "count": 1,
+      "label": "Includes an expired quotation: not verified-current evidence"
+     }
+    },
+    "with_expired_evidence": 1,
+    "availability_not_documented": 4
+   },
+   "potentially_obsolete": 0,
+   "review_backlog": {
+    "preliminary": 4,
+    "information_requested": 0,
+    "total": 4,
+    "reviewed": 0
+   },
+   "savings": {
+    "estimated": {
+     "USD": "753.87"
+    },
+    "verified": {},
+    "estimated_parts": 1,
+    "verified_parts": 0,
+    "note": "Estimated: complete totals against the OEM baseline, including options that are not technically qualified (provisional). Verified: only qualified options with verified-current quotations on both sides."
+   },
+   "outcomes": {
+    "no_qualified_recommendation": 4
+   },
+   "evidence_gaps_total": 84
+  },
+  "comparison": {
+   "previous_run": null,
+   "note": "First run for this scope: nothing to compare."
+  }
+ },
+ "active": null,
+ "total_parts": 5,
+ "ai": {
+  "enabled": true,
+  "reason": "",
+  "provider": "gemini",
+  "models": {
+   "lite": "gemini-3.1-flash-lite",
+   "flash": "gemini-3.8-flash",
+   "pro": "gemini-3.1-pro-preview"
+  },
+  "limits": {
+   "calls_per_minute": 10,
+   "calls_per_day": 200,
+   "daily_budget_usd": 1,
+   "timeout_seconds": 45,
+   "max_retries": 2
+  },
+  "sent_fields": [
+   "material description",
+   "cleaned manufacturer name",
+   "rule-based findings"
+  ]
+ },
+ "schedule": {
+  "enabled": false,
+  "months": [
+   1,
+   4,
+   7,
+   10
+  ],
+  "day_of_month": 1,
+  "ai_tier": "",
+  "updated_at": null,
+  "updated_by": ""
+ },
+ "statement": "Analytics only. Nothing here approves, publishes or releases a passport or manufacturing job; estimated savings include options that are not technically qualified and are never validated savings."
+}
