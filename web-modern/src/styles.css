@@ -1322,3 +1322,12 @@ details > table.table { display: block; overflow-x: auto; }
 @media (prefers-reduced-motion: reduce) { .entry-route { transition: none; } }
 .inline-check.wrap-text { white-space: normal; align-items: flex-start; }
 .inline-check.wrap-text input { margin-top: 3px; }
+
+/* Aries staff picker (Client management → Engineers & Access) */
+.staff-picker { position: relative; }
+.staff-options { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto; margin: 0;
+  padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow-2); }
+.staff-option { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.staff-option.is-active { background: var(--accent-soft); }
+.staff-option.is-taken { cursor: not-allowed; opacity: 0.6; }
+.staff-empty { padding: 8px 10px; color: var(--muted); font-size: var(--fs-sm); }
