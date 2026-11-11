@@ -183,6 +183,18 @@ INVITATION_LINK_IN_RESPONSE = DEBUG and env_bool("INVITATION_LINK_IN_RESPONSE", 
 # file "outbox" backend (EMAIL_FILE_PATH); a production email provider is not provisioned yet (CN-002 D6).
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@passport.local")
+# SMTP server (EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend). The password comes only from the environment
+# (backend/.env, never committed). Port 465 uses implicit SSL (EMAIL_USE_SSL=true); port 587 uses STARTTLS
+# (EMAIL_USE_TLS=true); the two cannot both be on.
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(env("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", False)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
+EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "20"))
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise RuntimeError("EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be true (port 465: SSL; port 587: TLS).")
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", str(BASE_DIR / ".outbox"))
 # Backends that do not deliver mail to the recipient's mailbox. Public registration and password reset need real
 # delivery outside development, so they refuse to start with one of these unless DEBUG is on.

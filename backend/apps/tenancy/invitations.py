@@ -14,6 +14,7 @@ Showing the link to the inviting administrator is a development aid, controlled 
 and must stay off where real email is configured, otherwise the inviter could act as the invitee.
 """
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 
@@ -41,6 +42,7 @@ from .models import OPERATOR_ROLES, Invitation, Membership, Role, Tenant
 from .permissions import HasCapability
 
 User = get_user_model()
+log = logging.getLogger(__name__)
 INVALID = ("invitation_invalid", "This invitation cannot be accepted with these details. It may have expired or been withdrawn.")
 
 
@@ -67,13 +69,18 @@ def issue_invitation(request, tenant: Tenant, email: str, role: str) -> tuple[In
             with tenant_context(tenant):
                 record(request, "invitation.created", tenant=tenant, obj_type="invitation", obj_id=inv.pk,
                        data={"email": email, "role": role, "by_operator": True})
-    send_mail(
-        subject=f"Invitation to {tenant.name} on the Digital Passport Platform",
-        message=(f"You have been invited to join {tenant.name} as {Role(role).label}.\n\n"
-                 f"Open this link to accept: {accept_url(token)}\n\n"
-                 f"The link expires on {inv.expires_at:%d %b %Y %H:%M} UTC. If you did not expect this, ignore this email."),
-        from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[email], fail_silently=True,
-    )
+    try:
+        send_mail(
+            subject=f"Invitation to {tenant.name} on the Digital Passport Platform",
+            message=(f"You have been invited to join {tenant.name} as {Role(role).label}.\n\n"
+                     f"Open this link to accept: {accept_url(token)}\n\n"
+                     f"The link expires on {inv.expires_at:%d %b %Y %H:%M} UTC. If you did not expect this, ignore this email."),
+            from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[email], fail_silently=False,
+        )
+    except Exception as e:  # noqa: BLE001 - the invitation stays valid; a mail problem must not undo the action
+        # Logged (server, port and error type only; never the password) so a mail misconfiguration is visible.
+        log.warning("Invitation email to %s could not be sent via %s:%s (%s: %s)", email, settings.EMAIL_HOST, settings.EMAIL_PORT,
+                    type(e).__name__, str(e)[:200])
     return inv, token
 
 

@@ -14,7 +14,7 @@ from django.conf import settings
 
 from apps.files.models import EngineeringFile
 
-from .builder import CATEGORY_NAMES, CSS, PROPERTY_NAMES, E, _filled, _text, mark_html
+from .builder import CATEGORY_NAMES, CSS, PROPERTY_NAMES, E, _filled, _text
 
 ATTACH_NOTE = ("Attached documents are reproduced as uploaded. Attaching a certificate, test or inspection report does not mean "
                "Aries has verified it; verification and approval rules are pending (OQ-35).")
@@ -92,13 +92,13 @@ def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachmen
         "title": ("In this document manufacturing and testing requirements are mentioned to produce "
                   f"{part.name}" + (f" via {process}" if process else "") + "."),
         "grid": [("Job No", v(spec.get("job_number"))),
-                 ("Revision", [f"Passport rev {revision.revision_number} ({revision.get_status_display()})", "V" if approved else "D"]),
+                 ("Revision", [str(revision.revision_number), "V" if approved else "D"]),
                  ("Company name", v(getattr(settings, "REPORT_COMPANY_NAME", "") or part.tenant.name)),
                  ("Location", v(getattr(settings, "REPORT_COMPANY_LOCATION", "") or company_location(part.tenant))),
                  ("Part name", v(part.name)), ("Dwg No", v(dwg)),
                  ("3D printing technology", v(process)), ("Feedstock specification", v(spec.get("feedstock") or rl2.get("feedstock"))),
-                 ("Applicable standards", v(rl2.get("applicable_standards"))), ("Substrate plate material", ["Not recorded (no passport field)", "M"])],
-        "quantities": [("Part", ["Not recorded (job-specific; see the manufacturing job)", "M"]),
+                 ("Applicable standards", v(rl2.get("applicable_standards"))), ("Substrate plate material", ["Not recorded", "M"])],
+        "quantities": [("Part", ["Not recorded", "M"]),
                        ("Test coupons / specimens", v(rl2.get("test_coupons")))],
         "process": [("Feedstock", v(spec.get("feedstock") or rl2.get("feedstock"))), ("Design for additive manufacturing", v(design)),
                     ("3D printing", v(printing)), ("Heat treatment", v(spec.get("heat_treatment"))),
@@ -113,6 +113,7 @@ def collect_mts(part, revision, rl2: dict, spec: dict, approved: bool, attachmen
 MTS_CSS = """
 .mts-frame { margin: 0 1.25pt; }
 .mts-frame .hr { height: 1.25pt; background: #1d2433; break-after: avoid; }
+.mts-frame .hr.end { break-before: avoid; }  /* the closing line stays on the page of the last row */
 /* Thick left/right frame lines are drawn per block and per table row, so a page that ends inside a table closes on the
    row line only: no frame bottom and no empty frame strip down to the page end. */
 .mts-frame > div { box-shadow: -1.25pt 0 0 #1d2433, 1.25pt 0 0 #1d2433; }
@@ -165,11 +166,9 @@ MTS_CSS = """
 def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str:
     """The MTS pages only: the attached documents follow directly (no index, legend or notes page in this template)."""
     m = data["mts"]
-    approved = data["approved"]
 
-    def val(cell):
-        text, mk = cell
-        return f'<span class="{"missing" if mk == "M" else ""}">{E(text)}</span> {mark_html(mk)}'
+    def val(cell):  # value text only: no V/D/C/M marks and no draft wording on this template
+        return E(cell[0])
 
     sep = '<div class="vsep"></div>'
     views = sep.join(
@@ -189,7 +188,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
                     f'<td class="c">{E(c) or "Not recorded"}</td><td class="c">{E(d) or "Not recorded"}</td></tr>'
                     for i, (a, b, c, d) in enumerate(m["tests"], 1))
     if not tests:
-        tests = '<tr><td colspan="5" class="missing c">No inspection and test specifications recorded in the passport</td></tr>'
+        tests = '<tr><td colspan="5" class="c">No inspection and test specifications recorded in the passport</td></tr>'
     proc_cols = '<colgroup><col style="width:9%"><col style="width:22%"><col></colgroup>'
     test_cols = '<colgroup><col style="width:9%"><col style="width:22%"><col style="width:21%"><col style="width:24%"><col></colgroup>'
     hr = '<div class="hr"></div>'
@@ -202,7 +201,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
          f'<div class="mts-title">Manufacturing &amp; Test Specifications Report</div>'
          f'<div class="mts-doc"><table><colgroup><col style="width:62%"><col></colgroup>'
          f'<tr><td><b>Document No.</b></td><td><b>Revision No</b></td></tr>'
-         f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}{"" if approved else " (draft)"}</td></tr></table></div></div>'),
+         f'<tr><td class="num">{E(meta["number"])}</td><td>{data["revision"]}</td></tr></table></div></div>'),
         hr, f'<div class="titleline"><b>Title:</b> {E(m["title"])}</div>', hr,
         f'<div class="bar2">Manufacturing Specifications:</div><table class="grid">{grid_rows}</table>', hr,
         f'<div class="views3">{views}</div>', hr,
@@ -211,7 +210,7 @@ def render_mts(data: dict, meta: dict, view_images: dict, branding: dict) -> str
         f'<table class="proc">{proc_cols}<tr class="hdr"><th>Sr. No</th><th>Process</th><th>Description</th></tr>{proc}</table>', hr,
         '<div class="bar2">Inspection and Test Specifications:</div>',
         (f'<table class="tests">{test_cols}<tr class="hdr"><th>Sr. No</th><th>Test Method</th><th>Reference Document</th>'
-         f'<th>Acceptance Criteria</th><th>Inspection frequency</th></tr>{tests}</table>{hr}</div>'),
+         f'<th>Acceptance Criteria</th><th>Inspection frequency</th></tr>{tests}</table><div class="hr end"></div></div>'),
         '</body></html>'])
 
 
