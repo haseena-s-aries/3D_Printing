@@ -5,6 +5,7 @@ The same settings serve the shared multi-tenant deployment and dedicated deploym
 """
 import json
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -328,6 +329,13 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+# Logging: console (captured by NSSM's I/O tab) and, when LOG_FILE is set, a rotating log file (10 MB x 5).
+# The worker writes to its own file next to it (<name>-worker.log), so the two processes never rotate the same file.
+# One line per API request (ACCESS_LOG, default on): method, path (one-time tokens masked), status, duration.
+LOG_FILE = env("LOG_FILE", "")
+if LOG_FILE and "run_worker" in sys.argv:
+    LOG_FILE = str(Path(LOG_FILE).with_name(Path(LOG_FILE).stem + "-worker" + Path(LOG_FILE).suffix))
+ACCESS_LOG = env_bool("ACCESS_LOG", True)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -335,9 +343,17 @@ LOGGING = {
     "formatters": {
         "plain": {"format": "%(asctime)s %(levelname)s %(name)s [req=%(request_id)s] %(message)s"},
     },
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain", "filters": ["request_id"]}},
-    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
-    # HTTP client libraries stay at WARNING so request details of external AI calls are never logged.
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain", "filters": ["request_id"]},
+        **({"file": {"class": "logging.handlers.RotatingFileHandler", "filename": LOG_FILE, "maxBytes": 10 * 1024 * 1024,
+                     "backupCount": 5, "encoding": "utf-8", "delay": True, "formatter": "plain", "filters": ["request_id"]}}
+           if LOG_FILE else {}),
+    },
+    "root": {"handlers": ["console", *(["file"] if LOG_FILE else [])], "level": env("LOG_LEVEL", "INFO")},
+    # HTTP client libraries stay at WARNING so request details of external AI calls are never logged. django.request
+    # stays quiet below ERROR: 4xx responses are already in the access log (passport.access).
     "loggers": {"django.db.backends": {"level": "WARNING"}, "httpx": {"level": "WARNING"}, "httpcore": {"level": "WARNING"},
-                "google_genai": {"level": "WARNING"}},
+                "google_genai": {"level": "WARNING"}, "django.request": {"level": "ERROR"}},
 }
+if LOG_FILE:
+    Path(LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
