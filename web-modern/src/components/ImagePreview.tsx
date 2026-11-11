@@ -2,7 +2,7 @@
 import type { EngineeringFile } from "@passport/api-types";
 import { useEffect, useState } from "react";
 
-import { api } from "../api/client";
+import { api, sameOriginUrl } from "../api/client";
 import { ErrorNotice, Loading } from "./ui";
 
 export default function ImagePreview({ file, version }: { file: Pick<EngineeringFile, "id" | "title">; version: number }) {
@@ -11,7 +11,7 @@ export default function ImagePreview({ file, version }: { file: Pick<Engineering
   useEffect(() => {
     let cancelled = false;
     api<{ url: string }>(`/files/${file.id}/versions/${version}/download-link/`, { body: { variant: "preview" } })
-      .then((l) => !cancelled && setUrl(l.url))
+      .then((l) => !cancelled && setUrl(sameOriginUrl(l.url)))
       .catch((e: unknown) => !cancelled && setError(e));
     return () => {
       cancelled = true;
