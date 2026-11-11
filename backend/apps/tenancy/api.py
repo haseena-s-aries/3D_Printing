@@ -239,6 +239,44 @@ def _notify_permission(m: Membership, title: str, company: str) -> None:
                                 organisation_name=company)
 
 
+def propagate_operator_role(request, m: Membership, old_role: str) -> list[str]:
+    """When an Aries Admin changes an Aries staff member's role in the Aries organisation (Users page) between
+    Engineer, QA and Support, the person's active client assignments take the same role, so every company shows one
+    role for them. A role that cannot be held in a client company (Aries Admin) leaves the assignments unchanged; a
+    single assignment can still be changed on that client's Client Users tab. Each change is audited in the client and
+    in the Aries organisation; the edit-reviewer flag (engineers only) is cleared when the role is no longer Engineer.
+    Returns the names of the companies changed."""
+    if (m.tenant.kind != Tenant.Kind.OPERATOR or m.role == old_role or old_role not in CLIENT_ASSIGNABLE_OPERATOR_ROLES
+            or m.role not in CLIENT_ASSIGNABLE_OPERATOR_ROLES):
+        return []
+    changed = []
+    clients = Tenant.objects.filter(kind=Tenant.Kind.CLIENT, memberships__user=m.user).distinct()
+    for client in clients:
+        with tenant_context(client):
+            a = (Membership.objects.select_related("user", "tenant")
+                 .filter(user=m.user, tenant=client, is_active=True, role__in=CLIENT_ASSIGNABLE_OPERATOR_ROLES).first())
+            if a is None or a.role == m.role:
+                continue
+            before = snapshot(a)
+            a.role = m.role
+            fields = ["role", "updated_at"]
+            if a.role != Role.OPERATOR_ENGINEER and a.edit_reviewer:
+                a.edit_reviewer = False
+                fields.append("edit_reviewer")
+            a.save(update_fields=fields)
+            data = {"before": before, "after": snapshot(a), "by_operator": True, "from_aries_role_change": True}
+            record(request, "membership.updated", obj=a, tenant=client, data=data)
+        record(request, "membership.updated", obj=a, data={"client": client.slug, **data})
+        changed.append(client.name)
+    if changed:
+        from apps.servicerequests.models import Notification
+
+        Notification.objects.create(recipient=m.user, title=f"Role changed: {Role(m.role).label}",
+                                    body=f"Your role is now {Role(m.role).label} in the Aries organisation and in: {', '.join(changed)}.",
+                                    link="/", organisation_name=m.tenant.name)
+    return changed
+
+
 class EngineerAccessInput(serializers.Serializer):
     scope = serializers.ChoiceField(choices=["company", "projects"])
     project_ids = serializers.ListField(child=serializers.UUIDField(), required=False, default=list)
@@ -536,8 +574,10 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
     @extend_schema(request=MemberUpdateSerializer, responses={200: MemberSerializer})
     def update(self, request, *args, **kwargs):
         m = self.get_object()  # tenant-scoped: another organisation's membership id gives 404
-        m, before = update_member(request, m, request.data)
-        record(request, "membership.updated", obj=m, data={"before": before, "after": snapshot(m)})
+        with transaction.atomic():
+            m, before = update_member(request, m, request.data)
+            record(request, "membership.updated", obj=m, data={"before": before, "after": snapshot(m)})
+            propagate_operator_role(request, m, before["role"])
         return Response(self.get_serializer().to_representation(m))
 
     @extend_schema(request=MemberUpdateSerializer, responses={200: MemberSerializer})
