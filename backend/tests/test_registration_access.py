@@ -392,3 +392,79 @@ def test_invitation_mail_failure_is_logged_and_does_not_undo_the_client(world, s
     assert Tenant.objects.filter(slug=CREATE["slug"]).exists()
     assert f"Invitation email to {CREATE['contact_email']} could not be sent via mail.invalid.test:465 (OSError: connection refused)" \
         in caplog.text
+
+
+# ------------------------------------------------------------------ Aries staff account requests
+
+STAFF = {"full_name": "Asha Engineer", "job_title": "AM engineer", "email": "asha@aries-staff.test", "phone": "",
+         "requested_role": "operator_qa", "password": NEW_PASSWORD, "password_confirm": NEW_PASSWORD, "accept_terms": True}
+
+
+def staff_request(form=None):
+    return anon().post("/api/v1/public/staff-requests/", form or STAFF, format="json")
+
+
+def test_staff_request_is_disabled_by_default(world):
+    r = staff_request()
+    assert r.status_code == 403 and r.json()["error"]["code"] == "registration_disabled"
+    assert anon().get("/api/v1/public/registration-config/").json()["staff_roles"] == []
+
+
+def test_staff_request_cannot_ask_for_aries_admin_or_client_roles(world, enabled):
+    offered = {o["value"] for o in anon().get("/api/v1/public/registration-config/").json()["staff_roles"]}
+    assert "operator_qa" in offered and "operator_engineer" in offered and "operator_admin" not in offered
+    for role in ("operator_admin", "client_admin", "client_user"):
+        r = staff_request({**STAFF, "requested_role": role})
+        assert r.status_code == 400, role
+    assert not registrations()
+
+
+def test_full_staff_request_verification_approval_and_login(world, enabled, mailoutbox):
+    from apps.accounts.models import User
+
+    assert staff_request().status_code == 202
+    assert not User.objects.filter(email=STAFF["email"]).exists()
+    token = link_token(mailoutbox[-1], "register/verify")
+    info = anon().get(f"/api/v1/public/registrations/verify/{token}/").json()
+    assert info["kind"] == "staff" and info["email"] == STAFF["email"]
+    assert anon().post(f"/api/v1/public/registrations/verify/{token}/", {"password": NEW_PASSWORD}, format="json").status_code == 200
+
+    user = User.objects.get(email=STAFF["email"])
+    assert not Membership.objects.filter(user=user).exists()  # nothing before approval
+    r = anon().post("/api/v1/auth/token/", {"email": STAFF["email"], "password": NEW_PASSWORD}, format="json")
+    assert r.status_code == 403 and r.json()["error"]["code"] == "registration_pending"
+    assert any("New Aries staff request: Asha Engineer" in t for t in unread_titles(world["op_admin"]))
+
+    admin = login(world["op_admin"])
+    pending = admin.get("/api/v1/registrations/", {"status": "pending"}).json()["results"]
+    assert [(p["kind"], p["requested_role"], p["contact_name"]) for p in pending] == [("staff", "operator_qa", "Asha Engineer")]
+    # an approving admin may never grant Aries Admin
+    bad = admin.post(f"/api/v1/registrations/{pending[0]['id']}/approve/", {"role": "operator_admin"}, format="json")
+    assert bad.status_code == 400 and bad.json()["error"]["code"] == "role_not_allowed"
+    r = admin.post(f"/api/v1/registrations/{pending[0]['id']}/approve/", {"role": "operator_engineer"}, format="json")
+    assert r.status_code == 200 and r.json()["status"] == "approved"
+
+    op = Tenant.objects.get(kind="operator")
+    with tenant_context(op):
+        m = Membership.objects.get(user=user, tenant=op)
+    assert (m.role, m.qa_permitted) == ("operator_engineer", False)
+    assert not Membership.objects.filter(user=user, tenant__kind="client").exists()  # client access is assigned separately
+    session = anon().post("/api/v1/auth/token/", {"email": STAFF["email"], "password": NEW_PASSWORD}, format="json").json()["session"]
+    assert session["membership"]["role"] == "operator_engineer"
+    assert any("your account is approved" in m.subject for m in mailoutbox)
+
+
+def test_staff_qa_request_in_four_role_model_is_engineer_with_qa_permission(world, enabled, mailoutbox, settings):
+    from apps.accounts.models import User
+
+    settings.FOUR_ROLE_MODEL_ENABLED = True
+    staff_request()
+    token = link_token(mailoutbox[-1], "register/verify")
+    anon().post(f"/api/v1/public/registrations/verify/{token}/", {"password": NEW_PASSWORD}, format="json")
+    reg = next(r for r in registrations() if r.email == STAFF["email"])
+    r = login(world["op_admin"]).post(f"/api/v1/registrations/{reg.pk}/approve/", {}, format="json")
+    assert r.status_code == 200, r.content
+    op = Tenant.objects.get(kind="operator")
+    with tenant_context(op):
+        m = Membership.objects.get(user=User.objects.get(email=STAFF["email"]), tenant=op)
+    assert (m.role, m.qa_permitted) == ("operator_engineer", True)

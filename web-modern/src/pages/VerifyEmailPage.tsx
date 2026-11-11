@@ -1,4 +1,4 @@
-/** Email verification for a company registration: the emailed single-use link plus the password chosen at registration. */
+/** Email verification for a company registration or an Aries staff account request: the emailed single-use link plus the password chosen at registration. */
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 

@@ -2299,6 +2299,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/staff-requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Public request for an Aries staff account (Engineer, QA or Support), approved by an Aries Admin. */
+        post: operations["v1_public_staff_requests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registrations/": {
         parameters: {
             query?: never;
@@ -2306,7 +2323,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Aries Admins review company registrations (operator organisation only). */
+        /** @description Aries Admins review company registrations and Aries staff account requests (operator organisation only). */
         get: operations["v1_registrations_list"];
         put?: never;
         post?: never;
@@ -2323,7 +2340,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Aries Admins review company registrations (operator organisation only). */
+        /** @description Aries Admins review company registrations and Aries staff account requests (operator organisation only). */
         get: operations["v1_registrations_retrieve"];
         put?: never;
         post?: never;
@@ -2342,7 +2359,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Aries Admins review company registrations (operator organisation only). */
+        /** @description Aries Admins review company registrations and Aries staff account requests (operator organisation only). */
         post: operations["v1_registrations_approve_create"];
         delete?: never;
         options?: never;
@@ -2359,7 +2376,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Aries Admins review company registrations (operator organisation only). */
+        /** @description Aries Admins review company registrations and Aries staff account requests (operator organisation only). */
         post: operations["v1_registrations_reject_create"];
         delete?: never;
         options?: never;
@@ -2886,6 +2903,8 @@ export interface components {
         DecisionEnum: "request_info" | "accept" | "decline" | "verify";
         DecisionInputRequest: {
             organisation_name?: string;
+            /** @description Staff requests: the Aries role to grant (default: the requested role). */
+            role?: string;
             message?: string;
             internal_note?: string;
         };
@@ -4489,6 +4508,8 @@ export interface components {
         Registration: {
             /** Format: uuid */
             readonly id: string;
+            readonly kind: components["schemas"]["RegistrationKindEnum"];
+            readonly requested_role: string;
             readonly company_name: string;
             readonly trade_licence_number: string;
             readonly licence_authority: string;
@@ -4527,6 +4548,7 @@ export interface components {
         RegistrationConfig: {
             registration_enabled: boolean;
             dev_outbox: boolean;
+            staff_roles: components["schemas"]["StaffRoleOption"][];
         };
         RegistrationInputRequest: {
             company_name: string;
@@ -4546,6 +4568,12 @@ export interface components {
             accept_terms: boolean;
             website?: string;
         };
+        /**
+         * @description * `company` - Client company
+         *     * `staff` - Aries staff account
+         * @enum {string}
+         */
+        RegistrationKindEnum: "company" | "staff";
         /**
          * @description * `unverified` - Email not verified
          *     * `pending` - Pending Aries approval
@@ -5077,6 +5105,27 @@ export interface components {
          * @enum {string}
          */
         SparePartStatusEnum: "draft" | "active" | "obsolete";
+        /** @description Public request for an Aries staff account (Engineer, QA or Support); an Aries Admin approves it. */
+        StaffRequestInputRequest: {
+            full_name: string;
+            job_title?: string;
+            /** Format: email */
+            email: string;
+            phone?: string;
+            requested_role: string;
+            password: string;
+            password_confirm: string;
+            accept_terms: boolean;
+            website?: string;
+        };
+        StaffRequestSubmitted: {
+            status: string;
+            message: string;
+        };
+        StaffRoleOption: {
+            value: string;
+            label: string;
+        };
         StageCounts: {
             all: number;
             review: number;
@@ -5148,6 +5197,7 @@ export interface components {
             company_name: string;
             /** Format: email */
             email: string;
+            kind: string;
         };
         /**
          * @description * `part_number` - part_number
@@ -9624,6 +9674,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifyOut"];
+                };
+            };
+        };
+    };
+    v1_public_staff_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffRequestInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StaffRequestInputRequest"];
+                "multipart/form-data": components["schemas"]["StaffRequestInputRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffRequestSubmitted"];
                 };
             };
         };

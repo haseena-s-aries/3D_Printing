@@ -116,6 +116,9 @@ export default function LoginPage() {
         <div className="login-register">
           <span className="muted small">New client company?</span> <Link to="/register" className="btn btn-small">Register your company</Link>
         </div>
+        <div className="login-register">
+          <span className="muted small">Aries Engineer, QA or Support?</span> <Link to="/register/staff" className="btn btn-small">Request an account</Link>
+        </div>
         <p className="muted small">One sign-in for Aries Admins, Aries Engineers and client users. Access is limited to authorised users of each
           organisation. Activity is audited.</p>
       </form>

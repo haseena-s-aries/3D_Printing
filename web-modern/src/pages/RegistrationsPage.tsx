@@ -1,6 +1,7 @@
 /**
- * Aries Admin: company registrations (CN-002). Approving creates a NEW private client organisation and makes the
- * verified registrant its Client Administrator; possible duplicates are shown only here, never to registrants.
+ * Aries Admin: self-registrations (CN-002). A company registration, once approved, creates a NEW private client
+ * organisation with the registrant as its Client Administrator; possible duplicates are shown only here, never to
+ * registrants. An Aries staff account request, once approved, gives the person the chosen Aries role (never Admin).
  */
 import type { Paginated } from "@passport/api-types";
 import { useState, type FormEvent } from "react";
@@ -8,10 +9,14 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
+import { useRegistrationConfig } from "../components/PublicShell";
+import { roleLabel } from "../components/roles";
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, PageHeader, formatDate } from "../components/ui";
 
 export interface Registration {
   id: string;
+  kind?: "company" | "staff";
+  requested_role?: string;
   company_name: string;
   trade_licence_number: string;
   licence_authority: string;
@@ -43,7 +48,13 @@ const DUPLICATE: Record<string, string> = {
   same_email_domain: "Users with this email domain already belong to a client",
 };
 
+export const isStaff = (r: Registration) => r.kind === "staff";
+export const registrationTitle = (r: Registration) => (isStaff(r) ? `${r.contact_name} · Aries staff account` : r.company_name);
+
 function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
+  const staff = isStaff(reg);
+  const roles = useRegistrationConfig()?.staff_roles ?? [];
+  const [role, setRole] = useState(reg.requested_role ?? "");
   const [name, setName] = useState(reg.company_name);
   const [message, setMessage] = useState("");
   const [note, setNote] = useState("");
@@ -56,10 +67,10 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const body = kind === "approve" ? { organisation_name: name } : { message, internal_note: note };
+      const body = kind === "approve" ? (staff ? { role } : { organisation_name: name }) : { message, internal_note: note };
       const r = await api<Registration>(`/registrations/${reg.id}/${kind}/`, { body });
       onDone();
-      if (kind === "approve") navigate(`/clients/${r.client_id}`);
+      if (kind === "approve" && !staff) navigate(`/clients/${r.client_id}`);
     } catch (err) {
       setError(err);
     } finally {
@@ -68,15 +79,21 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
   }
 
   return (
-    <Card title={reg.company_name}>
+    <Card title={registrationTitle(reg)}>
       <ErrorNotice error={error} />
       <dl className="facts">
         <div className="fact-row"><dt>Status</dt><dd><Badge tone={reg.status === "approved" ? "success" : reg.status === "rejected" ? "neutral" : "warning"}>{reg.status}</Badge></dd></div>
-        <div className="fact-row"><dt>Trade licence</dt><dd>{reg.trade_licence_number}{reg.licence_authority && ` · ${reg.licence_authority}`}</dd></div>
-        <div className="fact-row"><dt>Location</dt><dd>{[reg.address, reg.city, reg.state, reg.country].filter(Boolean).join(", ")}</dd></div>
-        <div className="fact-row"><dt>Contact</dt><dd>{reg.contact_name}{reg.job_title && ` · ${reg.job_title}`}</dd></div>
+        {staff ? (
+          <div className="fact-row"><dt>Role requested</dt><dd>{roleLabel(reg.requested_role ?? "")}</dd></div>
+        ) : (
+          <>
+            <div className="fact-row"><dt>Trade licence</dt><dd>{reg.trade_licence_number}{reg.licence_authority && ` · ${reg.licence_authority}`}</dd></div>
+            <div className="fact-row"><dt>Location</dt><dd>{[reg.address, reg.city, reg.state, reg.country].filter(Boolean).join(", ")}</dd></div>
+          </>
+        )}
+        <div className="fact-row"><dt>{staff ? "Name" : "Contact"}</dt><dd>{reg.contact_name}{reg.job_title && ` · ${reg.job_title}`}</dd></div>
         <div className="fact-row"><dt>Email</dt><dd>{reg.email} {reg.email_verified_at && <Badge tone="success">verified {formatDate(reg.email_verified_at)}</Badge>}</dd></div>
-        <div className="fact-row"><dt>Phone</dt><dd>{reg.phone}</dd></div>
+        {reg.phone && <div className="fact-row"><dt>Phone</dt><dd>{reg.phone}</dd></div>}
         <div className="fact-row"><dt>Submitted</dt><dd>{formatDate(reg.created_at)}</dd></div>
         {reg.reviewed_at && <div className="fact-row"><dt>Decided</dt><dd>{formatDate(reg.reviewed_at)} by {reg.reviewed_by_email}</dd></div>}
         {reg.decision_message && <div className="fact-row"><dt>Message to registrant</dt><dd>{reg.decision_message}</dd></div>}
@@ -92,14 +109,29 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
       )}
       {reg.status === "pending" && (
         <div className="grid-2">
-          <form className="form-grid single" onSubmit={(e) => void decide("approve", e)} aria-label="Approve registration">
-            <h3>Approve</h3>
-            <Field label="Organisation name" hint="A new private client organisation is created with this name.">
-              <input required value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <p className="muted small">{reg.contact_name} ({reg.email}) becomes its first Client Administrator.</p>
-            <button className="btn btn-primary" disabled={busy}>Approve and create organisation</button>
-          </form>
+          {staff ? (
+            <form className="form-grid single" onSubmit={(e) => void decide("approve", e)} aria-label="Approve registration">
+              <h3>Approve</h3>
+              <Field label="Aries role to grant" hint="Aries Admin cannot be granted from a request.">
+                <select value={role} onChange={(e) => setRole(e.target.value)}>
+                  {(roles.some((r) => r.value === role) ? roles : [{ value: role, label: roleLabel(role) }, ...roles]).map((r) =>
+                    <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </Field>
+              <p className="muted small">{reg.contact_name} ({reg.email}) can sign in after approval. Assign them to client companies under
+                Clients → Engineers &amp; Access.</p>
+              <button className="btn btn-primary" disabled={busy}>Approve account</button>
+            </form>
+          ) : (
+            <form className="form-grid single" onSubmit={(e) => void decide("approve", e)} aria-label="Approve registration">
+              <h3>Approve</h3>
+              <Field label="Organisation name" hint="A new private client organisation is created with this name.">
+                <input required value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <p className="muted small">{reg.contact_name} ({reg.email}) becomes its first Client Administrator.</p>
+              <button className="btn btn-primary" disabled={busy}>Approve and create organisation</button>
+            </form>
+          )}
           <form className="form-grid single" onSubmit={(e) => void decide("reject", e)} aria-label="Reject registration">
             <h3>Reject</h3>
             <Field label="Message to the registrant"><textarea rows={2} required value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
@@ -124,7 +156,7 @@ export default function RegistrationsPage() {
 
   return (
     <>
-      <PageHeader title="Company registrations" subtitle="New client companies waiting for Aries review. Approval creates a private, tenant-isolated workspace." />
+      <PageHeader title="Registrations" subtitle="New client companies and Aries staff account requests waiting for review." />
       <div className="tabs" role="tablist" aria-label="Registration status">
         {TABS.map(([key, name]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab${tab === key ? " active" : ""}`} onClick={() => setTab(key)}>
@@ -139,9 +171,10 @@ export default function RegistrationsPage() {
             <ul className="list" aria-label="Registrations">
               {list.data.results.map((r) => (
                 <li key={r.id} className={r.id === id ? "selected" : ""}>
-                  <Link to={`/registrations/${r.id}`}><strong>{r.company_name}</strong></Link>
+                  <Link to={`/registrations/${r.id}`}><strong>{isStaff(r) ? r.contact_name : r.company_name}</strong></Link>{" "}
+                  {isStaff(r) ? <Badge tone="info">Aries staff · {roleLabel(r.requested_role ?? "")}</Badge> : <Badge>Company</Badge>}
                   {r.possible_duplicates.length > 0 && <> <Badge tone="warning">check duplicates</Badge></>}
-                  <div className="muted small">{r.contact_name} · {r.email} · {formatDate(r.created_at)}</div>
+                  <div className="muted small">{isStaff(r) ? r.email : `${r.contact_name} · ${r.email}`} · {formatDate(r.created_at)}</div>
                 </li>
               ))}
             </ul>

@@ -15,6 +15,13 @@ from apps.tenancy.owned import TenantOwnedModel
 
 
 class CompanyRegistration(TenantOwnedModel):
+    """A self-registration: a new client company (kind=company) or an Aries staff account (kind=staff). Both follow the
+    same steps: email verification with the chosen password, then an Aries Admin approves or rejects."""
+
+    class Kind(models.TextChoices):
+        COMPANY = "company", "Client company"
+        STAFF = "staff", "Aries staff account"
+
     class Status(models.TextChoices):
         UNVERIFIED = "unverified", "Email not verified"
         PENDING = "pending", "Pending Aries approval"
@@ -22,6 +29,9 @@ class CompanyRegistration(TenantOwnedModel):
         REJECTED = "rejected", "Rejected"
         WITHDRAWN = "withdrawn", "Withdrawn"
 
+    kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.COMPANY)
+    # Aries staff requests: the role asked for (the approving Aries Admin may grant another staff role)
+    requested_role = models.CharField(max_length=32, blank=True)
     company_name = models.CharField(max_length=200)
     normalized_name = models.CharField(max_length=200, db_index=True)
     trade_licence_number = models.CharField(max_length=80)
