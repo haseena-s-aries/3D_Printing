@@ -5095,11 +5095,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/VerifyOut'
           description: ''
+  /api/v1/public/staff-requests/:
+    post:
+      operationId: v1_public_staff_requests_create
+      description: Public request for an Aries staff account (Engineer, QA or Support),
+        approved by an Aries Admin.
+      tags:
+      - registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffRequestInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StaffRequestInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffRequestInputRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequestSubmitted'
+          description: ''
   /api/v1/registrations/:
     get:
       operationId: v1_registrations_list
-      description: Aries Admins review company registrations (operator organisation
-        only).
+      description: Aries Admins review company registrations and Aries staff account
+        requests (operator organisation only).
       parameters:
       - name: page
         required: false
@@ -5127,8 +5155,8 @@ paths:
   /api/v1/registrations/{id}/:
     get:
       operationId: v1_registrations_retrieve
-      description: Aries Admins review company registrations (operator organisation
-        only).
+      description: Aries Admins review company registrations and Aries staff account
+        requests (operator organisation only).
       parameters:
       - in: path
         name: id
@@ -5151,8 +5179,8 @@ paths:
   /api/v1/registrations/{id}/approve/:
     post:
       operationId: v1_registrations_approve_create
-      description: Aries Admins review company registrations (operator organisation
-        only).
+      description: Aries Admins review company registrations and Aries staff account
+        requests (operator organisation only).
       parameters:
       - in: path
         name: id
@@ -5186,8 +5214,8 @@ paths:
   /api/v1/registrations/{id}/reject/:
     post:
       operationId: v1_registrations_reject_create
-      description: Aries Admins review company registrations (operator organisation
-        only).
+      description: Aries Admins review company registrations and Aries staff account
+        requests (operator organisation only).
       parameters:
       - in: path
         name: id
@@ -6363,6 +6391,11 @@ components:
         organisation_name:
           type: string
           maxLength: 200
+        role:
+          type: string
+          description: 'Staff requests: the Aries role to grant (default: the requested
+            role).'
+          maxLength: 32
         message:
           type: string
           maxLength: 500
@@ -9996,6 +10029,13 @@ components:
           type: string
           format: uuid
           readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/RegistrationKindEnum'
+          readOnly: true
+        requested_role:
+          type: string
+          readOnly: true
         company_name:
           type: string
           readOnly: true
@@ -10093,9 +10133,11 @@ components:
       - id
       - internal_note
       - job_title
+      - kind
       - licence_authority
       - phone
       - possible_duplicates
+      - requested_role
       - reviewed_at
       - reviewed_by_email
       - state
@@ -10109,9 +10151,14 @@ components:
           type: boolean
         dev_outbox:
           type: boolean
+        staff_roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRoleOption'
       required:
       - dev_outbox
       - registration_enabled
+      - staff_roles
     RegistrationInputRequest:
       type: object
       properties:
@@ -10185,6 +10232,14 @@ components:
       - phone
       - state
       - trade_licence_number
+    RegistrationKindEnum:
+      enum:
+      - company
+      - staff
+      type: string
+      description: |-
+        * `company` - Client company
+        * `staff` - Aries staff account
     RegistrationStatusEnum:
       enum:
       - unverified
@@ -11541,6 +11596,72 @@ components:
         * `draft` - Draft
         * `active` - Active
         * `obsolete` - Obsolete
+    StaffRequestInputRequest:
+      type: object
+      description: Public request for an Aries staff account (Engineer, QA or Support);
+        an Aries Admin approves it.
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        job_title:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          minLength: 1
+        phone:
+          oneOf:
+          - type: string
+            maxLength: 40
+            pattern: ^\+?[0-9 ()\-]{7,30}$
+          - type: string
+            maxLength: 0
+        requested_role:
+          type: string
+          minLength: 1
+          maxLength: 32
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+        accept_terms:
+          type: boolean
+        website:
+          type: string
+      required:
+      - accept_terms
+      - email
+      - full_name
+      - password
+      - password_confirm
+      - requested_role
+    StaffRequestSubmitted:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+      required:
+      - message
+      - status
+    StaffRoleOption:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
     StageCounts:
       type: object
       properties:
@@ -11674,9 +11795,12 @@ components:
         email:
           type: string
           format: email
+        kind:
+          type: string
       required:
       - company_name
       - email
+      - kind
     VerifiedFieldsEnum:
       enum:
       - part_number

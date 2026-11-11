@@ -87,7 +87,7 @@ function useItems(): { items: Item[]; loading: boolean } {
         meta: <>{p.state.code === "approved" ? "Approved, not yet shared" : "Reviewed, ready to approve"}</> })) });
   }
   if (operatorTenant && can("registrations.review")) {
-    items.push({ key: "registrations", count: regs.data ? regs.data.count : null, label: "Company registrations to approve", hint: "Self-registered companies",
+    items.push({ key: "registrations", count: regs.data ? regs.data.count : null, label: "Registrations to approve", hint: "Self-registered companies and Aries staff account requests",
       to: "/registrations", icon: "building", tone: "warning",
       rows: (regs.data?.results ?? []).map((r) => ({ id: r.id, to: `/registrations/${r.id}`, title: <strong>{r.company_name}</strong>, meta: formatDate(r.created_at) })) });
   }

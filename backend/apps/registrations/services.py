@@ -95,6 +95,28 @@ def _require_enabled():
         raise DomainError("registration_disabled", "Company registration is not available yet. Please contact Aries.", http_status=403)
 
 
+def _what(reg: CompanyRegistration) -> str:
+    """How a registration is named in messages: the company, or the staff account request."""
+    return reg.company_name if reg.kind == CompanyRegistration.Kind.COMPANY else "your Aries staff account"
+
+
+STAFF_ROLE_NAMES = {Role.OPERATOR_ENGINEER: "Aries Engineer", Role.OPERATOR_QA: "Aries QA", Role.OPERATOR_SUPPORT: "Aries Support"}
+
+
+def staff_role_name(role: str) -> str:
+    return STAFF_ROLE_NAMES.get(role, role)
+
+
+def staff_role_options() -> list[str]:
+    """Aries staff roles a person may request (never Aries Admin). In the four-role model QA is a permission of an Aries
+    Engineer: a QA request is granted as Engineer with the QA permission."""
+    from apps.tenancy.permissions import four_roles
+
+    if four_roles():
+        return [Role.OPERATOR_ENGINEER, Role.OPERATOR_QA]
+    return [Role.OPERATOR_ENGINEER, Role.OPERATOR_QA, Role.OPERATOR_SUPPORT]
+
+
 # ---------------------------------------------------------------- registration
 
 class RegistrationInput(serializers.Serializer):
@@ -175,6 +197,84 @@ def submit_registration(request, data: dict) -> None:
         _audit_operator("registration.submitted", request=request, reg=reg)
 
 
+class StaffRequestInput(serializers.Serializer):
+    """Public request for an Aries staff account (Engineer, QA or Support); an Aries Admin approves it."""
+
+    full_name = serializers.CharField(max_length=150)
+    job_title = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    email = serializers.EmailField()
+    phone = serializers.RegexField(PHONE, max_length=40, required=False, allow_blank=True, error_messages={"invalid": PHONE_ERROR})
+    requested_role = serializers.CharField(max_length=32)
+    password = serializers.CharField(trim_whitespace=False, write_only=True)
+    password_confirm = serializers.CharField(trim_whitespace=False, write_only=True)
+    accept_terms = serializers.BooleanField()
+    website = serializers.CharField(required=False, allow_blank=True)  # honeypot
+
+    def validate_accept_terms(self, value):
+        if not value:
+            raise serializers.ValidationError("You must accept the terms to register.")
+        return value
+
+    def validate_requested_role(self, value):
+        if value not in staff_role_options():
+            raise serializers.ValidationError("Choose one of the offered roles.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError({"password_confirm": "The passwords do not match."})
+        if not attrs["full_name"].strip():
+            raise serializers.ValidationError({"full_name": "Enter your name."})
+        try:
+            validate_password(attrs["password"], user=User(email=attrs["email"], first_name=attrs["full_name"]))
+        except ValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+        return attrs
+
+
+def submit_staff_request(request, data: dict) -> None:
+    """Same steps and the same no-disclosure responses as a company registration."""
+    _require_enabled()
+    if data.get("website"):
+        return
+    email = data["email"].strip().lower()
+    op = operator_tenant()
+    with transaction.atomic(), tenant_context(op):
+        if User.objects.filter(email__iexact=email).exists():
+            mail.send(email, "Digital Passport: account request for your address",
+                      "Someone asked for an Aries staff account with this email address, but an account already exists for it.\n"
+                      f"Sign in at {_link('/login')} or reset your password at {_link('/forgot-password')}.\n"
+                      "If this was not you, no action is needed.")
+            _audit_operator("registration.existing_account", request=request)
+            return
+        reg = CompanyRegistration.objects.select_for_update().filter(email=email, status__in=OPEN).first()
+        if reg is not None and reg.status == CompanyRegistration.Status.PENDING:
+            mail.send(email, "Digital Passport: request already under review",
+                      "A request with this address is already waiting for Aries approval.")
+            _audit_operator("registration.duplicate_pending", request=request, reg=reg)
+            return
+        fields = {"kind": CompanyRegistration.Kind.STAFF, "requested_role": data["requested_role"],
+                  "contact_name": data["full_name"].strip(), "job_title": data.get("job_title", ""), "phone": data.get("phone", ""),
+                  "company_name": "", "normalized_name": "", "trade_licence_number": "", "licence_authority": "", "country": "",
+                  "state": "", "city": "", "address": "", "password_hash": make_password(data["password"])}
+        if reg is None:
+            reg = CompanyRegistration.objects.create(tenant=op, email=email, **fields)
+        else:  # still unverified: the latest submission replaces it and earlier links stop working
+            for k, v in fields.items():
+                setattr(reg, k, v)
+            reg.save()
+            _retire_tokens(EmailToken.Purpose.VERIFY_REGISTRATION, registration_id=reg.pk)
+        raw = _new_token(EmailToken.Purpose.VERIFY_REGISTRATION, timedelta(hours=settings.REGISTRATION_TOKEN_HOURS),
+                         registration_id=reg.pk)
+        mail.send(email, "Digital Passport: verify your email address",
+                  f"Thank you for requesting an Aries staff account ({staff_role_name(reg.requested_role)}).\n\n"
+                  f"Open this link to verify your email address (valid {settings.REGISTRATION_TOKEN_HOURS} hours, single use):\n"
+                  f"{_link('/register/verify/' + raw)}\n\n"
+                  "You will be asked for the password you chose. After verification an Aries Admin reviews the request.\n"
+                  "If you did not ask for this, ignore this message.")
+        _audit_operator("registration.submitted", request=request, reg=reg)
+
+
 def resend_verification(request, email: str) -> None:
     _require_enabled()
     email = (email or "").strip().lower()
@@ -187,7 +287,7 @@ def resend_verification(request, email: str) -> None:
         raw = _new_token(EmailToken.Purpose.VERIFY_REGISTRATION, timedelta(hours=settings.REGISTRATION_TOKEN_HOURS),
                          registration_id=reg.pk)
         mail.send(email, "Digital Passport: verify your email address",
-                  f"Open this link to verify your email address for {reg.company_name} (single use):\n{_link('/register/verify/' + raw)}")
+                  f"Open this link to verify your email address for {_what(reg)} (single use):\n{_link('/register/verify/' + raw)}")
         _audit_operator("registration.verification_resent", request=request, reg=reg)
 
 
@@ -197,7 +297,7 @@ def verification_info(raw: str) -> dict:
         reg = CompanyRegistration.objects.filter(pk=tok.registration_id, status=CompanyRegistration.Status.UNVERIFIED).first()
     if reg is None:
         raise DomainError(*INVALID_LINK, http_status=400)
-    return {"company_name": reg.company_name, "email": reg.email}
+    return {"company_name": _what(reg), "email": reg.email, "kind": reg.kind}
 
 
 def verify_registration(request, raw: str, password: str) -> CompanyRegistration:
@@ -226,12 +326,16 @@ def verify_registration(request, raw: str, password: str) -> CompanyRegistration
         record(None, "registration.verified", actor=user, tenant=op, obj=reg)
         admins = [m.user for m in Membership.objects.filter(tenant=op, role=Role.OPERATOR_ADMIN, is_active=True,
                                                              user__is_active=True).select_related("user")]
-        Notification.objects.bulk_create([
-            Notification(recipient=u, title=f"New company registration: {reg.company_name}",
-                         body=f"{reg.contact_name} ({reg.country}) verified their email. Review and approve or reject.",
-                         link=f"/registrations/{reg.pk}", organisation_name=op.name) for u in admins])
+        if reg.kind == CompanyRegistration.Kind.STAFF:
+            title = f"New Aries staff request: {reg.contact_name} ({staff_role_name(reg.requested_role)})"
+            body = f"{reg.contact_name} <{reg.email}> verified their email. Review and approve or reject."
+        else:
+            title = f"New company registration: {reg.company_name}"
+            body = f"{reg.contact_name} ({reg.country}) verified their email. Review and approve or reject."
+        Notification.objects.bulk_create([Notification(recipient=u, title=title, body=body, link=f"/registrations/{reg.pk}",
+                                                       organisation_name=op.name) for u in admins])
     mail.send(reg.email, "Digital Passport: registration received",
-              f"Your email address is verified. The registration of {reg.company_name} is now waiting for Aries approval.\n"
+              f"Your email address is verified. The request for {_what(reg)} is now waiting for Aries approval.\n"
               f"You can sign in at {_link('/login')} to see its status.")
     return reg
 
@@ -241,11 +345,13 @@ def registration_of(user) -> CompanyRegistration | None:
         return CompanyRegistration.objects.filter(user=user).order_by("-created_at").first()
 
 
-def approve(request, reg: CompanyRegistration, organisation_name: str = "") -> Tenant:
+def approve(request, reg: CompanyRegistration, organisation_name: str = "", role: str = "") -> Tenant:
     if reg.status != CompanyRegistration.Status.PENDING:
         raise DomainError("registration_not_pending", "Only registrations pending approval can be approved.", http_status=409)
     if reg.user_id == request.user.pk:
         raise DomainError("separation_of_duties", "You cannot approve your own registration.", http_status=403)
+    if reg.kind == CompanyRegistration.Kind.STAFF:
+        return approve_staff(request, reg, role or reg.requested_role)
     name = (organisation_name or reg.company_name).strip()
     base = slugify(name)[:50] or "client"
     slug, n = base, 1
@@ -274,6 +380,33 @@ def approve(request, reg: CompanyRegistration, organisation_name: str = "") -> T
     return client
 
 
+def approve_staff(request, reg: CompanyRegistration, role: str) -> Tenant:
+    """Grant the Aries staff account: a membership of the Aries organisation with the approved role (a QA request in
+    the four-role model becomes Aries Engineer with the QA permission). Never Aries Admin."""
+    from apps.tenancy.permissions import four_roles
+
+    if role not in staff_role_options():
+        raise DomainError("role_not_allowed", "Choose Aries Engineer, QA or Support for a staff account.", http_status=400)
+    op = operator_tenant()
+    qa_permission = four_roles() and role == Role.OPERATOR_QA
+    granted = Role.OPERATOR_ENGINEER if qa_permission else role
+    with transaction.atomic(), tenant_context(op):
+        m = Membership.objects.create(user=reg.user, tenant=op, role=granted, qa_permitted=qa_permission, created_by=request.user)
+        reg.status, reg.reviewed_by, reg.reviewed_at = CompanyRegistration.Status.APPROVED, request.user, timezone.now()
+        reg.save(update_fields=["status", "reviewed_by", "reviewed_at", "updated_at"])
+        record(request, "registration.approved", obj=reg, data={"kind": "staff", "requested_role": reg.requested_role, "role": granted,
+                                                                  "qa_permitted": qa_permission})
+        record(request, "membership.created", obj=m, data={"role": granted, "qa_permitted": qa_permission, "from_registration": str(reg.pk)})
+        label = staff_role_name(role)
+        Notification.objects.create(recipient=reg.user, title=f"Your account is approved: {label}",
+                                    body="An Aries Admin will assign you to client companies and projects.", link="/",
+                                    organisation_name=op.name)
+    mail.send(reg.email, "Digital Passport: your account is approved",
+              f"Your Aries staff account is approved as {label}. Sign in at {_link('/login')}.\n"
+              "An Aries Admin assigns you to client companies and projects.")
+    return op
+
+
 def reject(request, reg: CompanyRegistration, message: str, note: str = "") -> None:
     if reg.status not in OPEN:
         raise DomainError("registration_not_open", "This registration has already been decided.", http_status=409)
@@ -285,12 +418,14 @@ def reject(request, reg: CompanyRegistration, message: str, note: str = "") -> N
     _retire_tokens(EmailToken.Purpose.VERIFY_REGISTRATION, registration_id=reg.pk)
     record(request, "registration.rejected", obj=reg)
     mail.send(reg.email, "Digital Passport: registration not approved",
-              f"The registration of {reg.company_name} was not approved.\n{message}\nPlease contact Aries for details.")
+              f"The request for {_what(reg)} was not approved.\n{message}\nPlease contact Aries for details.")
 
 
 def duplicate_hints(reg: CompanyRegistration) -> list[dict]:
     """Possible duplicates, for Aries Admins only (never shown to registrants)."""
     hints = []
+    if reg.kind == CompanyRegistration.Kind.STAFF:
+        return hints
     for t in Tenant.objects.filter(kind=Tenant.Kind.CLIENT):
         if normalize_company(t.name) == reg.normalized_name:
             hints.append({"kind": "existing_organisation", "name": t.name, "slug": t.slug})

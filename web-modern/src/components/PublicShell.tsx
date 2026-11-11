@@ -7,6 +7,8 @@ import { ThemeToggle } from "./theme";
 
 export interface RegistrationConfig {
   registration_enabled: boolean;
+  /** Aries staff roles a person may request on the staff account page (empty while registration is off). */
+  staff_roles?: { value: string; label: string }[];
   dev_outbox: boolean;
 }
 

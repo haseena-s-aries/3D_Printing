@@ -86,16 +86,17 @@ class TokenView(APIView):
             memberships = selectable_workspaces(memberships)
         if not memberships and not slug:
             # A verified registrant whose company is not approved yet (CN-002). Shown only after the password is correct.
-            from apps.registrations.services import registration_of
+            from apps.registrations.services import _what, registration_of
 
             reg = registration_of(user)
             if reg is not None and reg.status in ("pending", "rejected"):
                 pending = reg.status == "pending"
+                what = _what(reg)  # the company, or "your Aries staff account"
                 raise DomainError(
                     "registration_pending" if pending else "registration_rejected",
-                    f"The registration of {reg.company_name} is waiting for Aries approval." if pending
-                    else f"The registration of {reg.company_name} was not approved.",
-                    details={"company_name": reg.company_name, "submitted_at": reg.email_verified_at,
+                    f"The registration of {what} is waiting for Aries approval." if pending
+                    else f"The registration of {what} was not approved.",
+                    details={"company_name": what, "kind": reg.kind, "submitted_at": reg.email_verified_at,
                              "message": "" if pending else reg.decision_message},
                     http_status=status.HTTP_403_FORBIDDEN)
         if not memberships:

@@ -25,7 +25,8 @@ from apps.parts.admin_overview import AdminInventoryView
 from apps.passports.api import PassportFieldOptionsView, PassportViewSet
 from apps.projects.api import ProjectViewSet
 from apps.registrations.api import (DevOutboxView, PasswordResetRequestView, PasswordResetView, RegistrationConfigView,
-                                    RegistrationResendView, RegistrationSubmitView, RegistrationVerifyView, RegistrationViewSet)
+                                    RegistrationResendView, RegistrationSubmitView, RegistrationVerifyView, RegistrationViewSet,
+                                    StaffRequestSubmitView)
 from apps.servicerequests.api import (ClientRequestViewSet, NotificationListView, NotificationReadView, OperatorOverviewView,
                                       OperatorRequestViewSet)
 from apps.tenancy.api import ClientViewSet, OwnCompanyProfileView, UserViewSet
@@ -52,6 +53,7 @@ urlpatterns = [
     path("auth/token/", TokenView.as_view(), name="auth-token"),
     path("public/registration-config/", RegistrationConfigView.as_view(), name="registration-config"),
     path("public/registrations/", RegistrationSubmitView.as_view(), name="registration-submit"),
+    path("public/staff-requests/", StaffRequestSubmitView.as_view(), name="staff-request-submit"),
     path("public/registrations/resend/", RegistrationResendView.as_view(), name="registration-resend"),
     path("public/registrations/verify/<str:token>/", RegistrationVerifyView.as_view(), name="registration-verify"),
     path("public/password-reset/", PasswordResetRequestView.as_view(), name="password-reset-request"),

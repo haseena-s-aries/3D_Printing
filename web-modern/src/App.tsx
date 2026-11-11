@@ -14,6 +14,7 @@ import PassportsPage from "./pages/PassportsPage";
 import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordResetPages";
 import ProjectsPage from "./pages/ProjectsPage";
 import RegisterCompanyPage from "./pages/RegisterCompanyPage";
+import RequestStaffAccountPage from "./pages/RequestStaffAccountPage";
 import UsersPage from "./pages/UsersPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 
@@ -97,6 +98,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<AcceptInvitationPage />} />
       <Route path="/register" element={<RegisterCompanyPage />} />
+      <Route path="/register/staff" element={<RequestStaffAccountPage />} />
       <Route path="/register/verify/:token" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:token" element={<ResetPasswordPage />} />

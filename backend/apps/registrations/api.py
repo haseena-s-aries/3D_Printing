@@ -33,9 +33,14 @@ class RegistrationConfigView(PublicView):
     throttle_classes = []
 
     @extend_schema(tags=["registration"], responses={200: inline_serializer("RegistrationConfig", {
-        "registration_enabled": serializers.BooleanField(), "dev_outbox": serializers.BooleanField()})})
+        "registration_enabled": serializers.BooleanField(), "dev_outbox": serializers.BooleanField(),
+        "staff_roles": serializers.ListField(child=inline_serializer("StaffRoleOption", {
+            "value": serializers.CharField(), "label": serializers.CharField()}))})})
     def get(self, request):
-        return Response({"registration_enabled": settings.PUBLIC_REGISTRATION_ENABLED, "dev_outbox": settings.DEV_OUTBOX_VIEW})
+        roles = ([{"value": r, "label": svc.staff_role_name(r)} for r in svc.staff_role_options()]
+                 if settings.PUBLIC_REGISTRATION_ENABLED else [])
+        return Response({"registration_enabled": settings.PUBLIC_REGISTRATION_ENABLED, "dev_outbox": settings.DEV_OUTBOX_VIEW,
+                         "staff_roles": roles})
 
 
 class RegistrationSubmitView(PublicView):
@@ -48,6 +53,21 @@ class RegistrationSubmitView(PublicView):
         s = svc.RegistrationInput(data=request.data)
         s.is_valid(raise_exception=True)
         svc.submit_registration(request, s.validated_data)
+        return Response({"status": "submitted", "message": GENERIC}, status=status.HTTP_202_ACCEPTED)
+
+
+class StaffRequestSubmitView(PublicView):
+    """Public request for an Aries staff account (Engineer, QA or Support), approved by an Aries Admin."""
+
+    throttle_scope = "register"
+
+    @extend_schema(tags=["registration"], request=svc.StaffRequestInput,
+                   responses={202: inline_serializer("StaffRequestSubmitted", {"status": serializers.CharField(), "message": serializers.CharField()})})
+    def post(self, request):
+        svc._require_enabled()
+        s = svc.StaffRequestInput(data=request.data)
+        s.is_valid(raise_exception=True)
+        svc.submit_staff_request(request, s.validated_data)
         return Response({"status": "submitted", "message": GENERIC}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -67,7 +87,7 @@ class RegistrationVerifyView(PublicView):
     throttle_scope = "verify"
 
     @extend_schema(tags=["registration"], responses={200: inline_serializer("VerificationInfo", {
-        "company_name": serializers.CharField(), "email": serializers.EmailField()})})
+        "company_name": serializers.CharField(), "email": serializers.EmailField(), "kind": serializers.CharField()})})
     def get(self, request, token):
         return Response(svc.verification_info(token))
 
@@ -75,7 +95,7 @@ class RegistrationVerifyView(PublicView):
                    responses={200: inline_serializer("VerifyOut", {"status": serializers.CharField(), "company_name": serializers.CharField()})})
     def post(self, request, token):
         reg = svc.verify_registration(request, token, str(request.data.get("password", "")))
-        return Response({"status": "pending_approval", "company_name": reg.company_name})
+        return Response({"status": "pending_approval", "company_name": svc._what(reg)})
 
 
 class PasswordResetRequestView(PublicView):
@@ -129,7 +149,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CompanyRegistration
-        fields = ["id", "company_name", "trade_licence_number", "licence_authority", "country", "state", "city", "address", "contact_name",
+        fields = ["id", "kind", "requested_role", "company_name", "trade_licence_number", "licence_authority", "country", "state", "city", "address", "contact_name",
                   "job_title", "email", "phone", "status", "email_verified_at", "reviewed_by_email", "reviewed_at",
                   "decision_message", "internal_note", "client_id", "client_slug", "possible_duplicates", "created_at", "updated_at"]
         read_only_fields = fields
@@ -149,12 +169,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class DecisionInput(serializers.Serializer):
     organisation_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    role = serializers.CharField(max_length=32, required=False, allow_blank=True,
+                                 help_text="Staff requests: the Aries role to grant (default: the requested role).")
     message = serializers.CharField(max_length=500, required=False, allow_blank=True)
     internal_note = serializers.CharField(max_length=1000, required=False, allow_blank=True)
 
 
 class RegistrationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    """Aries Admins review company registrations (operator organisation only)."""
+    """Aries Admins review company registrations and Aries staff account requests (operator organisation only)."""
 
     serializer_class = RegistrationSerializer
     permission_classes = [HasCapability]
@@ -174,7 +196,7 @@ class RegistrationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         reg = self.get_object()
         s = DecisionInput(data=request.data)
         s.is_valid(raise_exception=True)
-        svc.approve(request, reg, s.validated_data.get("organisation_name", ""))
+        svc.approve(request, reg, s.validated_data.get("organisation_name", ""), s.validated_data.get("role", ""))
         reg.refresh_from_db()
         return Response(RegistrationSerializer(reg).data)
 
