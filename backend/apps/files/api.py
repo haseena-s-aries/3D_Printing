@@ -339,7 +339,11 @@ class EngineeringFileViewSet(TenantModelViewSet):
         seconds = settings.DOWNLOAD_LINK_SECONDS
         token = make_link_token(request, storage_key=key, filename=filename, variant=variant, object_id=str(object_id))
         record(request, "file.download_link_issued", obj=fv, data={"variant": variant, "expires_in": seconds})
-        url = request.build_absolute_uri(f"/api/v1/downloads/{token}/")
+        path = f"/api/v1/downloads/{token}/"
+        # Behind a reverse proxy the request may carry the backend's internal host or port (e.g. IIS on :8031 forwarding
+        # to :8030); PUBLIC_BASE_URL, when set, is the address browsers use, so links never point at the internal port.
+        base = (getattr(settings, "PUBLIC_BASE_URL", "") or "").rstrip("/")
+        url = f"{base}{path}" if base else request.build_absolute_uri(path)
         return Response({"url": url, "expires_at": timezone.now() + timedelta(seconds=seconds), "filename": filename})
 
 
