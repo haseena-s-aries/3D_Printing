@@ -145,6 +145,11 @@ export default function UsersPage() {
     try {
       await api(`/users/${m.id}/`, { method: "PATCH", body: patch });
       await list.reload();
+      const clientRoles = ["operator_engineer", "operator_qa", "operator_support"];
+      if (platformAdmin && patch.role && patch.role !== m.role) {
+        setAccessMsg(`${m.email} is now ${roleOptionLabel(patch.role)}.` + (clientRoles.includes(m.role) && clientRoles.includes(patch.role)
+          ? " The same role now applies in every client company they are assigned to." : ""));
+      }
     } catch (err) {
       setRowError(err);
     }

@@ -3,9 +3,10 @@
 Operator-owned staff are managed only by operator administrators; client administrators manage only their own
 organisation's client users. All checks go through the API against PostgreSQL with RLS."""
 import pytest
+from django.db import transaction
 
 from apps.audit.models import AuditEvent
-from apps.tenancy.context import tenant_context
+from apps.tenancy.context import set_user_context, tenant_context
 from apps.tenancy.models import Membership
 
 from .conftest import PASSWORD, login
@@ -155,3 +156,42 @@ def test_operator_admin_manages_operator_staff_in_operator_organisation(world):
     r = op.patch(f"/api/v1/users/{mid(world['op_eng'], world['operator'])}/", {"role": "operator_support"}, format="json")
     assert r.status_code == 200 and r.json()["role"] == "operator_support"
     assert op.patch(f"/api/v1/users/{mid(world['op_eng'], world['operator'])}/", {"role": "client_admin"}, format="json").status_code == 403
+
+
+# ---- Aries role change on the Users page reaches the client assignments ------------------------------------------
+
+def test_aries_role_change_applies_to_client_assignments(world):
+    from apps.servicerequests.models import Notification
+
+    eng, a, b = world["op_eng"], world["a"], world["b"]
+    with tenant_context(b):  # inactive assignment in B: left as it is
+        Membership.objects.create(user=eng, tenant=b, role="operator_engineer", is_active=False)
+    with tenant_context(a):
+        Membership.objects.filter(user=eng, tenant=a).update(edit_reviewer=True)
+    admin = login(world["op_admin"])
+    r = admin.patch(f"/api/v1/users/{mid(eng, world['operator'])}/", {"role": "operator_qa"}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["role"] == "operator_qa"
+    with tenant_context(a):
+        ma = Membership.objects.get(user=eng, tenant=a)
+        assert (ma.role, ma.is_active, ma.edit_reviewer) == ("operator_qa", True, False)  # reviewer flag is for engineers only
+        ev = AuditEvent.objects.filter(action="membership.updated", tenant=a).latest("created_at")
+        assert ev.data["from_aries_role_change"] is True and ev.data["before"]["role"] == "operator_engineer"
+    with tenant_context(b):
+        assert state(eng, b) == ("operator_engineer", False)
+    with transaction.atomic():  # notifications are readable by their recipient only (per-user RLS)
+        set_user_context(eng.pk)
+        note = Notification.objects.filter(recipient=eng, title__startswith="Role changed").values_list("body", flat=True).first()
+    assert note and "Client A Energy" in note and "Client B Marine" not in note
+    # the client company's own list shows the new role
+    rows = {x["email"]: x for x in login(world["a_admin"]).get("/api/v1/users/").json()["results"]}
+    assert rows["op.eng@example.test"]["role"] == "operator_qa"
+
+
+def test_aries_admin_role_is_not_copied_to_client_assignments(world):
+    eng, a = world["op_eng"], world["a"]
+    admin = login(world["op_admin"])
+    r = admin.patch(f"/api/v1/users/{mid(eng, world['operator'])}/", {"role": "operator_admin"}, format="json")
+    assert r.status_code == 200, r.content
+    with tenant_context(a):
+        assert state(eng, a) == ("operator_engineer", True)  # Aries Admin is not a role inside a client company
