@@ -49,11 +49,10 @@ describe("report builder", () => {
     URL.createObjectURL = vi.fn(() => "blob:preview");
     URL.revokeObjectURL = vi.fn();
     render(<ReportsTab passportId="p1" partId="part1" revisions={[{ revision_number: 1, status: "draft" }] as never} files={FILES} />);
-    expect(screen.getByLabelText(/Manufacturing & Test Specification/)).toBeChecked();
-    // Standard (client-facing): unreleased documents cannot be selected
-    fireEvent.click(screen.getByLabelText(/Standard Digital Passport/));
-    expect(screen.getByLabelText("Include Synthetic QC report")).toBeDisabled();
-    fireEvent.click(screen.getByLabelText(/Manufacturing & Test Specification/));
+    // only the Manufacturing & Test Specification template is offered
+    expect(screen.getByTestId("report-template")).toHaveTextContent("Manufacturing & Test Specification");
+    expect(screen.queryByText(/Standard Digital Passport/)).toBeNull();
+    expect(screen.queryByText(/Aries Internal Engineering Report/)).toBeNull();
     fireEvent.click(screen.getByLabelText("Include Synthetic drawing"));
     fireEvent.click(screen.getByLabelText("Include Synthetic QC report"));
     fireEvent.click(screen.getByLabelText("Include Synthetic lab report"));

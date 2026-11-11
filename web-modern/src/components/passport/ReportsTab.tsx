@@ -36,6 +36,8 @@ type Pick = { file: string; version: number };
 type Withdrawal = { at: string; by: string; reason?: string; file_state_label?: string };
 const withdrawalOf = (r: Report) => r.withdrawal as Withdrawal | null;
 
+export const OFFERED: string[] = ["mts"];
+
 export function eligible(files: EngineeringFile[], audience: string): { file: EngineeringFile; allowed: boolean; reason: string }[] {
   return files.filter((f) => f.kind === "pdf").map((f) => {
     const released = !!f.client_visible;
@@ -69,8 +71,9 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
   const { can, session } = useAuth();
   const isAries = !!session?.membership.role.startsWith("operator");
   const list = useApi<Report[]>(`/passports/${passportId}/reports/`);
-  const templates = TEMPLATES.filter((t) => can(t.audience === "internal" ? "reports.generate_internal" : "reports.generate_client"));
-  const [template, setTemplate] = useState<string>(templates[0]?.key ?? "standard");
+  // Only the Manufacturing & Test Specification is offered; the Standard and Internal templates stay readable in the history.
+  const templates = TEMPLATES.filter((t) => OFFERED.includes(t.key) && can(t.audience === "internal" ? "reports.generate_internal" : "reports.generate_client"));
+  const [template, setTemplate] = useState<string>(templates[0]?.key ?? "mts");
   const audience = TEMPLATES.find((t) => t.key === template)?.audience ?? "client";
   const latest = revisions[0]?.revision_number;
   const [revision, setRevision] = useState<number | undefined>(latest);
@@ -163,8 +166,7 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
   return (
     <div className="reports-tab">
       <Notice>
-        Reports are generated from one passport revision. Reports from unapproved revisions are marked <strong>draft</strong> in the revision number and status notice.
-        Every value carries a mark: V verified, D draft, C client-submitted, M missing. Attached documents are reproduced as uploaded: attaching
+        Reports are generated from one passport revision. Attached documents are reproduced as uploaded: attaching
         a certificate or test report does not verify it. External sharing is subject to the open IP and redistribution rules (OQ-33, OQ-38).
       </Notice>
       <ErrorNotice error={error} />
@@ -179,7 +181,7 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
               <button type="button" className="link-btn small" onClick={() => setReplacing(null)}>Cancel replacement</button>
             </Notice>
           )}
-          <div className="template-cards" role="radiogroup" aria-label="Report template">
+          {templates.length > 1 ? <div className="template-cards" role="radiogroup" aria-label="Report template">
             {templates.map((t) => (
               <label key={t.key} className={`template-card ${template === t.key ? "is-on" : ""}`}>
                 <input type="radio" name="template" value={t.key} checked={template === t.key} onChange={() => setTemplate(t.key)} />
@@ -187,7 +189,7 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
                 <span className="muted small">{t.hint}</span>
               </label>
             ))}
-          </div>
+          </div> : <p data-testid="report-template"><strong>{templates[0].label}</strong> <Badge tone="danger">Aries confidential</Badge></p>}
           <div className="form-grid">
             <Field label="Passport revision" hint={isAries ? "The exact revision is printed on every page." : "Client reports use the current revision."}>
               <select value={revision ?? ""} disabled={!isAries} onChange={(e) => setRevision(Number(e.target.value))}>

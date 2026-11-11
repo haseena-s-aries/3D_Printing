@@ -2,6 +2,7 @@
 attachments in a chosen order pinned to exact versions, assembled-PDF preview, supporting-document classes, client
 visibility and PDF upload validation. Synthetic PDFs only; PostgreSQL + RLS; real local rendering."""
 import io
+import re
 
 import pypdfium2 as pdfium
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -79,12 +80,14 @@ def test_mts_template_with_ordered_attachments_pinned_versions_and_preview(world
     assert "SYN-LAB-V2" not in " ".join(pages)  # exact pinned version, not the latest
     head = " ".join(" ".join(pages[:body]).split())
     for s in ("Manufacturing & Test Specifications Report", "Manufacturing Specifications", "Manufacturing Process",
-              "Inspection and Test Specifications", "CONFIDENTIAL", "(draft)", "JOB-SECRET-77",
+              "Inspection and Test Specifications", "CONFIDENTIAL", "Revision No", "JOB-SECRET-77",
               "Substrate plate material", "Not recorded", "ISO 6892-1"):
         assert s in head, s
     # MTS pages only (Project 1 sample): no draft watermark, notes, legend or attachment index before the documents
-    for s in ("NOT APPROVED FOR MANUFACTURING", "Attached documents", "does not mean Aries has verified it", "Front view"):
+    for s in ("NOT APPROVED FOR MANUFACTURING", "Attached documents", "does not mean Aries has verified it", "Front view",
+              "draft", "Draft", "Passport rev", "no passport field", "job-specific"):
         assert s not in head, s
+    assert not re.search(r"\s[DVCM]\s", head.replace("Revision No", "")), "no V/D/C/M source marks on the MTS"
     assert "SECRET-ENGINEERING-NOTE" not in " ".join(pages)  # engineering notes never printed
     # footer: centred "Page N" only (Project 1 sample); no report number, status line or "of N"
     assert all(f"Page {n}" in t for n, t in enumerate(pages[:body], 1))

@@ -376,3 +376,19 @@ def test_newly_approved_client_sees_only_its_own_data(world, enabled, mailoutbox
     assert tok["session"]["tenant"]["slug"] == slug
     with tenant_context(Tenant.objects.get(slug=slug)):
         assert Project.objects.count() == 0
+
+
+def test_invitation_mail_failure_is_logged_and_does_not_undo_the_client(world, settings, caplog):
+    """A mail server problem must be visible in the log (not swallowed) and must not roll back the new client."""
+    from unittest import mock
+
+    from .test_company_profile import CREATE
+
+    settings.EMAIL_HOST, settings.EMAIL_PORT = "mail.invalid.test", 465
+    admin = login(world["op_admin"])
+    with mock.patch("apps.tenancy.invitations.send_mail", side_effect=OSError("connection refused")):
+        r = admin.post("/api/v1/clients/", {**CREATE, "invite_contact": True}, format="json")
+    assert r.status_code == 201, r.content
+    assert Tenant.objects.filter(slug=CREATE["slug"]).exists()
+    assert f"Invitation email to {CREATE['contact_email']} could not be sent via mail.invalid.test:465 (OSError: connection refused)" \
+        in caplog.text
