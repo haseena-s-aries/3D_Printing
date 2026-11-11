@@ -14,6 +14,7 @@ backend/.storage-demo/
 backend/.outbox/
 backend/.showcase/
 backend/*.log
+backend/logs/
 # Node
 node_modules/
 dist/
