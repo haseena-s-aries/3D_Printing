@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { postLoginTarget, useAuth } from "../auth/AuthContext";
 import { ThemeToggle } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 interface TenantChoice {
   slug: string;
@@ -95,7 +96,7 @@ export default function LoginPage() {
           <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Password">
-          <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         {tenants && (
           <Field label="Organisation" hint="Your account has access to more than one organisation.">
@@ -109,7 +110,7 @@ export default function LoginPage() {
             </select>
           </Field>
         )}
-        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy} aria-busy={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="center small"><Link to="/forgot-password">Forgot password?</Link></p>

@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { BackToSignIn, DevOutboxHint, PublicShell, useRegistrationConfig } from "../components/PublicShell";
 import { ErrorNotice, Field, Loading } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function ForgotPasswordPage() {
   const cfg = useRegistrationConfig();
@@ -38,12 +39,12 @@ export function ForgotPasswordPage() {
           <DevOutboxHint cfg={cfg} />
         </>
       ) : (
-        <form onSubmit={submit} aria-label="Forgot password">
+        <form className="form-stack" onSubmit={submit} aria-label="Forgot password">
           <ErrorNotice error={error} />
           <Field label="Email">
             <input type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
+          <button className="btn btn-primary btn-block" disabled={busy} aria-busy={busy}>{busy ? "Sending…" : "Send reset link"}</button>
         </form>
       )}
       <BackToSignIn />
@@ -94,18 +95,18 @@ export function ResetPasswordPage() {
           <Link className="btn btn-primary btn-block" to="/login">Sign in</Link>
         </>
       ) : (
-        <form onSubmit={submit} aria-label="Choose a new password">
+        <form className="form-stack" onSubmit={submit} aria-label="Choose a new password">
           <p>Account: <strong>{email}</strong></p>
           <ErrorNotice error={error} />
           <Field label="New password" hint="At least 12 characters; not a common or all-numeric password.">
-            <input type="password" required minLength={12} autoComplete="new-password" value={form.password}
+            <PasswordInput required minLength={12} autoComplete="new-password" value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </Field>
           <Field label="Confirm new password">
-            <input type="password" required autoComplete="new-password" value={form.password_confirm}
+            <PasswordInput required autoComplete="new-password" value={form.password_confirm}
               onChange={(e) => setForm({ ...form, password_confirm: e.target.value })} />
           </Field>
-          <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Saving…" : "Save new password"}</button>
+          <button className="btn btn-primary btn-block" disabled={busy} aria-busy={busy}>{busy ? "Saving…" : "Save new password"}</button>
         </form>
       )}
       <BackToSignIn />

@@ -273,7 +273,7 @@ function RecordCard({ busy, projects, replacing, onRecord }: { busy: boolean; pr
         <Field label="Internal note (optional)"><input value={f.note} maxLength={500} onChange={set("note")} /></Field>
         <div className="form-actions">
           <button className="btn btn-primary" disabled={busy || f.contract_reference.trim().length < 3 || f.clause_excerpt.trim().length < 30
-            || !f.effective_from || !f.effective_until || (f.scope === "projects" && chosen.length === 0)}>Record authorization</button>
+            || !f.effective_from || !f.effective_until || (f.scope === "projects" && chosen.length === 0)} aria-busy={busy}>Record authorization</button>
         </div>
       </form>
     </Card>

@@ -11,6 +11,7 @@ import { useAuth } from "../auth/AuthContext";
 import { ClientUserFeatures } from "./MemberPermissions";
 import { assignableRoles, fourRoles, roleLabel, roleOptionLabel } from "./roles";
 import { Badge, Empty, ErrorNotice, Field, Loading, Notice } from "./ui";
+import { PasswordInput } from "./PasswordInput";
 
 /** Drop empty optional fields so the API can tell "not given" from a value (operator staff need no password). */
 export function compactBody<T extends Record<string, string>>(form: T): Partial<T> {
@@ -65,12 +66,12 @@ function AddMember({ client, onDone }: { client: Client; onDone: (message: strin
             <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
           </Field>
           <Field label="Initial password" hint="Required for new users (12+ characters); leave empty for existing users.">
-            <input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <PasswordInput autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </Field>
         </>
       )}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy}>
+        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>
           Add member
         </button>
       </div>

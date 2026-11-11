@@ -195,9 +195,13 @@ def test_registration_is_rate_limited(world, enabled, monkeypatch):
 
     cache.clear()
     monkeypatch.setattr(ScopedRateThrottle, "THROTTLE_RATES", {**ScopedRateThrottle.THROTTLE_RATES, "register": "2/hour"})
-    codes = [submit({**FORM, "email": f"r{i}@rate.test"}).status_code for i in range(3)]
+    responses = [submit({**FORM, "email": f"r{i}@rate.test"}) for i in range(3)]
     cache.clear()
-    assert codes == [202, 202, 429]
+    assert [r.status_code for r in responses] == [202, 202, 429]
+    err = responses[-1].json()["error"]
+    assert err["code"] == "throttled" and "seconds" not in err["message"]  # plain words, not DRF's "Expected available in N seconds"
+    assert err["message"].startswith("Too many attempts from this computer. Please try again in about ")
+    assert err["details"]["retry_after_seconds"] > 0
 
 
 def test_dev_outbox_is_off_unless_enabled(world, settings):

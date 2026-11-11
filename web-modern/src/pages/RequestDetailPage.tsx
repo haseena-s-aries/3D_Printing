@@ -168,7 +168,7 @@ export default function RequestDetailPage() {
             <form className="stack" onSubmit={(e) => send(e, "reply")} aria-label="Reply to the operator team">
               <textarea rows={3} maxLength={2000} placeholder={r.status === "information_requested" ? "Your answer" : "Message to our team"} value={message} onChange={(e) => setMessage(e.target.value)} />
               <div className="toolbar">
-                <button className="btn btn-primary" disabled={busy || !message.trim()}>{r.status === "information_requested" ? "Send information" : "Send message"}</button>
+                <button className="btn btn-primary" disabled={busy || !message.trim()} aria-busy={busy}>{r.status === "information_requested" ? "Send information" : "Send message"}</button>
                 {["submitted", "acknowledged", "information_requested", "information_provided"].includes(r.status) && (
                   <button type="button" className="btn btn-ghost" disabled={busy} onClick={(e) => { if (window.confirm("Withdraw this request?")) void send(e as unknown as FormEvent, "withdraw"); }}>Withdraw request</button>
                 )}

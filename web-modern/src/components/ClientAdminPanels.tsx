@@ -190,6 +190,7 @@ function AssignStaff({ client, assigned, onDone }: { client: Client; assigned: S
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("operator_engineer");
   const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
   // Aries staff accounts (members of the Aries organisation), for the picker
   const staff = useApi<Paginated<Member>>("/users/", { query: { page_size: 200 } });
   const options: StaffOption[] = useMemo(() => (staff.data?.results ?? [])
@@ -203,12 +204,15 @@ function AssignStaff({ client, assigned, onDone }: { client: Client; assigned: S
       return;
     }
     setError(null);
+    setBusy(true);
     try {
       await api(`/clients/${client.id}/members/`, { body: { email, role } });
       setEmail("");
       onDone(`${email} assigned to ${client.name} as ${roleLabel(role)}, with no project access yet: choose the projects under Access.`);
     } catch (err) {
       setError(err);
+    } finally {
+      setBusy(false);
     }
   }
   return (
@@ -225,7 +229,7 @@ function AssignStaff({ client, assigned, onDone }: { client: Client; assigned: S
       </Field>
       <p className="muted small">New Aries staff start with access to <strong>no projects</strong>. Then give them specific projects (or, as an
         exception, all projects) in the list on the left. Engineering review is also limited to the projects given.</p>
-      <div className="form-actions"><button className="btn btn-primary" disabled={!email}>Assign to {client.name}</button></div>
+      <div className="form-actions"><button className="btn btn-primary" disabled={!email || busy} aria-busy={busy}>Assign to {client.name}</button></div>
     </form>
   );
 }
@@ -336,7 +340,7 @@ function NewClientProject({ client, onCreated }: { client: Client; onCreated: (m
           <input required maxLength={40} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></Field>
         <Field label="Project name"><input required maxLength={200} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
         <Field label="Description"><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
-        <div className="form-actions"><button className="btn btn-primary" disabled={busy}>{busy ? "Creating…" : "Create project"}</button></div>
+        <div className="form-actions"><button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Creating…" : "Create project"}</button></div>
       </form>
     </Card>
   );

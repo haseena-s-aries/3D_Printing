@@ -59,12 +59,12 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
   const [message, setMessage] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<unknown>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"" | "approve" | "reject">("");
   const navigate = useNavigate();
 
   async function decide(kind: "approve" | "reject", e?: FormEvent) {
     e?.preventDefault();
-    setBusy(true);
+    setBusy(kind);
     setError(null);
     try {
       const body = kind === "approve" ? (staff ? { role } : { organisation_name: name }) : { message, internal_note: note };
@@ -74,7 +74,7 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
     } catch (err) {
       setError(err);
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
@@ -120,7 +120,7 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
               </Field>
               <p className="muted small">{reg.contact_name} ({reg.email}) can sign in after approval. Assign them to client companies under
                 Clients → Engineers &amp; Access.</p>
-              <button className="btn btn-primary" disabled={busy}>Approve account</button>
+              <button className="btn btn-primary" disabled={!!busy} aria-busy={busy === "approve"}>Approve account</button>
             </form>
           ) : (
             <form className="form-grid single" onSubmit={(e) => void decide("approve", e)} aria-label="Approve registration">
@@ -129,14 +129,14 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
                 <input required value={name} onChange={(e) => setName(e.target.value)} />
               </Field>
               <p className="muted small">{reg.contact_name} ({reg.email}) becomes its first Client Administrator.</p>
-              <button className="btn btn-primary" disabled={busy}>Approve and create organisation</button>
+              <button className="btn btn-primary" disabled={!!busy} aria-busy={busy === "approve"}>Approve and create organisation</button>
             </form>
           )}
           <form className="form-grid single" onSubmit={(e) => void decide("reject", e)} aria-label="Reject registration">
             <h3>Reject</h3>
             <Field label="Message to the registrant"><textarea rows={2} required value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
             <Field label="Internal note (Aries only)"><textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
-            <button className="btn" disabled={busy}>Reject registration</button>
+            <button className="btn" disabled={!!busy} aria-busy={busy === "reject"}>Reject registration</button>
           </form>
         </div>
       )}

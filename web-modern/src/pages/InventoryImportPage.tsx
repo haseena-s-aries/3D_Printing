@@ -88,7 +88,7 @@ function NewImport() {
             {(projects.data?.results ?? []).map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
           </select>
         </Field>
-        <div className="form-actions"><button className="btn btn-primary" disabled={busy || !file}>{busy ? "Reading file…" : "Upload and preview"}</button></div>
+        <div className="form-actions"><button className="btn btn-primary" disabled={busy || !file} aria-busy={busy}>{busy ? "Reading file…" : "Upload and preview"}</button></div>
       </form>
     </Card>
   );

@@ -100,7 +100,7 @@ export default function PhotoOriginPage() {
                 <Field label="Scanning job or digitisation reference"><input value={reference} maxLength={120} onChange={(e) => setReference(e.target.value)} placeholder="For example SCAN-2026-014" /></Field>
                 <Field label="Capture date (optional)"><input type="date" value={captureDate} onChange={(e) => setCaptureDate(e.target.value)} /></Field>
                 <Field label="Description of the scanning work"><textarea value={note} maxLength={500} rows={3} onChange={(e) => setNote(e.target.value)} /></Field>
-                <div className="form-actions"><button className="btn btn-primary" disabled={busy || (!reference.trim() && note.trim().length < 15)}>Claim as Aries capture</button></div>
+                <div className="form-actions"><button className="btn btn-primary" disabled={busy || (!reference.trim() && note.trim().length < 15)} aria-busy={busy}>Claim as Aries capture</button></div>
               </form>
             </Card>
           )}

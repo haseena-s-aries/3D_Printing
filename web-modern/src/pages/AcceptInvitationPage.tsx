@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { ErrorNotice, Field, Loading, label } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 export default function AcceptInvitationPage() {
   const { token } = useParams();
@@ -67,12 +68,12 @@ export default function AcceptInvitationPage() {
             <Field label="First name"><input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></Field>
             <Field label="Last name"><input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></Field>
             <Field label="Password" hint="If you already have an account with this address, enter its password. Otherwise choose a new password (at least 12 characters).">
-              <input type="password" autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <PasswordInput autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </Field>
             <Field label="Confirm password">
-              <input type="password" autoComplete="current-password" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+              <PasswordInput autoComplete="current-password" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
             </Field>
-            <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Joining…" : "Accept invitation"}</button>
+            <button className="btn btn-primary btn-block" disabled={busy} aria-busy={busy}>{busy ? "Joining…" : "Accept invitation"}</button>
           </form>
         )}
       </div>

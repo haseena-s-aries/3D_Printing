@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { ClientUserFeatures, ClientUserProjects, EngineerPermissions, type ProjectAccess } from "../components/MemberPermissions";
 import { assignableRoles, fourRoles, roleOptionLabel } from "../components/roles";
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, PageHeader, formatDate } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 /**
  * Organisation administrators invite people by email (W2). The response never reveals whether the address already
@@ -270,7 +271,7 @@ export default function UsersPage() {
                 <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
               </Field>
               <Field label="Initial password" hint="At least 12 characters. Platform administrators add operator staff directly.">
-                <input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                <PasswordInput autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </Field>
               <div className="form-actions">
                 <button className="btn btn-primary">Add user</button>

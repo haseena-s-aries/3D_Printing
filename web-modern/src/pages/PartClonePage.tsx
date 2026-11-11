@@ -149,7 +149,7 @@ function CloneForm({ source }: { source: Part }) {
           </fieldset>
           <div className="form-actions sticky-actions">
             {missing.length > 0 && <span className="muted small">Still needed: {missing.join(", ")}</span>}
-            <button className="btn btn-primary" disabled={busy || missing.length > 0}>{busy ? "Creating…" : "Create clone for Aries review"}</button>
+            <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>{busy ? "Creating…" : "Create clone for Aries review"}</button>
           </div>
         </form>
       </Card>
@@ -211,7 +211,7 @@ export function CloneEditForm({ part, onDone }: { part: Part; onDone: (p: Part) 
       </div>
       <div className="form-actions">
         {missing.length > 0 && <span className="muted small">Still needed: {missing.join(", ")}</span>}
-        <button className="btn btn-primary" disabled={busy || missing.length > 0}>Save changes</button>
+        <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>Save changes</button>
       </div>
     </form>
   );

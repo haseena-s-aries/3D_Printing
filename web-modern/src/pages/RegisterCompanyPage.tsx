@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { CompanyProfileFields, EMPTY_PROFILE, type CompanyProfile } from "../components/CompanyProfileFields";
 import { BackToSignIn, DevOutboxHint, PublicShell, useRegistrationConfig } from "../components/PublicShell";
 import { ErrorNotice, Field, Loading } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 const EMPTY = { password: "", password_confirm: "", accept_terms: false, website: "" };
 
@@ -92,9 +93,9 @@ export default function RegisterCompanyPage() {
           emailHint="Used to sign in. A verification link is sent here." />
         <h2 className="span-2 form-section">Your sign-in password</h2>
         <Field label="Password" hint="At least 12 characters; not a common or all-numeric password.">
-          <input type="password" required autoComplete="new-password" minLength={12} value={form.password} onChange={set("password")} />
+          <PasswordInput required autoComplete="new-password" minLength={12} value={form.password} onChange={set("password")} />
         </Field>
-        <Field label="Confirm password"><input type="password" required autoComplete="new-password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
+        <Field label="Confirm password"><PasswordInput required autoComplete="new-password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
         <div className="honeypot" aria-hidden="true">
           <label>Website<input tabIndex={-1} autoComplete="off" value={form.website} onChange={set("website")} /></label>
         </div>
@@ -107,7 +108,7 @@ export default function RegisterCompanyPage() {
           approval. Registering never gives access to an existing organisation; ask its Client Administrator for an invitation instead.
         </p>
         <div className="form-actions span-2">
-          <button className="btn btn-primary" disabled={busy}>{busy ? "Submitting…" : "Register company"}</button>
+          <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Submitting…" : "Register company"}</button>
         </div>
       </form>
       <BackToSignIn />
