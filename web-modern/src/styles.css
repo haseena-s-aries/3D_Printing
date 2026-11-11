@@ -1331,3 +1331,21 @@ details > table.table { display: block; overflow-x: auto; }
 .staff-option.is-active { background: var(--accent-soft); }
 .staff-option.is-taken { cursor: not-allowed; opacity: 0.6; }
 .staff-empty { padding: 8px 10px; color: var(--muted); font-size: var(--fs-sm); }
+
+/* Password fields: show/hide button inside the field */
+.password-input { position: relative; display: flex; }
+.password-input > input { padding-right: 42px; }
+.password-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+  justify-content: center; width: 32px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.password-toggle:hover { color: var(--ink); background: var(--surface-3); }
+.password-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Buttons that are working: a spinner before the label (aria-busy="true") */
+.btn[aria-busy="true"] { cursor: progress; }
+.btn[aria-busy="true"]:disabled { opacity: 0.85; }
+.btn[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid currentColor;
+  border-right-color: transparent; animation: spin 0.7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .btn[aria-busy="true"]::before { animation-duration: 2s; } }
+
+/* Simple public forms (forgot / reset password, email verification): space between fields and the button */
+.form-stack { display: flex; flex-direction: column; gap: 14px; }

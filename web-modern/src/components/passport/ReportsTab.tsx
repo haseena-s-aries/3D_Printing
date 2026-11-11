@@ -258,8 +258,8 @@ export default function ReportsTab({ passportId, partId, revisions, files, onFil
               )}
               {picks.length > 0 && <p className="muted small">About {totalAttachedPages} attached page(s) follow the report pages, in this order.</p>}
               <div className="toolbar wrap attach-actions">
-                <button type="button" className="btn" disabled={!!busy} onClick={() => void previewAssembled()}>{busy === "preview" ? "Assembling preview…" : "Preview complete PDF"}</button>
-                <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => void generate()}>{busy === "generate" ? "Rendering report…" : replacing ? `Generate replacement for ${replacing.number}` : "Generate report"}</button>
+                <button type="button" className="btn" disabled={!!busy} aria-busy={busy === "preview"} onClick={() => void previewAssembled()}>{busy === "preview" ? "Assembling preview…" : "Preview complete PDF"}</button>
+                <button type="button" className="btn btn-primary" disabled={!!busy} aria-busy={busy === "generate"} onClick={() => void generate()}>{busy === "generate" ? "Rendering report…" : replacing ? `Generate replacement for ${replacing.number}` : "Generate report"}</button>
               </div>
             </div>
           </div>
@@ -376,7 +376,7 @@ function UploadSupporting({ passportId, partId, onUploaded }: { passportId: stri
         <div className="span-2"><Field label="Title (optional)"><input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} /></Field></div>
         <label className="inline-check span-2"><input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} />
           Release to the client now (otherwise Aries only; can be released later)</label>
-        <div className="form-actions"><button type="button" className="btn btn-primary" disabled={busy || !file} onClick={() => void send()}>
+        <div className="form-actions"><button type="button" className="btn btn-primary" disabled={busy || !file} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Uploading…" : "Upload document"}</button></div>
       </div>
     </details>

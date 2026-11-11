@@ -68,6 +68,12 @@ def api_exception_handler(exc, context):
         data = response.data
         if isinstance(exc, exceptions.ValidationError):
             message, details = "The request is not valid.", data
+        elif isinstance(exc, exceptions.Throttled):
+            # Plain words instead of DRF's "Expected available in 3294 seconds"; the seconds stay in details.
+            wait = int(exc.wait or 0)
+            when = f"in about {max(1, round(wait / 60))} minute{'s' if round(wait / 60) > 1 else ''}" if wait >= 60 else (
+                f"in {wait} seconds" if wait else "later")
+            message, details = f"Too many attempts from this computer. Please try again {when}.", {"retry_after_seconds": wait}
         else:
             message = data.get("detail", "Request failed.") if isinstance(data, dict) else str(data)
             details = {}

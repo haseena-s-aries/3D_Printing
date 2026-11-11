@@ -87,7 +87,7 @@ export default function ScanRequestPage() {
           {progress && <p className="muted small span-2" role="status">{progress}</p>}
           <div className="form-actions span-2">
             <button type="button" className="btn" onClick={() => navigate(-1)}>Cancel</button>
-            <button className="btn btn-primary" disabled={busy}>{busy ? "Sending…" : "Submit scanning request"}</button>
+            <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Sending…" : "Submit scanning request"}</button>
           </div>
         </form>
       </Card>

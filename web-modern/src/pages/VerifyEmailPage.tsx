@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { BackToSignIn, PublicShell } from "../components/PublicShell";
 import { ErrorNotice, Field, Loading } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 export default function VerifyEmailPage() {
   const { token } = useParams();
@@ -53,13 +54,13 @@ export default function VerifyEmailPage() {
           <Link className="btn btn-primary btn-block" to="/login">Go to sign in</Link>
         </>
       ) : (
-        <form onSubmit={submit} aria-label="Verify your email">
+        <form className="form-stack" onSubmit={submit} aria-label="Verify your email">
           <p>Registration of <strong>{info.company_name}</strong> for <strong>{info.email}</strong>.</p>
           <ErrorNotice error={error} />
           <Field label="Password chosen at registration">
-            <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
-          <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Verifying…" : "Verify email address"}</button>
+          <button className="btn btn-primary btn-block" disabled={busy} aria-busy={busy}>{busy ? "Verifying…" : "Verify email address"}</button>
           <p className="muted small">The password confirms that the person who registered is the owner of this mailbox.</p>
         </form>
       )}

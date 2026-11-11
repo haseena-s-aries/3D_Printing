@@ -602,7 +602,7 @@ export function RL3Form({ passportId, revision, files, editable, onSaved, onOpen
       </fieldset>
       <div className="form-actions">
         <DisabledAction label="Confirm R-L3 (QA)" reason="QA verification rules pending (OQ-35)." />
-        {editable && <button className="btn btn-primary" disabled={busy}>Save R-L3 evidence</button>}
+        {editable && <button className="btn btn-primary" disabled={busy} aria-busy={busy}>Save R-L3 evidence</button>}
       </div>
       {!editable && <p className="muted small span-2">{revision.editable ? "Your role can view this draft but not edit it." : "This revision is not a draft and cannot be edited."}</p>}
     </form>

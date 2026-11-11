@@ -92,7 +92,7 @@ export default function PartForm({ initial, submitLabel, onSubmit }: {
         {prov("description")}
       </div>
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy}>{submitLabel}</button>
+        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{submitLabel}</button>
       </div>
     </form>
   );

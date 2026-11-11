@@ -223,7 +223,7 @@ export default function RequestDialog({ part, onClose }: { part: Part; onClose: 
             <Notice>The part, your organisation and the current passport revision are attached automatically. No prices or lead times are quoted here.</Notice>
             <div className="form-actions span-2">
               <button type="button" className="btn" onClick={onClose}>Cancel</button>
-              <button className="btn btn-primary" disabled={busy || materialMissing}>{busy ? "Sending…" : cls.kind === "enquiry" ? "Send enquiry" : "Submit request"}</button>
+              <button className="btn btn-primary" disabled={busy || materialMissing} aria-busy={busy}>{busy ? "Sending…" : cls.kind === "enquiry" ? "Send enquiry" : "Submit request"}</button>
             </div>
           </form>
         )}

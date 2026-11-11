@@ -95,7 +95,7 @@ function PrepareForm({ base, status, onCreated }: { base: string; status: string
       <Field label="Manufacturing method" hint="Provisional list (J3); Other / specify allowed.">
         <SelectOther value={method} onChange={setMethod} options={opts.list("manufacturing_processes")} />
       </Field>
-      <div className="form-actions"><button className="btn btn-primary" disabled={busy}>Prepare job sheet draft</button></div>
+      <div className="form-actions"><button className="btn btn-primary" disabled={busy} aria-busy={busy}>Prepare job sheet draft</button></div>
     </form>
   );
 }

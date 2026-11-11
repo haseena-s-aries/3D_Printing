@@ -8,6 +8,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { BackToSignIn, DevOutboxHint, PublicShell, useRegistrationConfig } from "../components/PublicShell";
 import { ErrorNotice, Field, Loading } from "../components/ui";
+import { PasswordInput } from "../components/PasswordInput";
 
 const EMPTY = { full_name: "", job_title: "", email: "", phone: "", requested_role: "", password: "", password_confirm: "",
   accept_terms: false, website: "" };
@@ -95,9 +96,9 @@ export default function RequestStaffAccountPage() {
         </Field>
         <div />
         <Field label="Password" hint="At least 12 characters; not a common or all-numeric password.">
-          <input type="password" required autoComplete="new-password" minLength={12} value={form.password} onChange={set("password")} />
+          <PasswordInput required autoComplete="new-password" minLength={12} value={form.password} onChange={set("password")} />
         </Field>
-        <Field label="Confirm password"><input type="password" required autoComplete="new-password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
+        <Field label="Confirm password"><PasswordInput required autoComplete="new-password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
         <div className="honeypot" aria-hidden="true">
           <label>Website<input tabIndex={-1} autoComplete="off" value={form.website} onChange={set("website")} /></label>
         </div>
@@ -110,7 +111,7 @@ export default function RequestStaffAccountPage() {
           companies and projects is then given by the admin. Client users are invited by their company's Client Administrator instead.
         </p>
         <div className="form-actions span-2">
-          <button className="btn btn-primary" disabled={busy}>{busy ? "Submitting…" : "Request account"}</button>
+          <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Submitting…" : "Request account"}</button>
         </div>
       </form>
       <BackToSignIn />

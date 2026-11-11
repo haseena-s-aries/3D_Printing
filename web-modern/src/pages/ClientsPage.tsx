@@ -32,12 +32,15 @@ export default function ClientsPage() {
   const [profile, setProfile] = useState<CompanyProfile>({ ...EMPTY_PROFILE, country: "United Arab Emirates" });
   const [form, setForm] = useState(NEW_SETTINGS);
   const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const wanted = params.get("client");
 
   async function create(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setError(null);
+    setBusy(true);
     try {
       const created = await api<Client>("/clients/", { body: { ...profile, ...form } });
       const message = form.invite_contact
@@ -46,6 +49,8 @@ export default function ClientsPage() {
       navigate(`/clients/${created.id}`, { state: { message } }); // next steps (people, engineers) are on its own page
     } catch (err) {
       setError(err);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -132,7 +137,7 @@ export default function ClientsPage() {
               <span>Email the primary contact an invitation to become Client Administrator</span>
             </label>
             <div className="form-actions span-2">
-              <button className="btn btn-primary">Create client</button>
+              <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Creating client…" : "Create client"}</button>
             </div>
           </form>
         </Card>

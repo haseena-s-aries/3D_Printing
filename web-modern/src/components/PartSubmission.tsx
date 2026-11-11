@@ -175,7 +175,7 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
       </fieldset>
       <div className="form-actions sticky-actions">
         {missing.length > 0 && <span className="muted small">Still needed: {missing.map((m) => FIELD_NAMES[m]).join(", ")}</span>}
-        <button className="btn btn-primary" disabled={busy || missing.length > 0}>
+        <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>
           {busy ? status || "Saving…" : part ? "Save changes" : isAdmin ? "Submit spare part for Aries review" : "Submit proposal for Aries review"}
         </button>
       </div>
@@ -272,7 +272,7 @@ export function ReviewPanel({ part, onChange }: { part: Part; onChange: (p: Part
           )}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={() => setMode("")}>Cancel</button>
-            <button className="btn btn-primary" disabled={busy}>
+            <button className="btn btn-primary" disabled={busy} aria-busy={busy}>
               {mode === "request_info" ? "Send correction request" : mode === "accept" ? "Accept" : mode === "decline" ? "Reject with reason" : "Mark verified"}
             </button>
           </div>
@@ -308,7 +308,7 @@ export function ResubmitForm({ part, onChange }: { part: Part; onChange: (p: Par
         <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} />
       </Field>
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy}>Send back for Aries review</button>
+        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>Send back for Aries review</button>
       </div>
     </form>
   );
