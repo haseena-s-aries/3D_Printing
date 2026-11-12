@@ -10,6 +10,8 @@ import NotificationBell from "./NotificationBell";
 import { roleLabel } from "./roles";
 import { ThemeToggle, useAppKeyboard } from "./theme";
 import { Loading } from "./ui";
+import ariesMark from "../assets/aries-mark.png";
+import { PropellerWireframe, ariesLogo } from "./MarineHero";
 
 interface NavItem {
   to: string;
@@ -218,13 +220,12 @@ export default function Layout({ children }: { children?: ReactNode }) {
     <div className={`shell ${open ? "nav-open" : ""} ${rail ? "is-rail" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <aside className="sidebar" aria-label="Main navigation">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden>
-            DP
-          </span>
+        <div className="brand brand-aries">
+          <img className="brand-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
+          <img className="brand-logo-mark" src={ariesMark} alt="Aries" />
           <div className="brand-text">
-            <div className="brand-name">Digital Passport</div>
-            <div className="brand-sub">{portal}</div>
+            <div className="brand-name">Digital Passport Platform</div>
+            <div className="brand-sub">{portal} · Marine 3D spare parts</div>
           </div>
         </div>
         {superAdmin ? <AdminNav rail={rail} /> : <nav>
@@ -244,6 +245,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
             ) : null;
           })}
         </nav>}
+        <div className="sidebar-art" aria-hidden="true"><PropellerWireframe /></div>
         <div className="sidebar-foot">
           <span className="sidebar-foot-text">{session.tenant.hosting_model === "dedicated" ? "Dedicated deployment" : "Shared platform"}</span>
           <button type="button" className="rail-toggle" onClick={toggleRail} aria-label={rail ? "Expand navigation" : "Collapse navigation"}

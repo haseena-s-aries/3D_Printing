@@ -7,6 +7,7 @@ import { ThemeToggle } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
 import { MarineHero } from "../components/MarineHero";
+import ariesMark from "../assets/aries-mark.png";
 
 interface TenantChoice {
   slug: string;
@@ -55,7 +56,7 @@ export default function LoginPage() {
       <ThemeToggle className="public-theme" />
         <div className="login-card" data-testid={`registration-${registration.status}`}>
           <div className="brand brand-lg">
-            <span className="brand-mark" aria-hidden>DP</span>
+            <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
             <div>
               <h1>{registration.status === "pending" ? "Registration pending approval" : "Registration not approved"}</h1>
               <p className="muted">{registration.company}</p>
@@ -86,9 +87,7 @@ export default function LoginPage() {
       <ThemeToggle className="public-theme" />
       <form className="login-card" onSubmit={submit} aria-labelledby="login-title">
         <div className="brand brand-lg">
-          <span className="brand-mark" aria-hidden>
-            DP
-          </span>
+          <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
           <div>
             <h1 id="login-title">Digital Passport Platform</h1>
             <p className="muted">Spare-part digital passports and inventory</p>

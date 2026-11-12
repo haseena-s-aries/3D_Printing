@@ -3,8 +3,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
+import { Icon } from "./icons";
 import { MarineHero } from "./MarineHero";
 import { ThemeToggle } from "./theme";
+import ariesMark from "../assets/aries-mark.png";
 
 export interface RegistrationConfig {
   registration_enabled: boolean;
@@ -28,7 +30,7 @@ export function PublicShell({ title, subtitle, children, wide }: { title: string
       <ThemeToggle className="public-theme" />
       <div className={`login-card${wide ? " login-card-wide" : ""}`}>
         <div className="brand brand-lg">
-          <span className="brand-mark" aria-hidden>DP</span>
+          <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
           <div>
             <h1>{title}</h1>
             <p className="muted">{subtitle ?? "Digital Passport Platform · Aries"}</p>
@@ -51,5 +53,5 @@ export function DevOutboxHint({ cfg }: { cfg: RegistrationConfig | null }) {
 }
 
 export function BackToSignIn() {
-  return <p className="muted small center"><Link to="/login">Back to sign in</Link></p>;
+  return <p className="muted small center back-to-sign-in"><Link to="/login"><Icon name="arrowLeft" size="sm" />Back to sign in</Link></p>;
 }

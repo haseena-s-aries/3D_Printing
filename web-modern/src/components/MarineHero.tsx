@@ -1,176 +1,267 @@
 /**
- * Decorative marine / offshore scene for the public pages (sign-in, registration, password pages): evening sea, an
- * offshore platform and a supply vessel on the horizon, layered waves, a technical grid and a slowly turning wireframe
- * impeller (the kind of spare part a digital passport describes). Drawn as inline SVG: no image download, sharp at any
- * size, and the motion stops for users who prefer reduced motion. The artwork is aria-hidden; the text is real text.
+ * Marine / offshore artwork (inline SVG, no image downloads; motion stops with prefers-reduced-motion; all decorative
+ * artwork is aria-hidden and the text is real text):
+ * - MarineHero: left panel of the public pages: Aries logo, headline, three highlights, and a sunset sea with an
+ *   offshore vessel and rig and a metallic 3D impeller on glowing rings.
+ * - MarineBanner: page-title banner (dashboards: large, with a vessel and a wireframe propeller; section pages: compact).
+ * - PropellerWireframe: the wireframe propeller, also used at the foot of the sidebar.
  */
 import type { ReactNode } from "react";
 
+import ariesLogo from "../assets/aries-logo.png";
 import { Icon, type IconName } from "./icons";
 
-const VANES = 7;
+export { ariesLogo };
 
-function Impeller({ transform = "translate(800 712) scale(0.86)" }: { transform?: string }) {
-  // Seven backward-curved vanes between a hub and a shroud, seen at a slight tilt (the group is scaled on Y).
-  const vanes = Array.from({ length: VANES }, (_, i) => {
-    const a = (i * 360) / VANES;
-    return <path key={i} d="M0 -34 C 30 -60, 70 -86, 92 -150" transform={`rotate(${a})`} />;
-  });
-  return (
-    <g className="mh-impeller" transform={transform}>
-      <g transform="scale(1 0.62)">
-        <g className="mh-spin">
-          <circle r="170" className="mh-shroud" />
-          <circle r="150" className="mh-shroud mh-thin" />
-          <circle r="34" className="mh-hub" />
-          <circle r="14" className="mh-hub mh-thin" />
-          <g className="mh-vanes">{vanes}</g>
-        </g>
-      </g>
-      {/* depth: the back shroud and the shaft */}
-      <ellipse cx="0" cy="34" rx="170" ry="105" className="mh-shroud mh-back" />
-      <path d="M-14 0 V 150 M14 0 V 150" className="mh-shaft" />
-      <ellipse cx="0" cy="150" rx="14" ry="8" className="mh-shaft" />
-    </g>
-  );
-}
+/* ------------------------------------------------------------------ shared pieces */
 
-/** viewBox: the part of the 1200 x 900 scene to show (the dashboard banner shows the horizon band). */
-export function MarineScene({ className = "", viewBox = "0 0 1200 900" }: { className?: string; viewBox?: string }) {
+/** Metallic impeller (7 backward-curved blades on a back shroud, hub with bore), seen at a tilt. */
+export function MetalImpeller({ className = "", spin = true }: { className?: string; spin?: boolean }) {
+  const blades = Array.from({ length: 7 }, (_, i) => i * (360 / 7));
+  const blade = "M36 -14 C 78 -34, 118 -78, 146 -128 C 152 -126, 158 -118, 160 -108 C 134 -56, 92 -8, 40 14 Z";
   return (
-    <svg className={`marine-scene ${className}`} viewBox={viewBox} preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+    <svg className={`metal-impeller ${className}`} viewBox="-200 -150 400 330" aria-hidden="true" focusable="false">
       <defs>
-        <linearGradient id="mh-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#06101f" />
-          <stop offset="0.45" stopColor="#0b2340" />
-          <stop offset="0.62" stopColor="#14506a" />
-          <stop offset="0.7" stopColor="#1f7d86" />
+        <linearGradient id="mi-face" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f4f8fb" />
+          <stop offset="0.35" stopColor="#b9c6d1" />
+          <stop offset="0.6" stopColor="#6d7c89" />
+          <stop offset="0.8" stopColor="#d5dde4" />
+          <stop offset="1" stopColor="#59656f" />
         </linearGradient>
-        <radialGradient id="mh-sun" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#ffd9a0" stopOpacity="0.95" />
-          <stop offset="0.35" stopColor="#f2a65a" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#f2a65a" stopOpacity="0" />
+        <linearGradient id="mi-edge" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3b4650" />
+          <stop offset="1" stopColor="#141b22" />
+        </linearGradient>
+        <radialGradient id="mi-disc" cx="0.4" cy="0.35" r="0.75">
+          <stop offset="0" stopColor="#e6edf3" />
+          <stop offset="0.55" stopColor="#8796a3" />
+          <stop offset="1" stopColor="#36414b" />
         </radialGradient>
-        <linearGradient id="mh-sea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#0f4c63" />
-          <stop offset="1" stopColor="#041020" />
+        <linearGradient id="mi-hub" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#5d6a75" />
+          <stop offset="0.35" stopColor="#f2f6f9" />
+          <stop offset="0.7" stopColor="#9aa8b4" />
+          <stop offset="1" stopColor="#47525c" />
         </linearGradient>
-        <linearGradient id="mh-wave1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1a6b80" stopOpacity="0.9" />
-          <stop offset="1" stopColor="#06182b" />
-        </linearGradient>
-        <linearGradient id="mh-wave2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#12536a" />
-          <stop offset="1" stopColor="#040e1c" />
-        </linearGradient>
-        <linearGradient id="mh-shade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#04101f" stopOpacity="0.7" />
-          <stop offset="0.42" stopColor="#04101f" stopOpacity="0.25" />
-          <stop offset="0.6" stopColor="#04101f" stopOpacity="0" />
-        </linearGradient>
-        <pattern id="mh-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M40 0H0V40" fill="none" stroke="#5ccfc2" strokeOpacity="0.07" strokeWidth="1" />
-        </pattern>
+        <filter id="mi-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="14" stdDeviation="12" floodColor="#000814" floodOpacity="0.55" />
+        </filter>
       </defs>
-
-      <rect width="1200" height="900" fill="url(#mh-sky)" />
-      {/* stars */}
-      <g fill="#cfe3ff" opacity="0.55">
-        {[[90, 70], [210, 140], [330, 60], [470, 120], [610, 50], [760, 100], [905, 60], [1040, 130], [1150, 80], [150, 220], [560, 200], [990, 230]].map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 1.6 : 1} />
-        ))}
-      </g>
-      <circle cx="640" cy="548" r="230" fill="url(#mh-sun)" />
-
-      {/* horizon: offshore jack-up platform and a supply vessel */}
-      <g className="mh-silhouette" fill="#06172a">
-        <g transform="translate(330 548) scale(0.8)">
-          <rect x="-6" y="-120" width="5" height="190" />
-          <rect x="70" y="-120" width="5" height="190" />
-          <rect x="146" y="-120" width="5" height="190" />
-          <rect x="-20" y="-40" width="190" height="34" />
-          <rect x="10" y="-78" width="70" height="38" />
-          <rect x="96" y="-66" width="44" height="26" />
-          <path d="M150 -40 L 205 -112 L 211 -108 L 162 -40 Z" />
-          <rect x="34" y="-118" width="6" height="40" />
-          <path d="M37 -118 l 22 -6 v 4 z" />
+      <g filter="url(#mi-shadow)">
+        {/* back shroud with thickness */}
+        <ellipse cx="0" cy="22" rx="168" ry="94" fill="url(#mi-edge)" />
+        <ellipse cx="0" cy="10" rx="168" ry="92" fill="url(#mi-disc)" />
+        <g transform="scale(1 0.55)">
+          <g className={spin ? "mi-spin" : ""}>
+            {/* blade thickness first (darker, offset), then the bright blade faces */}
+            {blades.map((a) => <path key={`e${a}`} d={blade} transform={`rotate(${a}) translate(0 16)`} fill="url(#mi-edge)" />)}
+            {blades.map((a) => <path key={`f${a}`} d={blade} transform={`rotate(${a})`} fill="url(#mi-face)" stroke="#e9f0f5" strokeOpacity="0.6" strokeWidth="1" />)}
+          </g>
         </g>
-        <g transform="translate(540 560) scale(0.7)">
-          <path d="M0 0 H 210 L 196 22 H 18 Z" />
-          <rect x="140" y="-30" width="52" height="30" />
-          <rect x="150" y="-48" width="30" height="18" />
-          <rect x="164" y="-66" width="4" height="18" />
-          <rect x="30" y="-10" width="96" height="10" />
-        </g>
+        {/* hub: cylinder with a bore */}
+        <path d="M-44 -6 V -40 A 44 24 0 0 1 44 -40 V -6 A 44 24 0 0 1 -44 -6 Z" fill="url(#mi-hub)" />
+        <ellipse cx="0" cy="-40" rx="44" ry="24" fill="#e9eff4" stroke="#7d8a96" strokeWidth="1" />
+        <ellipse cx="0" cy="-40" rx="22" ry="12" fill="#1c252e" />
+        <ellipse cx="0" cy="-37" rx="16" ry="8" fill="#0b1117" />
       </g>
-
-      {/* sea and waves */}
-      <rect y="548" width="1200" height="352" fill="url(#mh-sea)" />
-      <path d="M0 548 h1200" stroke="#ffd9a0" strokeOpacity="0.35" strokeWidth="1.5" />
-      <path className="mh-wave mh-wave-a" fill="url(#mh-wave1)" d="M0 650 C 150 625, 300 675, 450 650 S 750 625, 900 650 S 1150 675, 1200 655 V 900 H 0 Z" />
-      <path className="mh-wave mh-wave-b" fill="url(#mh-wave2)" d="M0 735 C 180 710, 320 765, 520 735 S 860 705, 1000 740 S 1150 760, 1200 740 V 900 H 0 Z" />
-      <path className="mh-wave mh-wave-c" fill="#04101f" d="M0 820 C 200 795, 360 845, 600 820 S 980 795, 1200 825 V 900 H 0 Z" />
-      {/* light on the water */}
-      <g stroke="#ffd9a0" strokeLinecap="round" opacity="0.4">
-        <path d="M600 568 h 80" strokeWidth="2" />
-        <path d="M585 590 h 110" strokeWidth="1.5" />
-        <path d="M612 612 h 56" strokeWidth="1.2" />
-      </g>
-
-      {/* engineering layer: grid and the 3D part */}
-      <rect width="1200" height="900" fill="url(#mh-grid)" />
-      <Impeller />
-      <g className="mh-dims">
-        <path d="M654 872 H 946 M654 864 v16 M946 864 v16" />
-        <text x="800" y="860">Ø 340 · IMPELLER · L-PBF 316L</text>
-      </g>
-
-      {/* readability shade behind the text column */}
-      <rect width="1200" height="900" fill="url(#mh-shade)" />
     </svg>
   );
 }
 
-/** Dashboard header: the page title over the horizon band of the marine scene. */
-export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+/** Wireframe 3-blade propeller in a technical (HUD) style. */
+export function PropellerWireframe({ className = "", frame = false }: { className?: string; frame?: boolean }) {
+  const blade = "M0 -18 C 26 -40, 62 -92, 54 -150 C 30 -168, -18 -150, -26 -112 C -30 -80, -18 -44, 0 -18 Z";
+  const mesh = [0.35, 0.55, 0.75, 0.92];
   return (
-    <div className={`marine-banner${compact ? " marine-banner-compact" : ""}`}>
-      <MarineScene viewBox="0 432 1200 200" />
-      <svg className="marine-scene marine-banner-part" viewBox="-200 -150 400 330" aria-hidden="true" focusable="false">
-        <Impeller transform="translate(0 0) scale(0.9)" />
-      </svg>
-      <div className="marine-banner-body">{children}</div>
-    </div>
+    <svg className={`propeller-wire ${className}`} viewBox="-190 -190 380 380" aria-hidden="true" focusable="false">
+      {frame && <g className="pw-frame"><path d="M-178 -140 V -178 H -140 M140 -178 H 178 V -140 M178 140 V 178 H 140 M-140 178 H -178 V 140" /></g>}
+      <g className="pw-spin">
+        {[0, 120, 240].map((a) => (
+          <g key={a} transform={`rotate(${a})`}>
+            <path d={blade} className="pw-blade" />
+            {mesh.map((m) => <path key={m} d={blade} className="pw-mesh" transform={`scale(${m})`} />)}
+            <path d="M0 -18 C 10 -60, 30 -110, 40 -150" className="pw-mesh" />
+            <path d="M0 -18 C -8 -60, -14 -100, -20 -130" className="pw-mesh" />
+          </g>
+        ))}
+        <circle r="22" className="pw-blade" />
+        <circle r="10" className="pw-mesh" />
+      </g>
+    </svg>
   );
 }
 
-const HIGHLIGHTS: [IconName, string, string][] = [
-  ["cube", "3D models and drawings", "Every spare part with its STEP model, drawings and photos in one passport."],
-  ["file", "Manufacturing & test specifications", "Generate the MTS report with the attached QA and lab documents."],
-  ["shield", "Secure and audited", "Each company sees only its own data; every action is recorded."],
-];
+/** Offshore supply vessel (side view, with hull depth and lit windows). */
+function Vessel({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  const id = `v${Math.round(x)}${Math.round(y)}`;
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <defs>
+        <linearGradient id={`${id}-hull`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3a6595" />
+          <stop offset="0.55" stopColor="#1d3d66" />
+          <stop offset="1" stopColor="#0e223d" />
+        </linearGradient>
+        <linearGradient id={`${id}-sup`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#c9d5e0" />
+        </linearGradient>
+      </defs>
+      {/* hull with a raked bow, red boot-topping and a white sheer line */}
+      <path d="M-176 -46 H 150 C 166 -46, 180 -40, 190 -52 L 168 0 H -160 L -176 -20 Z" fill={`url(#${id}-hull)`} />
+      <path d="M-168 -10 H 172 L 168 0 H -160 Z" fill="#c0392b" />
+      <path d="M-176 -46 H 150 C 166 -46, 180 -40, 190 -52 L 188 -48 C 178 -38, 166 -42, 150 -42 H -176 Z" fill="#eef3f7" />
+      {/* aft deck with cargo, A-frame crane */}
+      <rect x="-150" y="-62" width="34" height="16" fill="#e67e22" />
+      <rect x="-112" y="-60" width="30" height="14" fill="#2e86c1" />
+      <rect x="-78" y="-58" width="26" height="12" fill="#27ae60" />
+      <path d="M-60 -46 L -22 -118 L -16 -116 L -50 -46 Z" fill="#f0a500" />
+      {/* superstructure */}
+      <path d="M10 -46 V -96 H 128 L 142 -74 V -46 Z" fill={`url(#${id}-sup)`} />
+      <path d="M30 -96 V -126 H 118 L 128 -110 V -96 Z" fill={`url(#${id}-sup)`} />
+      <path d="M46 -126 V -140 H 104 L 110 -132 V -126 Z" fill="#dfe7ee" />
+      <g fill="#14304e">
+        {[0, 1, 2, 3, 4, 5].map((i) => <rect key={i} x={40 + i * 13} y="-120" width="9" height="8" rx="1.5" />)}
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <rect key={`l${i}`} x={22 + i * 13} y="-88" width="9" height="8" rx="1.5" />)}
+      </g>
+      <g fill="#ffd27a" opacity="0.9">
+        <rect x="66" y="-120" width="9" height="8" rx="1.5" /><rect x="35" y="-88" width="9" height="8" rx="1.5" /><rect x="100" y="-88" width="9" height="8" rx="1.5" />
+      </g>
+      <path d="M74 -140 V -184 M60 -168 H 88 M66 -156 H 82" stroke="#e6edf3" strokeWidth="3" />
+      <circle cx="74" cy="-184" r="3" fill="#ffd27a" className="mh-light" />
+      <path d="M-176 -20 L -160 0" stroke="#0a1626" strokeWidth="2" />
+    </g>
+  );
+}
 
-/** Left-hand panel of the public pages (hidden on small screens, where the scene sits behind the card). */
+/** Jack-up rig silhouette with lights. */
+function Rig({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`} fill="#0b1a2e">
+      <rect x="-70" y="-150" width="6" height="190" />
+      <rect x="64" y="-150" width="6" height="190" />
+      <rect x="-4" y="-150" width="6" height="190" />
+      <rect x="-90" y="-52" width="180" height="26" />
+      <rect x="-70" y="-90" width="70" height="38" />
+      <path d="M20 -52 L 30 -160 H 42 L 52 -52 Z" />
+      <path d="M26 -110 H 46 M24 -90 H 48 M22 -70 H 50" stroke="#0b1a2e" strokeWidth="3" />
+      <path d="M60 -52 L 120 -110 L 124 -106 L 70 -52 Z" />
+      {[[-60, -84], [-40, -84], [36, -160], [-80, -50], [80, -50]].map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r="2.4" fill="#ffcf73" className="mh-light" />
+      ))}
+    </g>
+  );
+}
+
+/** Sunset sea with vessel, rig and glowing rings: the backdrop of the public pages and banners. */
+export function MarineScene({ className = "", viewBox = "0 0 1200 900", ships = true }: { className?: string; viewBox?: string; ships?: boolean }) {
+  return (
+    <svg className={`marine-scene ${className}`} viewBox={viewBox} preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="ms-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#030b1c" />
+          <stop offset="0.38" stopColor="#0a2149" />
+          <stop offset="0.56" stopColor="#1b3f73" />
+          <stop offset="0.64" stopColor="#c86b3c" />
+          <stop offset="0.68" stopColor="#f2a65a" />
+        </linearGradient>
+        <radialGradient id="ms-sun" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fff1c9" />
+          <stop offset="0.25" stopColor="#ffbe6b" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#ff8c42" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="ms-sea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2a4f7c" />
+          <stop offset="0.25" stopColor="#0f2f57" />
+          <stop offset="1" stopColor="#020a18" />
+        </linearGradient>
+        <linearGradient id="ms-glint" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffd08a" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#ffd08a" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id="ms-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#2ad8ff" stopOpacity="0.45" />
+          <stop offset="1" stopColor="#2ad8ff" stopOpacity="0" />
+        </radialGradient>
+        <pattern id="ms-grid" width="44" height="44" patternUnits="userSpaceOnUse">
+          <path d="M44 0H0V44" fill="none" stroke="#58c7ff" strokeOpacity="0.06" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect width="1200" height="900" fill="url(#ms-sky)" />
+      <g fill="#cfe3ff" opacity="0.5">
+        {[[90, 70], [210, 140], [330, 60], [470, 120], [610, 50], [760, 100], [905, 60], [1040, 130], [1150, 80], [150, 220], [560, 200], [990, 230]].map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 1.6 : 1} />
+        ))}
+      </g>
+      <circle cx="430" cy="600" r="210" fill="url(#ms-sun)" />
+      <rect y="606" width="1200" height="294" fill="url(#ms-sea)" />
+      <path d="M380 612 h 110 l 40 260 h -190 z" fill="url(#ms-glint)" opacity="0.5" />
+      <g stroke="#ffd9a0" strokeLinecap="round" opacity="0.45">
+        <path d="M395 630 h 70" strokeWidth="2" /><path d="M380 652 h 100" strokeWidth="1.5" /><path d="M402 676 h 56" strokeWidth="1.2" />
+      </g>
+      {ships && <>
+        <Rig x={640} y={606} s={0.9} />
+        <Vessel x={250} y={612} s={0.75} />
+      </>}
+      <path className="mh-wave mh-wave-a" fill="#0b2546" opacity="0.85" d="M0 720 C 150 700, 300 745, 450 720 S 750 695, 900 722 S 1150 745, 1200 725 V 900 H 0 Z" />
+      <path className="mh-wave mh-wave-b" fill="#061830" d="M0 800 C 200 778, 360 825, 600 800 S 980 778, 1200 805 V 900 H 0 Z" />
+      <rect width="1200" height="900" fill="url(#ms-grid)" />
+      <ellipse cx="850" cy="790" rx="330" ry="120" fill="url(#ms-glow)" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ public pages */
+
+const HIGHLIGHTS: [IconName, string][] = [["cube", "3D part models"], ["file", "Certifications & evidence"], ["gear", "Spare part management"]];
+
+/** Left-hand panel of the public pages (on small screens only the scene shows, behind the card). */
 export function MarineHero() {
   return (
     <aside className="marine-hero">
       <MarineScene />
+      <div className="marine-hero-stage" aria-hidden="true">
+        <div className="marine-hero-rings"><span /><span /><span /></div>
+        <MetalImpeller className="marine-hero-part" />
+      </div>
       <div className="marine-hero-copy">
         <div className="marine-hero-brand">
-          <span className="brand-mark" aria-hidden>DP</span>
-          <span>Aries · Digital Passport Platform</span>
+          <img src={ariesLogo} alt="Aries Marine & Engg. Services" />
+          <span className="marine-hero-divider" aria-hidden="true" />
+          <span>Digital Passport Platform</span>
         </div>
-        <p className="marine-hero-title">Digital passports for marine and offshore spare parts</p>
-        <p>From 3D scan to qualified additive-manufactured part: models, specifications and evidence in one place.</p>
-        <ul>
-          {HIGHLIGHTS.map(([icon, title, text]) => (
-            <li key={title}>
-              <span className="marine-hero-icon"><Icon name={icon} /></span>
-              <span><strong>{title}</strong><br />{text}</span>
-            </li>
+        <p className="marine-hero-title">Digital passports for marine &amp; offshore <span className="accent">3D spare parts</span></p>
+        <p className="marine-hero-lead">From 3D scan to qualified additive-manufactured spare parts, with models, specifications and evidence in one platform.</p>
+        <ul className="marine-hero-features">
+          {HIGHLIGHTS.map(([icon, text]) => (
+            <li key={text}><span className="marine-hero-icon"><Icon name={icon} /></span>{text}</li>
           ))}
         </ul>
       </div>
     </aside>
+  );
+}
+
+/* ------------------------------------------------------------------ in the app */
+
+const CHIPS: [IconName, string][] = [["cube", "3D spare parts"], ["shield", "Digital passports"], ["anchor", "Marine assets"]];
+
+/** Page-title banner. Dashboards: large, with tagline chips, a vessel and a wireframe propeller. Section pages: compact. */
+export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  return (
+    <div className={`marine-banner${compact ? " marine-banner-compact" : ""}`}>
+      <MarineScene viewBox={compact ? "0 470 1200 220" : "0 420 1200 300"} ships={false} />
+      <svg className="marine-banner-vessel" viewBox="-200 -200 410 214" aria-hidden="true" focusable="false"><Vessel x={0} y={0} s={1} /></svg>
+      <PropellerWireframe className="marine-banner-part" frame={!compact} />
+      <div className="marine-banner-body">
+        {children}
+        {!compact && (
+          <ul className="marine-banner-chips" aria-label="Platform">
+            {CHIPS.map(([icon, text]) => <li key={text}><Icon name={icon} />{text}</li>)}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import { api } from "../api/client";
 import { ErrorNotice, Field, Loading, label } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
 import { MarineHero } from "../components/MarineHero";
+import ariesMark from "../assets/aries-mark.png";
 
 export default function AcceptInvitationPage() {
   const { token } = useParams();
@@ -46,7 +47,7 @@ export default function AcceptInvitationPage() {
       <MarineHero />
       <div className="login-card">
         <div className="brand brand-lg">
-          <span className="brand-mark" aria-hidden>DP</span>
+          <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
           <div>
             <h1>Accept invitation</h1>
             <p className="muted">Digital Passport Platform</p>
