@@ -1695,24 +1695,8 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
   .marine-banner-hud { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(290px, 0.85fr); }
 }
 
-/* ---------- motion & sparkle: waves breathe / drift, light runs along the banner lines and around the panel borders,
-   small star points twinkle. Purely decorative; everything stops with prefers-reduced-motion. */
-.sparkles { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.sparkles-hero { inset: auto 0 0 0; height: clamp(90px, 15vh, 170px); }
-.sparkle { position: absolute; display: block; transform: translate(-50%, -50%) scale(0.2); opacity: 0;
-  background: radial-gradient(circle, #fff 0 14%, rgba(127, 236, 255, 0.9) 26%, rgba(17, 197, 232, 0.25) 46%, transparent 68%);
-  border-radius: 50%; animation: sparkle-twinkle 3.6s ease-in-out infinite; }
-.sparkle::before, .sparkle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 220%; height: 1.5px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #e9fdff 50%, transparent); transform: translate(-50%, -50%); }
-.sparkle::after { transform: translate(-50%, -50%) rotate(90deg); }
-.sparkles-light .sparkle { background: radial-gradient(circle, #fff 0 14%, rgba(17, 197, 232, 0.85) 30%, rgba(17, 197, 232, 0.2) 50%, transparent 70%); }
-.sparkles-light .sparkle::before, .sparkles-light .sparkle::after { background: linear-gradient(90deg, transparent, #11c5e8 50%, transparent); }
-@keyframes sparkle-twinkle {
-  0%, 62%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
-  76% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(45deg); }
-  88% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.6) rotate(80deg); }
-}
-
+/* ---------- motion: waves breathe / drift (the banner wave stays still), light runs around the panel borders.
+   Purely decorative; everything stops with prefers-reduced-motion. */
 /* filled waves (sign-in card, KPI tiles): the three layers drift sideways at different speeds and gently rise */
 .wave-layer { transform-box: fill-box; transform-origin: 50% 100%; animation: wave-layer-drift 7s ease-in-out infinite alternate; }
 .wave-layer-2 { animation-duration: 9s; animation-delay: -3s; }
@@ -1720,7 +1704,6 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 @keyframes wave-layer-drift { from { transform: scaleX(1.12) translateX(-4%) scaleY(0.92); } to { transform: scaleX(1.12) translateX(4%) scaleY(1.08); } }
 .kpi-wave { overflow: hidden; }
 .card-wave { overflow: hidden; }
-.signin-wave .sparkles { overflow: visible; }
 
 /* dotted waves (login hero, sidebar): slow sideways drift and a soft glow pulse */
 @keyframes wave-drift-x { from { transform: translateX(-2.5%) scale(1.05); } to { transform: translateX(2.5%) scale(1.05); } }
@@ -1731,13 +1714,7 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
   100% { transform: translateX(1.5%) translateY(-6px) scaleX(1.04); opacity: 0.8; }
 }
 
-/* banner wave: light pulses run along the thin lines */
 .marine-banner-wave { overflow: hidden; }
-.wave-flow { stroke-dasharray: 70 930; stroke-dashoffset: 1000; opacity: 0.9; animation: wave-flow 6s linear infinite;
-  filter: drop-shadow(0 0 3px rgba(127, 236, 255, 0.9)); }
-.wave-flow-2 { animation-duration: 8s; animation-delay: -2.5s; }
-.wave-flow-3 { animation-duration: 10s; animation-delay: -5s; }
-@keyframes wave-flow { to { stroke-dashoffset: 0; } }
 
 /* engineering panels (login hero and dashboard banner): bolder glowing border with a light sweeping around it */
 @property --hud-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
@@ -1763,7 +1740,7 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 @keyframes step-pulse { 0% { box-shadow: 0 0 0 0 rgba(17, 197, 232, 0.65); } 100% { box-shadow: 0 0 0 9px rgba(17, 197, 232, 0); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sparkle, .wave-layer, .sidebar-wave img, .marine-hero-wave, .wave-flow, .hud-panel, .hud-panel::after, .hud-angled, .hud-holo::before,
+  .wave-layer, .sidebar-wave img, .marine-hero-wave, .hud-panel, .hud-panel::after, .hud-angled, .hud-holo::before,
   .hud-steps li.is-current span { animation: none; }
-  .sparkle, .wave-flow, .hud-holo::before { display: none; }
+  .hud-holo::before { display: none; }
 }
