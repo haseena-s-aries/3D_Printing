@@ -1,8 +1,8 @@
 /**
  * Aries artwork for the public pages, page banners, sidebar and KPI tiles, built from the supplied images (metal 3D
- * printer building an impeller, impeller CAD drawing, layered wireframe model) and the supplied wave SVGs (login bottom,
- * sidebar bottom, login card header), placed as single overlays (never tiled). Also the KPI tile wave (inline SVG) and
- * the angled engineering panels. All decorative (aria-hidden / empty alt); the text is real text; the slow wave motion
+ * printer building an impeller, impeller CAD drawing, layered wireframe model) and the dotted-mesh wave SVGs (login hero,
+ * sidebar foot, dashboard banner), each placed once as a decorative layer (never tiled). Also the filled layered waves of
+ * the sign-in card and KPI tiles (inline SVG) and the angled engineering panels. All decorative (aria-hidden / empty alt); the text is real text; the slow wave motion
  * stops with prefers-reduced-motion. Presentation only: no functional logic lives here.
  */
 import type { ReactNode } from "react";
@@ -10,24 +10,30 @@ import type { ReactNode } from "react";
 import ariesLogo from "../assets/aries-logo.png";
 import hudDimensions from "../assets/hud-dimensions.jpg";
 import hudLayers from "../assets/hud-layers.jpg";
-import cardWave from "../assets/login_card_header_wave.svg";
-import loginWave from "../assets/login_bottom_dotted_wave.svg";
+import bannerWave from "../assets/banner_mesh_wave.svg";
+import heroWave from "../assets/hero_mesh_wave.svg";
 import printImpeller from "../assets/print-impeller.jpg";
-import sidebarWave from "../assets/sidebar_bottom_dotted_wave.svg";
+import sidebarWave from "../assets/sidebar_mesh_wave.svg";
 import { Icon, type IconName } from "./icons";
 
 export { ariesLogo };
 
 /* ------------------------------------------------------------------ waves */
 
-/** Dotted wave at the foot of the sidebar (supplied asset). */
+/** Dotted mesh wave in the lower part of the sidebar: rises on the left and flows down to the right, fades upwards. */
 export function SidebarWave() {
   return <img className="sidebar-wave" src={sidebarWave} alt="" aria-hidden="true" />;
 }
 
-/** Soft layered light-blue wave between the sign-in card heading and the email field (supplied asset). */
+/** Soft layered wave between the sign-in card heading and the email field: three overlapping filled shapes. */
 export function CardWave({ className = "" }: { className?: string }) {
-  return <img className={`card-wave ${className}`} src={cardWave} alt="" aria-hidden="true" />;
+  return (
+    <svg className={`card-wave ${className}`} viewBox="0 0 520 44" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path d="M0 20 C 90 6, 170 30, 270 20 S 430 4, 520 14 V 44 H 0 Z" fill="#e3f6fc" />
+      <path d="M0 27 C 110 14, 200 38, 300 27 S 450 14, 520 22 V 44 H 0 Z" fill="#cdeef9" fillOpacity="0.75" />
+      <path d="M0 34 C 120 25, 230 44, 330 34 S 460 25, 520 30 V 44 H 0 Z" fill="#b5e3f6" fillOpacity="0.5" />
+    </svg>
+  );
 }
 
 /** The same light-cyan wave along the bottom of every KPI tile (scales with the tile width). */
@@ -113,7 +119,7 @@ const HERO_FEATURES: [IconName, string][] = [["cube", "3D Printing"], ["gear", "
 export function MarineHero() {
   return (
     <aside className="marine-hero">
-      <img className="marine-hero-wave" src={loginWave} alt="" aria-hidden="true" />
+      <img className="marine-hero-wave" src={heroWave} alt="" aria-hidden="true" />
       <div className="marine-hero-copy">
         <img className="marine-hero-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
         <p className="marine-hero-eyebrow">Aries Digital Passport Platform</p>
@@ -151,6 +157,7 @@ export function MarineBanner({ children, compact = false }: { children: ReactNod
       </div>
       <div className="marine-banner-photo" aria-hidden="true"><img src={printImpeller} alt="" /></div>
       {!compact && <div className="marine-banner-overlay"><PrintHud /></div>}
+      <img className="marine-banner-wave" src={bannerWave} alt="" aria-hidden="true" />
     </div>
   );
 }
