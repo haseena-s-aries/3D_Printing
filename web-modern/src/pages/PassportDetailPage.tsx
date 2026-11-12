@@ -1,7 +1,8 @@
 /**
  * Digital passport workspace (W1). Sections follow PSEC-001: product information with readiness levels,
  * interactive 3D model, documents (drawings, specifications, inspection, certificates), revision history and
- * manufacturing history. Approval, publication and manufacturing release stay gated (OQ-35, OQ-36).
+ * manufacturing history. Revisions are submitted for approval and approved or sent back (never by the submitter);
+ * publication and manufacturing release stay gated (OQ-36).
  */
 import type { EngineeringFile, Paginated, Part, Passport, Revision } from "@passport/api-types";
 import { Suspense, lazy, useState, type FormEvent } from "react";
@@ -108,8 +109,11 @@ function ModelTab({ files, selected, onSelect, revisionLabel }: { files: Enginee
 
 export default function PassportDetailPage() {
   const { id } = useParams();
-  const { can } = useAuth();
+  const { can, session } = useAuth();
   const oq = useDecision();
+  const [returning, setReturning] = useState(false);
+  const [returnNote, setReturnNote] = useState("");
+  const [deciding, setDeciding] = useState(false);
   const [params, setParams] = useSearchParams();
   const requestedTab = TABS.some(([t]) => t === params.get("tab")) ? (params.get("tab") as Tab) : null;
   const [level, setLevel] = useState<"rl1" | "rl2" | "rl3">("rl1");
@@ -128,6 +132,21 @@ export default function PassportDetailPage() {
     if (r && passport.data) passport.setData({ ...passport.data, current_revision: r });
     void revisions.reload();
   };
+  async function decide(path: "submit" | "approve" | "return", body: Record<string, string> = {}) {
+    if (!passport.data?.current_revision) return;
+    setError(null);
+    setDeciding(true);
+    try {
+      await api(`/passports/${id}/revisions/${passport.data.current_revision.revision_number}/${path}/`, { body });
+      setReturning(false);
+      setReturnNote("");
+      await Promise.all([passport.reload(), revisions.reload()]);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setDeciding(false);
+    }
+  }
   async function newRevision() {
     setError(null);
     try {
@@ -142,8 +161,9 @@ export default function PassportDetailPage() {
   if (passport.error || !passport.data) return <ErrorNotice error={passport.error ?? new Error("Not found")} />;
   const p = passport.data;
   const current = p.current_revision;
-  const pub = p.policy?.publication;
   const editable = !!current?.editable && can("passports.edit_draft");
+  const ownSubmission = !!current?.submitted_by_email && current.submitted_by_email === session?.user.email;
+  const canDecide = current?.status === "submitted" && can("passports.approve") && !ownSubmission;
   // Editors land on the data forms; everyone else on the read-only overview
   const tab: Tab = requestedTab ?? (editable ? "readiness" : "overview");
   const allFiles = files.data?.results ?? [];
@@ -166,9 +186,19 @@ export default function PassportDetailPage() {
           </div>
           <div className="hero-actions">
             {can("edits.request") && current && <button className="btn" onClick={() => setRequesting(true)}>Request edit</button>}
-            {can("passports.edit_draft") && current && !current.editable && <button className="btn" onClick={newRevision}>Start new revision</button>}
-            {can("passports.edit_draft") && <DisabledAction label="Submit for approval" reason={pub?.reason ?? `Approval rules not yet decided${oq("OQ-35")}.`} compact />}
-            <DisabledAction label="Approve" reason={`Approval is not available yet${oq("OQ-35")}.`} compact />
+            {can("passports.edit_draft") && current && current.status === "approved" && <button className="btn" onClick={newRevision}>Start new revision</button>}
+            {can("passports.edit_draft") && current?.status === "draft" && (
+              <button className="btn btn-primary" disabled={deciding} onClick={() => void decide("submit")}>Submit for approval</button>
+            )}
+            {canDecide && (
+              <>
+                <button className="btn btn-primary" disabled={deciding} onClick={() => void decide("approve")}>Approve</button>
+                <button className="btn" disabled={deciding} onClick={() => setReturning(true)}>Send back</button>
+              </>
+            )}
+            {current?.status === "submitted" && !canDecide && (
+              <DisabledAction label="Approve" reason={ownSubmission ? "You submitted this revision; another approver decides it." : "Waiting for an Aries Admin, Manager or project engineer to approve."} compact />
+            )}
           </div>
         </div>
         <div className="hero-summary">
@@ -190,11 +220,27 @@ export default function PassportDetailPage() {
             </ul>
           </div>
         </div>
-        <p className="hero-gate" role="note">
-          <Icon name="lock" size="sm" />
-          Submission, approval, publication and manufacturing release are not available yet{oq(`${pub?.decision ?? "OQ-35"}; manufacturing OQ-36`)}.
-          {editable ? " Drafts can be prepared now." : ""}
-        </p>
+        {current?.status === "submitted" && (
+          <p className="hero-gate" role="status"><Icon name="clock" size="sm" />
+            Rev {current.revision_number} is waiting for approval{current.submitted_by_email ? ` (submitted by ${current.submitted_by_email})` : ""}.</p>
+        )}
+        {current?.status === "approved" && (
+          <p className="hero-gate" role="status"><Icon name="check" size="sm" />
+            Rev {current.revision_number} approved{current.approved_by_email ? ` by ${current.approved_by_email}` : ""}. Manufacturing release stays separate{oq("OQ-36")}.</p>
+        )}
+        {current?.status === "draft" && current.review_note && (
+          <p className="hero-gate hero-gate-warn" role="status"><Icon name="alert" size="sm" />Sent back for changes: {current.review_note}</p>
+        )}
+        {returning && (
+          <form className="return-form" onSubmit={(e) => { e.preventDefault(); void decide("return", { note: returnNote }); }} aria-label="Send back for changes">
+            <label className="field"><span>What should the author change?</span>
+              <textarea rows={3} maxLength={500} required value={returnNote} onChange={(e) => setReturnNote(e.target.value)} /></label>
+            <div className="toolbar">
+              <button className="btn btn-primary" disabled={deciding || !returnNote.trim()}>Send back</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setReturning(false)}>Cancel</button>
+            </div>
+          </form>
+        )}
       </header>
       <ErrorNotice error={error} />
       {requesting && <EditRequestDialog partId={p.part} passportId={p.id} title={`${p.passport_number} rev ${current?.revision_number}`} onClose={() => setRequesting(false)} />}

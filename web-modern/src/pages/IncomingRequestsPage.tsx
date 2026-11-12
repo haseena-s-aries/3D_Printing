@@ -17,7 +17,9 @@ export default function IncomingRequestsPage() {
   const status = params.get("status") ?? "";
   const openOnly = params.get("all") !== "true";
   const clientId = params.get("client") ?? "";
-  const list = useApi<IntakeEnvelope[]>("/operator/requests/", { query: { kind, status, client_tenant: clientId, open: openOnly && !status ? "true" : "" } });
+  const awaiting = params.get("awaiting") === "true";
+  const list = useApi<IntakeEnvelope[]>("/operator/requests/", { query: { kind, status, client_tenant: clientId, open: openOnly && !status ? "true" : "",
+    awaiting: awaiting ? "true" : "" } });
 
   useEffect(() => {
     const t = window.setInterval(() => void list.reload(), 15000);
@@ -30,6 +32,7 @@ export default function IncomingRequestsPage() {
   const c = useListControls(rows, {
     text: (r) => `${r.intake_number} ${r.reference} ${r.client_name} ${r.part_number ?? ""} ${r.part_name ?? ""}`,
     filters: [["all", "All shown", () => true], ["submitted", "Needs acknowledgement", (r) => r.status === "submitted"],
+      ["awaiting", "Client message awaiting reply", (r) => !!r.awaiting_reply && r.status !== "submitted"],
       ["working", "In progress", (r) => r.status !== "submitted" && !["closed", "declined", "withdrawn", "completed"].includes(r.status)],
       ["urgent", "Urgent", (r) => r.priority === "urgent"]],
     sorts: [["newest", "Newest first", (a, b) => b.submitted_at.localeCompare(a.submitted_at)],
@@ -55,6 +58,7 @@ export default function IncomingRequestsPage() {
           </select>
           <label className="inline-check"><input type="checkbox" checked={!openOnly} onChange={(e) => set("all", e.target.checked ? "true" : "")} /> Include closed</label>
           {clientId && <button type="button" className="btn btn-ghost" onClick={() => set("client", "")}>Show all clients</button>}
+          {awaiting && <button type="button" className="btn btn-ghost" onClick={() => set("awaiting", "")}>Show all requests</button>}
           <button type="button" className="btn btn-ghost" onClick={() => void list.reload()}>Refresh</button>
         </div>
         <ErrorNotice error={list.error} />
@@ -75,7 +79,7 @@ export default function IncomingRequestsPage() {
                   <td className="num">{r.quantity ?? "—"}</td>
                   <td className="small">{r.required_date ?? "—"}</td>
                   <td>{r.priority === "urgent" ? <Badge tone="danger">Urgent</Badge> : <span className="muted small">Routine</span>}</td>
-                  <td><StatusBadge status={r.status} /></td>
+                  <td><StatusBadge status={r.status} />{r.awaiting_reply && r.status !== "submitted" && <> <Badge tone="warning">New client message</Badge></>}</td>
                   <td className="small">{formatDate(r.submitted_at)}</td>
                 </tr>
               ))}

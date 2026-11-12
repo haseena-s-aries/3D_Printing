@@ -38,8 +38,10 @@ CAPABILITIES: dict[str, set] = {
     # Aries Engineers review submissions of their assigned clients/projects (request details, accept, decline).
     "parts.review": {R.OPERATOR_ENGINEER},
     "passports.view": ALL_ROLES,
-    # OQ-05: operator creates passport drafts; client approves (approval rules pending OQ-35).
+    # OQ-05: operator creates passport drafts. Approval (decision of 12 Nov 2026, apps.passports.approval): an Aries Admin or
+    # Aries Manager, or an Aries Engineer with access to the passport's project; never the person who submitted it.
     "passports.edit_draft": {R.OPERATOR_ENGINEER},
+    "passports.approve": {R.OPERATOR_ADMIN, R.OPERATOR_MANAGER, R.OPERATOR_ENGINEER},
     # D-13: detailed engineering notes (conflict register) of a revision. Other roles only see that a review is pending.
     "passports.view_engineering_notes": {R.OPERATOR_ADMIN, R.OPERATOR_ENGINEER, R.OPERATOR_QA, R.CLIENT_ADMIN,
                                          R.CLIENT_ENGINEER, R.AUDITOR},
@@ -167,7 +169,7 @@ CONTRACT_REVIEW_GRANTS = {"contracts.thumbnail_view", "contracts.thumbnail_verif
 ENGINEERING_AUTHORING = {"projects.manage", "parts.manage", "parts.review", "passports.edit_draft", "files.upload", "files.origin_claim",
                          "reports.generate_internal", "reports.generate_client", "edits.request", "jobsheets.prepare", "inventory.import",
                          "intelligence.view", "intelligence.assess", "intelligence.classify", "intelligence.review", "ai.share",
-                         "reports.withdraw"}
+                         "reports.withdraw", "passports.approve"}
 # Client User feature permissions (part submissions and edit requests stay with part_submission_allowed).
 TECHNICAL_GRANTS = {"files.upload_supporting", "passports.view_engineering_notes", "requests.create", "ai.request", "ai.reports"}
 PROCUREMENT_GRANTS = {"requests.create", "ai.prices", "ai.reports"}

@@ -555,7 +555,13 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
             return Membership.objects.none()
         from . import admin_workspace
 
-        return admin_workspace.without_workspaces(Membership.objects.filter(tenant=self.request.tenant).select_related("user", "tenant"))
+        qs = admin_workspace.without_workspaces(Membership.objects.filter(tenant=self.request.tenant).select_related("user", "tenant"))
+        actor = getattr(self.request, "membership", None)
+        if actor is not None and actor.role == Role.OPERATOR_MANAGER:
+            # Aries Admin accounts are not listed for an Aries Manager (only an Admin manages another Admin)
+            admins = Membership.objects.filter(role=Role.OPERATOR_ADMIN, is_active=True).values_list("user_id", flat=True)
+            qs = qs.exclude(user_id__in=admins)
+        return qs
 
     def get_serializer_context(self):
         return {**super().get_serializer_context(), "actor": getattr(self.request, "membership", None)}

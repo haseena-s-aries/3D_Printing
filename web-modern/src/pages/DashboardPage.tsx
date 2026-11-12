@@ -265,6 +265,12 @@ function OperatorHome() {
   const queue = useApi<IntakeEnvelope[]>(can("requests.handle") ? "/operator/requests/" : null, { query: { open: "true" } });
   const open = queue.data ?? [];
   const waiting = open.filter((r) => r.status === "submitted").length;
+  // the client spoke last (a message or requested information) and Aries has not answered yet
+  const messages = open.filter((r) => r.awaiting_reply && r.status !== "submitted")
+    .sort((a, b) => (b.last_client_activity_at ?? "").localeCompare(a.last_client_activity_at ?? ""));
+  const platformAdmin = session?.membership.role === "operator_admin" || session?.membership.role === "operator_manager";
+  const approvals = useApi<{ client_id: string; client_name: string; passport_id: string; passport_number: string; title: string; revision_number: number;
+    submitted_by_email: string; submitted_at: string }[]>(platformAdmin && can("passports.approve") ? "/operator/passport-approvals/" : null);
   const rows = overview.data ?? [];
   const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
   // 70+ organisations, most of them test registrations with no activity: open on the active ones, everything one click away
@@ -293,7 +299,37 @@ function OperatorHome() {
         {admin && <Stat label="Digital passports across clients" value={overview.data ? sum("passports") : "…"} icon="passport" />}
         <Stat label="Open requests" value={queue.data ? open.length : "…"} to="/incoming" icon="message" />
         <Stat label="Awaiting acknowledgement" value={queue.data ? waiting : "…"} to="/incoming?status=submitted" icon="clock" />
+        {can("requests.handle") && <Stat label="Client messages awaiting reply" value={queue.data ? messages.length : "…"} to="/incoming?awaiting=true" icon="message" />}
+        {platformAdmin && can("passports.approve") && (
+          <Stat label="Passports awaiting approval" value={approvals.data ? approvals.data.length : "…"} to="/passport-approvals" icon="passport" />
+        )}
       </div>
+      {messages.length > 0 && (
+        <Card title="Client messages awaiting your reply">
+          <ul className="list" aria-label="Client messages awaiting reply">
+            {messages.slice(0, 6).map((r) => (
+              <li key={r.id} className="row-between">
+                <span><Link to={`/incoming/${r.id}`}><strong>{r.intake_number || r.reference}</strong></Link>{" "}
+                  <span className="muted small">{r.client_name} · {r.last_client_activity === "information_provided" ? "sent the requested information" : "sent a message"} · {formatDate(r.last_client_activity_at)}</span></span>
+                <Link className="btn btn-small btn-primary" to={`/incoming/${r.id}`}>Reply</Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {(approvals.data?.length ?? 0) > 0 && (
+        <Card title="Passports awaiting approval">
+          <ul className="list" aria-label="Passports awaiting approval">
+            {approvals.data!.slice(0, 6).map((r) => (
+              <li key={`${r.client_id}-${r.passport_id}`} className="row-between">
+                <span><strong>{r.passport_number}</strong> rev {r.revision_number} · {r.title}{" "}
+                  <span className="muted small">{r.client_name} · {r.submitted_by_email} · {formatDate(r.submitted_at)}</span></span>
+                <Link className="btn btn-small btn-primary" to="/passport-approvals">Review</Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {can("registrations.review") && (pendingRegs.data?.count ?? 0) > 0 && (
         <Card title="Pending company registrations">
           <ul className="list" aria-label="Pending registrations">

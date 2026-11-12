@@ -195,6 +195,11 @@ class RequestEnvelope(TenantOwnedModel):
     # D-05: the project and responsible engineer, so the intake list applies the same project rule as opening the request
     project_ref = models.UUIDField(null=True, blank=True)
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    # The client spoke last (new request, message or requested information) and Aries has not answered yet. Only the kind
+    # and time of that activity are copied here, never its text (the envelope holds no remarks).
+    awaiting_reply = models.BooleanField(default=False)
+    last_client_activity = models.CharField(max_length=30, blank=True)
+    last_client_activity_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-submitted_at"]

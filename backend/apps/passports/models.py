@@ -76,6 +76,8 @@ class PassportRevision(TenantOwnedModel):
     submitted_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     approved_at = models.DateTimeField(null=True, blank=True)
+    # Why an approver sent the revision back to draft (apps.passports.approval); cleared when it is submitted again.
+    review_note = models.CharField(max_length=500, blank=True)
 
     class Meta:
         ordering = ["passport", "-revision_number"]

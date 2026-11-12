@@ -180,9 +180,10 @@ def test_review_corrections_accept_and_gates_stay_closed(on, source):
     assert passport["evidence_level"] == "none"
     rev = eng.get(f"/api/v1/passports/{passport['id']}/revisions/1/").json()
     assert rev["content"] == {}  # the source passport is not copied
-    for action in ("submit", "approve"):
-        r = eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/{action}/", {}, format="json")
-        assert r.status_code in (403, 404, 409), (action, r.status_code)
+    # submitting asks for approval; the submitter can never approve it (separation of duties, decision of 12 Nov 2026)
+    assert eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/submit/", {}, format="json").status_code == 200
+    r = eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/approve/", {}, format="json")
+    assert r.status_code == 403 and r.json()["error"]["code"] == "separation_of_duties"
     # client cannot modify the accepted clone or review it
     assert client.patch(f"/api/v1/parts/{c['id']}/", {"name": "x"}, format="json").status_code == 403
     assert client.post(f"/api/v1/parts/{c['id']}/review/", {"decision": "accept"}, format="json").status_code == 403

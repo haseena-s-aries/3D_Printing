@@ -53,6 +53,7 @@ EVENT_TITLES = {
     "declined": "{ref} declined",
     "withdrawn": "{ref} withdrawn by the client",
     "client_message": "{ref}: new message from the client",
+    "operator_message": "{ref}: new message from Aries",
     "project_created": "{ref}: project and draft part created",
     "handed_over": "{ref}: scanning work handed over to the digital passport",
 }
@@ -193,7 +194,25 @@ def client_message(request, obj: ClientRequest, message: str) -> ClientRequest:
                                 from_status=obj.status, to_status=obj.status, message=message.strip(), author=request.user,
                                 author_side=RequestEvent.Side.CLIENT)
     record(request, "request.client_message", obj=obj, data={"reference": obj.reference})
+    sync_envelope(obj)  # marks the request as waiting for an Aries reply in the intake queue and on the dashboard
     notify_operators(obj, "client_message", body=message.strip()[:300])
+    return obj
+
+
+def operator_message(request, obj: ClientRequest, message: str) -> ClientRequest:
+    """A message from Aries to the client without changing the status (any kind of request, once acknowledged)."""
+    if obj.status not in OPEN:
+        raise DomainError("request_closed", "This request is closed.", http_status=409)
+    if obj.status == S.SUBMITTED:
+        raise DomainError("transition_not_allowed", "Acknowledge the request before sending a message.", http_status=409)
+    if not message.strip():
+        raise DomainError("message_required", "Please enter a message for the client.", http_status=400)
+    RequestEvent.objects.create(tenant=obj.tenant, created_by=request.user, request=obj, event="operator_message",
+                                from_status=obj.status, to_status=obj.status, message=message.strip(), author=request.user,
+                                author_side=RequestEvent.Side.OPERATOR)
+    record(request, "request.operator_message", obj=obj, tenant=obj.tenant, data={"reference": obj.reference})
+    sync_envelope(obj)  # Aries has answered: no longer waiting for a reply
+    notify_client(obj, "operator_message", body=message.strip()[:300])
     return obj
 
 
@@ -210,8 +229,12 @@ def sync_envelope(obj: ClientRequest) -> None:
     """Write the minimal operator-tenant summary (inside the operator's tenant context)."""
     op = operator_tenant()
     client_name = Tenant.objects.filter(pk=obj.tenant_id).values_list("name", flat=True).first() or ""
+    last = RequestEvent.objects.filter(request=obj).order_by("-created_at").first()
+    client_spoke = last is not None and last.author_side == RequestEvent.Side.CLIENT
     with tenant_context(op):
         env, _ = RequestEnvelope.objects.update_or_create(request_id=obj.pk, defaults=dict(
+            awaiting_reply=client_spoke and obj.status in OPEN, last_client_activity=last.event[:30] if client_spoke else "",
+            last_client_activity_at=last.created_at if client_spoke else None,
             tenant=op, client_tenant_id=obj.tenant_id, client_name=client_name, reference=obj.reference, kind=obj.kind,
             status=obj.status, priority=obj.priority, part_number=obj.part_number or "", part_name=(obj.part_name or obj.part_description)[:200],
             quantity=obj.quantity, required_date=obj.required_date or obj.preferred_date, submitted_at=obj.created_at,

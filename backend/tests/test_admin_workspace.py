@@ -108,7 +108,7 @@ def test_independent_sign_off_and_release_gates_hold(aw):
     a = admin_in(w, w["a"])
     pp = a.post("/api/v1/passports/", {"part": aw["part"]["id"]}, format="json").json()
     r = a.post(f"/api/v1/passports/{pp['id']}/revisions/1/approve/", {}, format="json")
-    assert r.status_code in (403, 409)  # passport approval stays closed (OQ-35)
+    assert r.status_code in (403, 409)  # a draft is never approved directly (submit first; never by the submitter)
     assert a.post(f"/api/v1/parts/{aw['part']['id']}/feasibility/00000000-0000-0000-0000-000000000000/reviews/", {}, format="json").status_code == 403
     assert a.post(f"/api/v1/parts/{aw['part']['id']}/intelligence/classification/", {"category": "mechanical"}, format="json").status_code == 403
     assert a.post(f"/api/v1/edit-requests/00000000-0000-0000-0000-000000000000/approve/", {"note": "x"}, format="json").status_code in (403, 404)

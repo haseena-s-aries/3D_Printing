@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.tenancy.models import Membership
 
-from .conftest import PASSWORD, login
+from .conftest import PASSWORD, login, make_user
 
 LATER = (date.today() + timedelta(days=10)).isoformat()
 
@@ -42,14 +42,18 @@ def test_engineer_sees_only_assigned_clients_in_the_queue(world, requests_ab):
     assert {r["client_name"] for r in login(world["op_eng"], world["operator"]).get("/api/v1/operator/requests/").json()} == {"Client A Energy"}
 
 
-def test_administrator_sees_all_summaries_but_opens_only_assigned(world, requests_ab):
+def test_administrator_sees_opens_and_answers_every_clients_requests(world, requests_ab):
+    """Decision of 12 Nov 2026: Aries Admins and Managers answer client requests without being assigned to the client."""
     admin = login(world["op_admin"])
     rows = admin.get("/api/v1/operator/requests/").json()
     assert {r["client_name"] for r in rows} == {"Client A Energy", "Client B Marine"}
-    assert not any(r["assigned"] for r in rows)
+    assert all(r["assigned"] for r in rows)
     for r in rows:
-        assert admin.get(f"/api/v1/operator/requests/{r['id']}/").json()["error"]["code"] == "not_assigned"
-        assert admin.post(f"/api/v1/operator/requests/{r['id']}/act/", {"action": "acknowledge"}, format="json").status_code == 403
+        assert admin.get(f"/api/v1/operator/requests/{r['id']}/").status_code == 200
+        assert admin.post(f"/api/v1/operator/requests/{r['id']}/act/", {"action": "acknowledge"}, format="json").status_code == 200
+    # an unassigned engineer still cannot open them
+    other = make_user("other.eng@example.test", world["operator"], "operator_engineer")
+    assert login(other).get(f"/api/v1/operator/requests/{rows[0]['id']}/").json()["error"]["code"] == "not_assigned"
 
 
 def test_clients_never_reach_the_operator_queue_or_overview(world, requests_ab):
