@@ -175,9 +175,6 @@ WORKER_DB_ROLE = env("WORKER_DB_ROLE", "")
 
 # Invitations (apps.tenancy.invitations). The web address is used to build the emailed acceptance link.
 WEB_BASE_URL = env("WEB_BASE_URL", "http://127.0.0.1:5173")
-# Address browsers use to reach the API, for absolute links the API returns (file download and preview links), e.g.
-# http://139.5.189.155:8031 when IIS on :8031 forwards /api/ to the backend on :8030. Empty: taken from each request.
-PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", "")
 INVITATION_DAYS = int(env("INVITATION_DAYS", "7"))
 # Development aid only: return the acceptance link to the inviting admin. Must be off wherever real email is
 # configured, otherwise the inviter could act as the invitee. Never on without DEBUG, whatever the variable says

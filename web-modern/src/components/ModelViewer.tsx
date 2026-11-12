@@ -6,7 +6,7 @@ import type { FileVersion } from "@passport/api-types";
 import { VIEW_NAMES, createViewer, type Viewer, type ViewerStats, type ViewName } from "@passport/viewer3d";
 import { useEffect, useRef, useState } from "react";
 
-import { api, sameOriginUrl } from "../api/client";
+import { api } from "../api/client";
 import { Icon } from "./icons";
 import { ErrorNotice, Notice } from "./ui";
 import { viewerState } from "./viewerState";
@@ -38,7 +38,7 @@ export default function ModelViewer({ fileId, version, revisionLabel }: { fileId
     const v = createViewer(host.current, { background, onError: (kind) => !cancelled && setViewError(LOAD_MESSAGES[kind]) });
     viewer.current = v;
     api<{ url: string }>(`/files/${fileId}/versions/${version.version_number}/download-link/`, { body: { variant: "glb" } })
-      .then((link) => v.load(sameOriginUrl(link.url)))
+      .then((link) => v.load(link.url))
       .then((s) => !cancelled && setStats(s))
       .catch((e: unknown) => {
         if (!cancelled && !(e as { kind?: string }).kind) setError(e);

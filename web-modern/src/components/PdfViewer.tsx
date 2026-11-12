@@ -7,7 +7,7 @@ import { GlobalWorkerOptions, getDocument, type PDFDocumentLoadingTask, type PDF
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { api, sameOriginUrl } from "../api/client";
+import { api } from "../api/client";
 import { ZOOM_STEP, clampPage } from "./pdfUtils";
 import { ErrorNotice } from "./ui";
 
@@ -34,7 +34,7 @@ export default function PdfViewer({ fileId, version, title }: { fileId: string; 
     api<{ url: string }>(`/files/${fileId}/versions/${version}/download-link/`, { body: { variant: "preview" } })
       .then((link) => {
         // The API streams files without HTTP range support; Azure Blob Storage would allow range loading later.
-        loading = getDocument({ url: sameOriginUrl(link.url), disableRange: true, disableStream: true });
+        loading = getDocument({ url: link.url, disableRange: true, disableStream: true });
         return loading.promise;
       })
       .then((d) => {

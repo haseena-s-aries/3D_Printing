@@ -10,20 +10,6 @@ import type { ApiErrorBody, Session, TokenResponse } from "@passport/api-types";
 const BASE = "/api/v1";
 const REFRESH_KEY = "passport.refresh";
 
-/**
- * A download link from the API, opened on the address the web app itself was loaded from. Behind a reverse proxy
- * (IIS on :8031 -> backend on :8030) the backend may build links with its own internal host or port, which the
- * browser cannot reach; the path and token are what matter, so only API paths are re-based and other URLs are kept.
- */
-export function sameOriginUrl(url: string): string {
-  try {
-    const u = new URL(url, window.location.origin);
-    return u.pathname.startsWith("/api/") ? `${window.location.origin}${u.pathname}${u.search}` : url;
-  } catch {
-    return url;
-  }
-}
-
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public details: Record<string, unknown> = {}, public requestId = "") {
     super(message);

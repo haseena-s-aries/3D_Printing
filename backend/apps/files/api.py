@@ -5,6 +5,7 @@ The link is re-validated on use: membership still active, object still present i
 Watermarking (BR-027) is not implemented yet: its policy and feasibility are open (OQ-33).
 """
 from datetime import timedelta
+from urllib.parse import quote
 
 from django.conf import settings
 from django.http import FileResponse, HttpResponseRedirect
@@ -339,11 +340,9 @@ class EngineeringFileViewSet(TenantModelViewSet):
         seconds = settings.DOWNLOAD_LINK_SECONDS
         token = make_link_token(request, storage_key=key, filename=filename, variant=variant, object_id=str(object_id))
         record(request, "file.download_link_issued", obj=fv, data={"variant": variant, "expires_in": seconds})
-        path = f"/api/v1/downloads/{token}/"
-        # Behind a reverse proxy the request may carry the backend's internal host or port (e.g. IIS on :8031 forwarding
-        # to :8030); PUBLIC_BASE_URL, when set, is the address browsers use, so links never point at the internal port.
-        base = (getattr(settings, "PUBLIC_BASE_URL", "") or "").rstrip("/")
-        url = f"{base}{path}" if base else request.build_absolute_uri(path)
+        # Public links must use the frontend/IIS origin. The API is also reachable on the
+        # internal backend port, but that port is not the browser-facing application URL.
+        url = f"{settings.WEB_BASE_URL.rstrip('/')}/api/v1/downloads/{quote(token, safe='')}/"
         return Response({"url": url, "expires_at": timezone.now() + timedelta(seconds=seconds), "filename": filename})
 
 

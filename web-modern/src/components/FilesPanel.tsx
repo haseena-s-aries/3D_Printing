@@ -2,7 +2,7 @@ import type { EngineeringFile, FileVersion, Paginated } from "@passport/api-type
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
-import { api, sameOriginUrl, upload, type ApiError } from "../api/client";
+import { api, upload, type ApiError } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { Badge, Card, Empty, ErrorNotice, Field, formatBytes, formatDate } from "./ui";
@@ -68,7 +68,7 @@ export function useConversionPolling(files: EngineeringFile[], reload: () => unk
 
 export async function openDownload(file: Pick<EngineeringFile, "id">, version: number, variant: "original" | "glb") {
   const link = await api<{ url: string }>(`/files/${file.id}/versions/${version}/download-link/`, { body: { variant } });
-  window.location.assign(sameOriginUrl(link.url));
+  window.location.assign(link.url);
 }
 
 export function UploadForm({ partId, passportId, onUploaded, defaultCategory = "drawing", supportingOnly = false }: {

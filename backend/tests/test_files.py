@@ -113,23 +113,6 @@ def download(client_obj, file_id, variant="original", version=1):
     return client_obj.post(f"/api/v1/files/{file_id}/versions/{version}/download-link/", {"variant": variant}, format="json")
 
 
-def test_download_link_uses_public_base_url_behind_a_proxy(world, setup, client, settings):
-    """IIS on :8031 forwards /api/ to the backend on :8030 with the backend's host: links must use the public address."""
-    c, part = setup
-    f = upload(c, part["id"], "spec.pdf", PDF_BYTES).json()
-    a_admin = login(world["a_admin"])
-    proxied = {"HTTP_HOST": "139.5.189.155:8030"}
-    settings.ALLOWED_HOSTS = [*settings.ALLOWED_HOSTS, "139.5.189.155"]
-    assert a_admin.post(f"/api/v1/files/{f['id']}/versions/1/download-link/", {"variant": "original"}, format="json",
-                        **proxied).json()["url"].startswith("http://139.5.189.155:8030/api/v1/downloads/")  # unset: request host
-    settings.PUBLIC_BASE_URL = "http://139.5.189.155:8031/"
-    url = a_admin.post(f"/api/v1/files/{f['id']}/versions/1/download-link/", {"variant": "original"}, format="json",
-                       **proxied).json()["url"]
-    assert url.startswith("http://139.5.189.155:8031/api/v1/downloads/"), url
-    r = client.get(url.replace("http://139.5.189.155:8031", ""))  # the same token still works
-    assert r.status_code == 200 and b"".join(r.streaming_content) == PDF_BYTES
-
-
 def test_authorised_download_of_original(world, setup, client):
     c, part = setup
     f = upload(c, part["id"], "spec.pdf", PDF_BYTES).json()
