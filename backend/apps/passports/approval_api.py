@@ -58,6 +58,16 @@ ROW = inline_serializer("PassportApprovalRow", {
     many=True)
 
 
+def _evidence_files(revision: PassportRevision) -> dict:
+    """R-L3 evidence references (file ids) with their titles, so the approver sees document names instead of ids.
+    Metadata only: file content stays behind the usual download rules."""
+    from apps.files.models import EngineeringFile
+
+    ids = [v for v in ((revision.content or {}).get("rl3") or {}).get("evidence", {}).values() if v]
+    return {str(f.pk): {"title": f.title, "category": f.get_category_display(), "kind": f.kind}
+            for f in EngineeringFile.objects.filter(pk__in=ids)}
+
+
 class PassportApprovalQueueView(APIView):
     permission_classes = [HasCapability]
     capabilities = {"get": "passports.approve"}
@@ -86,7 +96,8 @@ class PassportApprovalDetailView(APIView):
         with tenant_context(t):
             passport, revision = _submitted(passport_id)
             data = {**_row(t, passport, revision), "passport_state": passport.publication_state,
-                    "revision": RevisionSerializer(revision, context={"request": request, "approver": True}).data}
+                    "revision": RevisionSerializer(revision, context={"request": request, "approver": True}).data,
+                    "evidence_files": _evidence_files(revision)}
             record(request, "passport.approval_viewed", obj=revision, tenant=t, data={"passport": passport.passport_number})
         return Response(data)
 
