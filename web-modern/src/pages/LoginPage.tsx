@@ -7,7 +7,7 @@ import { ThemeSwitch } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
 import { Icon } from "../components/icons";
-import { MarineHero, ariesLogo } from "../components/MarineHero";
+import { CardWave, MarineHero, ariesLogo } from "../components/MarineHero";
 import ariesMark from "../assets/aries-mark.png";
 
 interface TenantChoice {
@@ -91,6 +91,7 @@ export default function LoginPage() {
           <img className="signin-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
           <h1 id="login-title">Digital Passport Platform</h1>
           <p className="muted">Spare-part digital passports and inventory</p>
+          <CardWave className="signin-wave" />
         </div>
         <ErrorNotice error={error} />
         <Field label="Email">
