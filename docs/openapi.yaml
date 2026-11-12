@@ -11191,6 +11191,7 @@ components:
     RoleEnum:
       enum:
       - operator_admin
+      - operator_manager
       - operator_engineer
       - operator_qa
       - operator_support
@@ -11202,6 +11203,7 @@ components:
       type: string
       description: |-
         * `operator_admin` - Operator administrator
+        * `operator_manager` - Operator manager
         * `operator_engineer` - Operator engineer
         * `operator_qa` - Operator QA
         * `operator_support` - Operator support

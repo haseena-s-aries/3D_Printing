@@ -125,6 +125,13 @@ CAPABILITIES: dict[str, set] = {
     # the application). Verification confers no such right; with nothing configured every disputed route stays on hold.
     "contracts.objection_review": {R.OPERATOR_ADMIN, R.OPERATOR_QA},
 }
+# Aries Manager: every capability of the Aries Admin role except the audit trail (and never the Admin's company workspaces).
+MANAGER_EXCLUDED = {"audit.view"}
+for _cap, _roles in CAPABILITIES.items():
+    if R.OPERATOR_ADMIN in _roles and _cap not in MANAGER_EXCLUDED:
+        _roles.add(R.OPERATOR_MANAGER)
+del _cap, _roles
+
 # Aries Admin in a client company (ADMIN_WORKSPACE_ENABLED, apps.tenancy.admin_workspace): engineering-platform operations
 # on top of what the role already holds there. Independent sign-off is deliberately absent (edits.review,
 # intelligence.review, jobsheets.qa_review, files.origin_confirm); passport approval and manufacturing release stay closed.
@@ -216,7 +223,7 @@ def capabilities_for(membership) -> list[str]:
         caps -= ENGINEERING_AUTHORING
     if admin_workspace.is_admin_workspace(membership):
         caps |= ADMIN_WORKSPACE_GRANTS
-    elif membership.role == R.OPERATOR_ADMIN and admin_workspace.enabled():
+    elif membership.role in (R.OPERATOR_ADMIN, R.OPERATOR_MANAGER) and admin_workspace.enabled():
         caps |= {"jobsheets.view", "jobsheets.prepare"}  # draft job sheets from the Aries intake queue (gates stay closed, OQ-36)
     if membership.tenant.kind != Tenant.Kind.OPERATOR:
         caps -= OPERATOR_TENANT_ONLY

@@ -110,7 +110,7 @@ def notify_reviewers(part: SparePart, event: str, body: str = "") -> None:
         return
     from apps.servicerequests.services import operator_tenant
 
-    admins = {m.user for m in Membership.objects.filter(tenant=operator_tenant(), role=Role.OPERATOR_ADMIN, is_active=True,
+    admins = {m.user for m in Membership.objects.filter(tenant=operator_tenant(), role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True,
                                                         user__is_active=True).select_related("user")}
     name = Tenant.objects.filter(pk=part.tenant_id).values_list("name", flat=True).first() or ""
     Notification.objects.bulk_create([

@@ -67,7 +67,7 @@ export default function RequestStaffAccountPage() {
         <ol className="steps small">
           <li className="done">Request submitted</li>
           <li>Verify your email address</li>
-          <li>An Aries Admin approves the request</li>
+          <li>An Aries Admin or Manager approves the request</li>
           <li>Sign in; the admin assigns you to client companies and projects</li>
         </ol>
         <DevOutboxHint cfg={cfg} />
@@ -78,11 +78,11 @@ export default function RequestStaffAccountPage() {
     );
   }
   return (
-    <PublicShell title={title} subtitle="For Aries employees: Engineers, QA and Support" wide>
+    <PublicShell title={title} subtitle="For Aries employees: Managers, Engineers, QA and Support" wide>
       <form className="form-grid" onSubmit={submit} aria-label="Request an Aries staff account">
         <ErrorNotice error={error} />
         <Field label="Full name"><input required autoComplete="name" placeholder="Enter your full name" maxLength={150} value={form.full_name} onChange={set("full_name")} /></Field>
-        <Field label="Role requested" hint="The approving Aries Admin confirms or changes it.">
+        <Field label="Role requested" hint="The approving Aries Admin or Manager confirms or changes it.">
           <select value={role} onChange={set("requested_role")}>
             {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
@@ -107,7 +107,7 @@ export default function RequestStaffAccountPage() {
           <span>I work for Aries and I accept the platform terms and privacy notice.</span>
         </label>
         <p className="notice notice-info small span-2">
-          After you verify your email address, an Aries Admin reviews the request. You can sign in once it is approved; access to client
+          After you verify your email address, an Aries Admin or Manager reviews the request. You can sign in once it is approved; access to client
           companies and projects is then given by the admin. Client users are invited by their company's Client Administrator instead.
         </p>
         <div className="form-actions span-2">

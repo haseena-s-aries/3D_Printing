@@ -3,6 +3,7 @@ import type { Session } from "@passport/api-types";
 /** Display names of roles (CN-002): the platform operator is Aries. Stored role values are unchanged. */
 export const ROLE_LABELS: Record<string, string> = {
   operator_admin: "Aries Admin",
+  operator_manager: "Aries Manager",
   operator_engineer: "Aries Engineer",
   operator_qa: "Aries QA",
   operator_support: "Aries Support",
@@ -23,13 +24,19 @@ export const roleOptionLabel = (role: string): string => (LEGACY_ROLES.includes(
 
 export const fourRoles = (session: Session | null | undefined): boolean => session?.role_model === "four_roles";
 
-const LEGACY_OPERATOR = ["operator_admin", "operator_engineer", "operator_qa", "operator_support"];
+const LEGACY_OPERATOR = ["operator_admin", "operator_manager", "operator_engineer", "operator_qa", "operator_support"];
 const LEGACY_CLIENT = ["client_admin", "client_engineer", "client_user", "procurement", "auditor"];
 
-/** Roles that may be assigned; the server enforces the same list (membership_policy.roles_assignable). */
+/** Aries Admin or Aries Manager working from the Aries organisation (platform administration). */
+export const isPlatformAdmin = (session: Session | null | undefined): boolean =>
+  session?.tenant?.kind === "operator" && (session.membership?.role === "operator_admin" || session.membership?.role === "operator_manager");
+
+/** Roles that may be assigned; the server enforces the same list (membership_policy.roles_assignable).
+ *  An Aries Manager never sees the Aries Admin role: only an Aries Admin creates or approves another Admin. */
 export function assignableRoles(session: Session | null | undefined, family: "operator" | "client" | "operator_in_client"): string[] {
   const four = fourRoles(session);
   if (family === "client") return four ? ["client_admin", "client_user"] : LEGACY_CLIENT;
   if (family === "operator_in_client") return four ? ["operator_engineer"] : ["operator_engineer", "operator_qa", "operator_support"];
-  return four ? ["operator_admin", "operator_engineer"] : LEGACY_OPERATOR;
+  const roles = four ? ["operator_admin", "operator_manager", "operator_engineer"] : LEGACY_OPERATOR;
+  return session?.membership?.role === "operator_manager" ? roles.filter((r) => r !== "operator_admin") : roles;
 }

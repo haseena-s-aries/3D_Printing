@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 
 from apps.core.exceptions import DomainError
 
-from .models import CLIENT_ROLES, OPERATOR_ROLES, Membership, Role, Tenant
+from .models import CLIENT_ROLES, OPERATOR_ROLES, PLATFORM_ADMIN_ROLES, Membership, Role, Tenant
 
 User = get_user_model()
 
@@ -38,7 +38,17 @@ def owner_of(m: Membership) -> str:
 
 
 def is_platform_admin(actor: Membership) -> bool:
+    """Platform administration from the operator organisation: the Aries Admin or an Aries Manager."""
+    return actor.role in PLATFORM_ADMIN_ROLES and actor.tenant.kind == Tenant.Kind.OPERATOR
+
+
+def is_aries_admin(actor: Membership) -> bool:
+    """The Aries Admin itself (not a Manager): the only role that may create, approve or manage another Aries Admin."""
     return actor.role == Role.OPERATOR_ADMIN and actor.tenant.kind == Tenant.Kind.OPERATOR
+
+
+def is_admin_account(user) -> bool:
+    return user is not None and Membership.objects.filter(user=user, role=Role.OPERATOR_ADMIN, is_active=True).exists()
 
 
 def roles_assignable(actor: Membership, tenant: Tenant) -> set:
@@ -52,7 +62,10 @@ def roles_assignable(actor: Membership, tenant: Tenant) -> set:
 
 def _roles_assignable(actor: Membership, tenant: Tenant) -> set:
     if tenant.kind == Tenant.Kind.OPERATOR:
-        return set(OPERATOR_ROLES) if is_platform_admin(actor) else set()
+        if is_aries_admin(actor):
+            return set(OPERATOR_ROLES)
+        # an Aries Manager adds every Aries role except Aries Admin
+        return set(OPERATOR_ROLES) - {Role.OPERATOR_ADMIN} if is_platform_admin(actor) else set()
     if is_platform_admin(actor):
         return set(CLIENT_ROLES) | CLIENT_ASSIGNABLE_OPERATOR_ROLES
     if actor.role == Role.CLIENT_ADMIN and actor.tenant_id == tenant.pk:
@@ -69,6 +82,8 @@ def can_manage(actor: Membership, target: Membership) -> bool:
     if target.pk == actor.pk:
         return False
     if owner_of(target) == OPERATOR_OWNED:
+        if target.role == Role.OPERATOR_ADMIN or is_admin_account(target.user):
+            return is_aries_admin(actor)  # only an Aries Admin manages another Aries Admin
         return is_platform_admin(actor)
     return is_platform_admin(actor) or (actor.role == Role.CLIENT_ADMIN and actor.tenant_id == target.tenant_id)
 
@@ -78,6 +93,8 @@ def check_update(actor: Membership, target: Membership, *, role: str | None, is_
         _deny("cannot_change_self", "You cannot change your own role or deactivate yourself.", 400)
     if not can_manage(actor, target):
         if owner_of(target) == OPERATOR_OWNED:
+            if target.role == Role.OPERATOR_ADMIN or is_admin_account(target.user):
+                _deny("admin_managed_by_admin", "Only an Aries Admin can manage another Aries Admin.")
             _deny("operator_staff_managed_by_operator", "Platform operator staff are managed by the operator's administrators.")
         _deny("permission_denied", "You cannot manage this membership.")
     if role is not None and role != target.role:

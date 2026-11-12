@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { ClientUserFeatures, ClientUserProjects, EngineerPermissions, type ProjectAccess } from "../components/MemberPermissions";
-import { assignableRoles, fourRoles, roleOptionLabel } from "../components/roles";
+import { assignableRoles, fourRoles, isPlatformAdmin, roleOptionLabel } from "../components/roles";
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, PageHeader, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
 
@@ -117,7 +117,7 @@ function CompanyProfileCard() {
 export default function UsersPage() {
   const { session, can } = useAuth();
   const list = useApi<Paginated<Member>>("/users/");
-  const platformAdmin = session?.tenant.kind === "operator" && session.membership.role === "operator_admin";
+  const platformAdmin = isPlatformAdmin(session);
   const roles = assignableRoles(session, session?.tenant.kind === "operator" ? "operator" : "client");
   const four = fourRoles(session);
   const [form, setForm] = useState({ email: "", first_name: "", last_name: "", role: roles[1] ?? roles[0], password: "" });

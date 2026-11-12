@@ -281,7 +281,7 @@ function OperatorHome() {
   return (
     <>
       <MarineBanner>
-        <PageHeader title="Aries Admin Dashboard" subtitle="Manage client companies, registrations, assignments and incoming requests." />
+        <PageHeader title={session?.membership.role === "operator_manager" ? "Aries Manager Dashboard" : "Aries Admin Dashboard"} subtitle="Manage client companies, registrations, assignments and incoming requests." />
       </MarineBanner>
       <NeedsAttention compact />
       <div className="stats stats-3">

@@ -100,7 +100,8 @@ def _what(reg: CompanyRegistration) -> str:
     return reg.company_name if reg.kind == CompanyRegistration.Kind.COMPANY else "your Aries staff account"
 
 
-STAFF_ROLE_NAMES = {Role.OPERATOR_ENGINEER: "Aries Engineer", Role.OPERATOR_QA: "Aries QA", Role.OPERATOR_SUPPORT: "Aries Support"}
+STAFF_ROLE_NAMES = {Role.OPERATOR_MANAGER: "Aries Manager", Role.OPERATOR_ENGINEER: "Aries Engineer", Role.OPERATOR_QA: "Aries QA",
+                    Role.OPERATOR_SUPPORT: "Aries Support"}
 
 
 def staff_role_name(role: str) -> str:
@@ -109,12 +110,13 @@ def staff_role_name(role: str) -> str:
 
 def staff_role_options() -> list[str]:
     """Aries staff roles a person may request (never Aries Admin). In the four-role model QA is a permission of an Aries
-    Engineer: a QA request is granted as Engineer with the QA permission."""
+    Engineer: a QA request is granted as Engineer with the QA permission. Requests are approved by an Aries Admin or an
+    Aries Manager (registrations.review); an Aries Admin account is never granted through a request."""
     from apps.tenancy.permissions import four_roles
 
     if four_roles():
-        return [Role.OPERATOR_ENGINEER, Role.OPERATOR_QA]
-    return [Role.OPERATOR_ENGINEER, Role.OPERATOR_QA, Role.OPERATOR_SUPPORT]
+        return [Role.OPERATOR_MANAGER, Role.OPERATOR_ENGINEER, Role.OPERATOR_QA]
+    return [Role.OPERATOR_MANAGER, Role.OPERATOR_ENGINEER, Role.OPERATOR_QA, Role.OPERATOR_SUPPORT]
 
 
 # ---------------------------------------------------------------- registration
@@ -324,7 +326,7 @@ def verify_registration(request, raw: str, password: str) -> CompanyRegistration
         reg.user, reg.status, reg.email_verified_at, reg.password_hash = user, CompanyRegistration.Status.PENDING, timezone.now(), ""
         reg.save(update_fields=["user", "status", "email_verified_at", "password_hash", "updated_at"])
         record(None, "registration.verified", actor=user, tenant=op, obj=reg)
-        admins = [m.user for m in Membership.objects.filter(tenant=op, role=Role.OPERATOR_ADMIN, is_active=True,
+        admins = [m.user for m in Membership.objects.filter(tenant=op, role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True,
                                                              user__is_active=True).select_related("user")]
         if reg.kind == CompanyRegistration.Kind.STAFF:
             title = f"New Aries staff request: {reg.contact_name} ({staff_role_name(reg.requested_role)})"
@@ -386,7 +388,7 @@ def approve_staff(request, reg: CompanyRegistration, role: str) -> Tenant:
     from apps.tenancy.permissions import four_roles
 
     if role not in staff_role_options():
-        raise DomainError("role_not_allowed", "Choose Aries Engineer, QA or Support for a staff account.", http_status=400)
+        raise DomainError("role_not_allowed", "Choose Aries Manager, Engineer, QA or Support for a staff account.", http_status=400)
     op = operator_tenant()
     qa_permission = four_roles() and role == Role.OPERATOR_QA
     granted = Role.OPERATOR_ENGINEER if qa_permission else role

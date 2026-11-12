@@ -380,7 +380,7 @@ def notify_reviewers(er, title):
         return
     from apps.servicerequests.services import operator_tenant
 
-    admins = [m.user for m in Membership.objects.filter(tenant=operator_tenant(), role=Role.OPERATOR_ADMIN, is_active=True)
+    admins = [m.user for m in Membership.objects.filter(tenant=operator_tenant(), role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True)
               .select_related("user")]
     _notify(admins, er, "No authorised edit reviewer for", "Authorise an Aries Engineer as edit reviewer for this company (CN-006).")
 

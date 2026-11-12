@@ -4944,6 +4944,7 @@ export interface components {
         };
         /**
          * @description * `operator_admin` - Operator administrator
+         *     * `operator_manager` - Operator manager
          *     * `operator_engineer` - Operator engineer
          *     * `operator_qa` - Operator QA
          *     * `operator_support` - Operator support
@@ -4954,7 +4955,7 @@ export interface components {
          *     * `auditor` - Auditor
          * @enum {string}
          */
-        RoleEnum: "operator_admin" | "operator_engineer" | "operator_qa" | "operator_support" | "client_admin" | "client_engineer" | "client_user" | "procurement" | "auditor";
+        RoleEnum: "operator_admin" | "operator_manager" | "operator_engineer" | "operator_qa" | "operator_support" | "client_admin" | "client_engineer" | "client_user" | "procurement" | "auditor";
         /**
          * @description * `company` - company
          *     * `projects` - projects
