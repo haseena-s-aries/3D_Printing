@@ -6,6 +6,7 @@ import subprocess
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import unquote
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -61,7 +62,7 @@ def test_redemptions_are_tenant_scoped(world, pdf, client):
 
 def test_links_without_nonce_are_refused(world, pdf, client):
     admin = login(world["a_admin"])
-    data = signing.loads(new_link(admin, pdf, "original").rstrip("/").rsplit("/", 1)[1], salt=LINK_SALT)
+    data = signing.loads(unquote(new_link(admin, pdf, "original").rstrip("/").rsplit("/", 1)[1]), salt=LINK_SALT)  # token is URL-encoded
     data.pop("n")
     legacy = signing.dumps(data, salt=LINK_SALT, compress=True)
     assert client.get(f"/api/v1/downloads/{legacy}/").json()["error"]["code"] == "link_invalid"

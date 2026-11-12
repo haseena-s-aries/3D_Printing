@@ -3,6 +3,7 @@ Engineer releases one exact version and can withdraw it, audited; clients see an
 withdrawal also revokes download links issued before it. 3D scan data is accepted by content signature, stored as uploaded and
 never converted or treated as CAD."""
 import struct
+from urllib.parse import urlsplit
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -46,7 +47,7 @@ def test_release_is_version_specific_and_withdrawal_revokes_links(world):
     assert client.post(f"/api/v1/files/{f['id']}/versions/1/download-link/", {"variant": "original"}, format="json").status_code == 404
     w = eng.patch(f"/api/v1/files/{f['id']}/", {"client_visible": False}, format="json").json()
     assert w["client_visible"] is False and w["released_version"] is None
-    path = link.json()["url"].split("testserver", 1)[1]
+    path = urlsplit(link.json()["url"]).path  # links use WEB_BASE_URL; only the path matters to the test client
     redeemed = client.get(path)  # issued before the withdrawal
     assert redeemed.status_code == 403 and redeemed.json()["error"]["code"] == "link_invalid"
     assert client.get(f"/api/v1/files/?part={part['id']}").json()["results"] == []

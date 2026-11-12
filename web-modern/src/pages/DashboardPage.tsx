@@ -11,6 +11,7 @@ import { ListPager, ListToolbar, useListControls } from "../components/ListContr
 import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
+import { MarineBanner } from "../components/MarineHero";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
 
 function Stat({ label, value, to, icon, hint }: { label: string; value: number | string; to?: string; icon?: IconName; hint?: string }) {
@@ -140,10 +141,12 @@ function OrganisationDashboard() {
 
   return (
     <>
-      <PageHeader
-        title={isOperator ? "Operator dashboard" : `${session?.tenant.name}`}
-        subtitle={isOperator ? "Digitalisation, passports and client organisations" : `Digital inventory of ${session?.tenant.name}`}
-      />
+      <MarineBanner>
+        <PageHeader
+          title={isOperator ? "Operator dashboard" : `${session?.tenant.name}`}
+          subtitle={isOperator ? "Digitalisation, passports and client organisations" : `Digital inventory of ${session?.tenant.name}`}
+        />
+      </MarineBanner>
       {!isOperator && <EntryRoutes />}
       <NeedsAttention compact />
       <ClientIntelligenceCard />
@@ -276,7 +279,9 @@ function OperatorHome() {
   });
   return (
     <>
-      <PageHeader title="Aries Admin dashboard" subtitle="Client companies, registrations, assignments and incoming requests" />
+      <MarineBanner>
+        <PageHeader title="Aries Admin dashboard" subtitle="Client companies, registrations, assignments and incoming requests" />
+      </MarineBanner>
       <NeedsAttention compact />
       <div className="stats stats-3">
         {can("registrations.review") && (
