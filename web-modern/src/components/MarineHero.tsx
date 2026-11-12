@@ -17,53 +17,98 @@ import { Icon, type IconName } from "./icons";
 
 export { ariesLogo };
 
+/* ------------------------------------------------------------------ sparkles */
+
+/** [left %, top %, delay s, size px] */
+type Spark = readonly [number, number, number, number];
+
+/** Small twinkling star points laid over a wave or panel (decorative; still with prefers-reduced-motion). */
+export function Sparkles({ points, className = "" }: { points: readonly Spark[]; className?: string }) {
+  return (
+    <span className={`sparkles ${className}`} aria-hidden="true">
+      {points.map(([x, y, d, size], i) => (
+        <i key={i} className="sparkle" style={{ left: `${x}%`, top: `${y}%`, width: size, height: size, animationDelay: `${d}s` }} />
+      ))}
+    </span>
+  );
+}
+
+const SPARKS_HERO: Spark[] = [[6, 58, 0, 12], [17, 40, 1.6, 9], [29, 64, 0.8, 14], [41, 46, 2.4, 10], [52, 30, 1.1, 12], [63, 52, 3.0, 9],
+  [72, 36, 0.4, 13], [83, 58, 2.0, 10], [93, 42, 1.4, 12], [36, 78, 2.8, 8], [78, 80, 0.9, 8]];
+const SPARKS_SIDEBAR: Spark[] = [[12, 40, 0, 9], [34, 62, 1.3, 7], [55, 34, 2.2, 10], [76, 58, 0.7, 8], [90, 30, 1.8, 7]];
+const SPARKS_BANNER: Spark[] = [[46, 40, 0, 10], [58, 20, 1.2, 8], [69, 52, 2.3, 11], [80, 28, 0.6, 8], [91, 46, 1.7, 10]];
+const SPARKS_CARD: Spark[] = [[14, 30, 0.3, 12], [47, 52, 1.6, 10], [78, 22, 0.9, 12], [92, 46, 2.2, 9]];
+const SPARKS_KPI: Spark[] = [[22, 34, 0, 11], [64, 52, 1.4, 9], [88, 26, 2.4, 11]];
+const SPARKS_PANEL: Spark[] = [[8, 10, 0, 8], [90, 82, 1.7, 7]];
+
 /* ------------------------------------------------------------------ waves */
 
 /** Sidebar foot: the supplied compact dotted wave (cropped to its band, drawn at its own proportions). */
 export function SidebarWave() {
-  return <img className="sidebar-wave" src={sidebarWave} alt="" aria-hidden="true" />;
+  return (
+    <div className="sidebar-wave" aria-hidden="true">
+      <img src={sidebarWave} alt="" />
+      <Sparkles points={SPARKS_SIDEBAR} />
+    </div>
+  );
 }
 
 /** Soft layered wave between the sign-in card heading and the email field: three overlapping filled shapes. */
 export function CardWave({ className = "" }: { className?: string }) {
   return (
-    <svg className={`card-wave ${className}`} viewBox="0 0 520 44" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <path d="M0 20 C 90 6, 170 30, 270 20 S 430 4, 520 14 V 44 H 0 Z" fill="#e3f6fc" />
-      <path d="M0 27 C 110 14, 200 38, 300 27 S 450 14, 520 22 V 44 H 0 Z" fill="#cdeef9" fillOpacity="0.75" />
-      <path d="M0 34 C 120 25, 230 44, 330 34 S 460 25, 520 30 V 44 H 0 Z" fill="#b5e3f6" fillOpacity="0.5" />
-    </svg>
+    <div className={`card-wave ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 520 44" preserveAspectRatio="none" focusable="false">
+        <path className="wave-layer wave-layer-1" d="M0 20 C 90 6, 170 30, 270 20 S 430 4, 520 14 V 44 H 0 Z" fill="#e3f6fc" />
+        <path className="wave-layer wave-layer-2" d="M0 27 C 110 14, 200 38, 300 27 S 450 14, 520 22 V 44 H 0 Z" fill="#cdeef9" fillOpacity="0.75" />
+        <path className="wave-layer wave-layer-3" d="M0 34 C 120 25, 230 44, 330 34 S 460 25, 520 30 V 44 H 0 Z" fill="#b5e3f6" fillOpacity="0.5" />
+      </svg>
+      <Sparkles points={SPARKS_CARD} className="sparkles-light" />
+    </div>
   );
 }
 
 /** Dashboard banner: a few thin flowing cyan lines along the bottom (its own wave, not shared with other sections). */
 export function BannerWave() {
+  const lines = [
+    "M0 52 C 180 50, 330 30, 520 30 S 860 50, 1000 40 S 1140 22, 1200 26",
+    "M0 56 C 200 54, 350 38, 540 38 S 880 56, 1020 47 S 1150 32, 1200 35",
+    "M0 59 C 220 58, 370 46, 560 46 S 900 60, 1040 54 S 1160 42, 1200 44",
+  ];
   return (
-    <svg className="marine-banner-wave" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="banner-wave-stroke" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="#11c5e8" stopOpacity="0" />
-          <stop offset="0.35" stopColor="#11c5e8" stopOpacity="0.85" />
-          <stop offset="0.75" stopColor="#3d9bff" stopOpacity="0.8" />
-          <stop offset="1" stopColor="#3d9bff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <g fill="none" stroke="url(#banner-wave-stroke)" vectorEffect="non-scaling-stroke">
-        <path d="M0 52 C 180 50, 330 30, 520 30 S 860 50, 1000 40 S 1140 22, 1200 26" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        <path d="M0 56 C 200 54, 350 38, 540 38 S 880 56, 1020 47 S 1150 32, 1200 35" strokeWidth="1.2" strokeOpacity="0.75" vectorEffect="non-scaling-stroke" />
-        <path d="M0 59 C 220 58, 370 46, 560 46 S 900 60, 1040 54 S 1160 42, 1200 44" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      </g>
-    </svg>
+    <span className="marine-banner-wave" aria-hidden="true">
+      <svg viewBox="0 0 1200 60" preserveAspectRatio="none" focusable="false">
+        <defs>
+          <linearGradient id="banner-wave-stroke" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stopColor="#11c5e8" stopOpacity="0" />
+            <stop offset="0.35" stopColor="#11c5e8" stopOpacity="0.85" />
+            <stop offset="0.75" stopColor="#3d9bff" stopOpacity="0.8" />
+            <stop offset="1" stopColor="#3d9bff" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#banner-wave-stroke)">
+          {lines.map((d, i) => <path key={d} d={d} strokeWidth={1.5 - i * 0.25} strokeOpacity={1 - i * 0.25} vectorEffect="non-scaling-stroke" />)}
+        </g>
+        {/* light pulses travelling along the lines */}
+        <g fill="none" stroke="#bff6ff" strokeLinecap="round">
+          {lines.map((d, i) => <path key={d} className={`wave-flow wave-flow-${i + 1}`} d={d} pathLength={1000} strokeWidth={2 - i * 0.4} vectorEffect="non-scaling-stroke" />)}
+        </g>
+      </svg>
+      <Sparkles points={SPARKS_BANNER} />
+    </span>
   );
 }
 
 /** The same light-cyan wave along the bottom of every KPI tile (scales with the tile width). */
 export function KpiWave() {
   return (
-    <svg className="kpi-wave" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <path d="M0 22 C 70 8, 140 30, 220 18 S 340 6, 400 14 V 40 H 0 Z" fill="#ddf7fc" />
-      <path d="M0 28 C 90 16, 170 38, 260 26 S 360 16, 400 22 V 40 H 0 Z" fill="#c8f0f8" fillOpacity="0.85" />
-      <path d="M0 34 C 100 26, 190 42, 290 33 S 370 27, 400 30 V 40 H 0 Z" fill="#aeeaf5" fillOpacity="0.6" />
-    </svg>
+    <span className="kpi-wave" aria-hidden="true">
+      <svg viewBox="0 0 400 40" preserveAspectRatio="none" focusable="false">
+        <path className="wave-layer wave-layer-1" d="M0 22 C 70 8, 140 30, 220 18 S 340 6, 400 14 V 40 H 0 Z" fill="#ddf7fc" />
+        <path className="wave-layer wave-layer-2" d="M0 28 C 90 16, 170 38, 260 26 S 360 16, 400 22 V 40 H 0 Z" fill="#c8f0f8" fillOpacity="0.85" />
+        <path className="wave-layer wave-layer-3" d="M0 34 C 100 26, 190 42, 290 33 S 370 27, 400 30 V 40 H 0 Z" fill="#aeeaf5" fillOpacity="0.6" />
+      </svg>
+      <Sparkles points={SPARKS_KPI} className="sparkles-light" />
+    </span>
   );
 }
 
@@ -107,21 +152,23 @@ const STEPS = ["Design", "Build", "Inspect", "Certify", "Register"];
 function PrintHud({ steps = false }: { steps?: boolean }) {
   return (
     <div className="print-hud" aria-hidden="true">
-      <div className="hud-angled hud-dims"><div className="hud-angled-inner"><img src={hudDimensions} alt="" /></div></div>
+      <div className="hud-angled hud-dims"><div className="hud-angled-inner"><img src={hudDimensions} alt="" /><Sparkles points={SPARKS_PANEL} /></div></div>
       <div className="hud-row">
-        <div className="hud-panel hud-holo"><img src={hudLayers} alt="" /></div>
+        <div className="hud-panel hud-holo"><img src={hudLayers} alt="" /><Sparkles points={SPARKS_PANEL} /></div>
         <div className="hud-panel hud-passport">
           <div className="hud-passport-head"><Icon name="file" /><strong>Digital Passport</strong><span className="hud-sample">Sample</span></div>
           <div className="hud-passport-body">
             <ul>{PASSPORT_ROWS.map(([k, v]) => <li key={k}><Icon name="check" /><span>{k}:</span> {v}</li>)}</ul>
             <QrMark />
           </div>
+          <Sparkles points={SPARKS_PANEL} />
         </div>
       </div>
       {steps && (
         <div className="hud-panel hud-steps">
           <div className="hud-passport-head"><Icon name="cube" /><strong>Build (PBF-LB/M)</strong></div>
           <ol>{STEPS.map((s, i) => <li key={s} className={i === STEPS.length - 1 ? "is-current" : ""}><span><Icon name="check" /></span>{s}</li>)}</ol>
+          <Sparkles points={SPARKS_PANEL} />
         </div>
       )}
     </div>
@@ -141,6 +188,7 @@ export function MarineHero() {
   return (
     <aside className="marine-hero">
       <img className="marine-hero-wave" src={heroWave} alt="" aria-hidden="true" />
+      <Sparkles points={SPARKS_HERO} className="sparkles-hero" />
       <div className="marine-hero-copy">
         <img className="marine-hero-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
         <p className="marine-hero-eyebrow">Aries Digital Passport Platform</p>
