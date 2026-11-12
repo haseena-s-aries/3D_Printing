@@ -95,10 +95,10 @@ export default function LoginPage() {
         </div>
         <ErrorNotice error={error} />
         <Field label="Email">
-          <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" autoComplete="username" placeholder="Enter your email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Password">
-          <PasswordInput autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput autoComplete="current-password" placeholder="Enter your password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         {tenants && (
           <Field label="Organisation" hint="Your account has access to more than one organisation.">

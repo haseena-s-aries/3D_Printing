@@ -1398,29 +1398,18 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .sidebar nav a.active .icon { color: #fff; }
 .sidebar nav a.active::before { display: none; }
 .sidebar-art { margin-top: auto; padding: 8px 18px 4px; opacity: 0.85; pointer-events: none; position: relative; }
-.sidebar-art::after { content: ""; position: absolute; left: -10px; right: -10px; bottom: -6px; height: 54px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%2322c4ee' stroke-width='1.2'%3E%3Cpath stroke-opacity='.35' d='M0 30c40-14 80 14 130 0s90-14 130 0'/%3E%3Cpath stroke-opacity='.22' d='M0 42c40-12 80 12 130 0s90-12 130 0'/%3E%3Cpath stroke-opacity='.14' d='M0 54c40-10 80 10 130 0s90-10 130 0'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; }
-.sidebar-art .propeller-wire { width: 100%; max-width: 190px; display: block; margin: 0 auto; }
+.sidebar-art img { width: 100%; max-width: 210px; display: block; margin: 0 auto; mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); }
 .sidebar-art + .sidebar-foot { margin-top: 0; }
 .is-rail .sidebar-art { display: none; }
 @media (max-height: 760px) { .sidebar-art { display: none; } }
 
 /* ---------- wireframe propeller and metallic impeller */
-.propeller-wire .pw-blade { fill: rgba(42, 216, 255, 0.07); stroke: #3fd3ff; stroke-width: 1.8; stroke-linejoin: round; }
-.propeller-wire .pw-mesh { fill: none; stroke: #3fd3ff; stroke-opacity: 0.45; stroke-width: 0.9; }
-.propeller-wire .pw-frame path { fill: none; stroke: #3fd3ff; stroke-opacity: 0.6; stroke-width: 2; }
-.propeller-wire { filter: drop-shadow(0 0 6px rgba(42, 216, 255, 0.55)); overflow: visible; }
-.propeller-wire .pw-spin { animation: mh-spin 40s linear infinite; transform-box: fill-box; transform-origin: center; }
 .metal-impeller .mi-spin { animation: mh-spin 36s linear infinite; transform-box: fill-box; transform-origin: center; }
-.marine-scene .mh-light { animation: mh-blink 2.6s ease-in-out infinite; }
-.marine-scene .mh-wave { animation: mh-drift 14s ease-in-out infinite alternate; }
-.marine-scene .mh-wave-b { animation-duration: 19s; animation-direction: alternate-reverse; }
 @keyframes mh-spin { to { transform: rotate(360deg); } }
-@keyframes mh-drift { from { transform: translateX(0); } to { transform: translateX(-26px); } }
-@keyframes mh-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes mh-ring { 0% { transform: translate(-50%, 0) scale(0.92); opacity: 0.9; } 100% { transform: translate(-50%, 0) scale(1.12); opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) {
-  .propeller-wire .pw-spin, .metal-impeller .mi-spin, .marine-scene .mh-light, .marine-scene .mh-wave, .marine-hero-rings span { animation: none; }
+  .metal-impeller .mi-spin, .marine-hero-rings span { animation: none; }
 }
 
 /* ---------- public pages: marine panel (left) + glass card (right) */
@@ -1448,7 +1437,9 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .login-card input[autocomplete="name"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238aa9c6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4 3.6-7 8-7s8 3 8 7'/%3E%3C/svg%3E"); }
 
 .marine-hero { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #030b1c; }
-.marine-hero .marine-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.marine-hero-bg { position: absolute; inset: 0; background: radial-gradient(700px 420px at 20% 0%, rgba(34, 196, 238, 0.16), transparent 65%),
+  linear-gradient(180deg, #051634 0%, #0a2550 55%, #0b2a52 100%); }
+.marine-hero-photo { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%; display: block; }
 .marine-hero-stage, .marine-hero-copy { display: none; }
 @media (min-width: 1100px) {
   .login-page { --hero-w: min(56vw, calc(100vw - 520px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: stretch; }
@@ -1459,12 +1450,14 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
   .marine-hero-copy { display: flex; flex-direction: column; gap: 16px; position: absolute; left: clamp(32px, 4.5vw, 72px); right: clamp(24px, 4vw, 64px);
     top: clamp(28px, 6vh, 64px); color: #e8f1fa; max-width: 640px; }
   /* the impeller and its rings share one box, so the rings are always centred under it */
-  .marine-hero-stage { display: block; position: absolute; left: 4%; bottom: 3%; width: min(52%, 470px); z-index: 1; }
-  .login-page:has(.login-card-wide) .marine-hero-stage { width: min(66%, 400px); }
+  .marine-hero-photo { height: 58%; object-position: 22% 45%;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%); mask-image: linear-gradient(180deg, transparent 0%, #000 30%); }
+  .marine-hero-stage { display: block; position: absolute; right: 3%; bottom: 3%; width: min(40%, 360px); z-index: 1; }
+  .login-page:has(.login-card-wide) .marine-hero-stage { width: min(46%, 300px); }
   .marine-hero-part { display: block; position: relative; width: 100%; height: auto; z-index: 1; }
   .marine-hero-rings { position: absolute; left: 50%; bottom: 2%; width: 118%; height: 0; transform: translateX(-50%); z-index: 0; }
 }
-@media (min-width: 1100px) and (max-height: 820px) { .marine-hero-features { display: none; } .marine-hero-stage { width: min(40%, 340px); } }
+@media (min-width: 1100px) and (max-height: 820px) { .marine-hero-features { display: none; } .marine-hero-stage { width: min(32%, 280px); } }
 .marine-hero-rings span { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 0); border-radius: 50%; border: 2px solid rgba(63, 211, 255, 0.75);
   box-shadow: 0 0 18px rgba(63, 211, 255, 0.6), 0 0 18px rgba(63, 211, 255, 0.4) inset; animation: mh-ring 3.6s ease-out infinite alternate; }
 .marine-hero-rings span:nth-child(1) { width: 100%; aspect-ratio: 4 / 1; }
@@ -1492,9 +1485,13 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 /* ---------- page banners (dark in both themes, white text) */
 .marine-banner { position: relative; isolation: isolate; overflow: hidden; border-radius: 16px; margin-bottom: 18px; min-height: 210px; display: flex;
   align-items: center; background: #04122a; border: 1px solid rgba(64, 200, 255, 0.28); box-shadow: 0 16px 40px rgba(4, 18, 42, 0.28); }
-.marine-banner .marine-scene { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; }
+/* the photograph fills the right part of the banner (so the vessel is shown whole) and fades into the navy on the left */
+.marine-banner { background: linear-gradient(100deg, #041330 0%, #082552 55%, #0b2a52 100%); }
+.marine-banner-photo { position: absolute; top: 0; right: 0; bottom: 0; width: 68%; height: 100%; object-fit: cover; object-position: 38% 42%; z-index: -2;
+  display: block; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%); mask-image: linear-gradient(90deg, transparent 0%, #000 38%); }
+.marine-banner-compact .marine-banner-photo { width: 58%; object-position: 40% 46%; }
 .marine-banner::after { content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(90deg, rgba(3, 12, 30, 0.94) 0%, rgba(3, 12, 30, 0.72) 42%, rgba(3, 12, 30, 0.1) 75%, rgba(3, 12, 30, 0.35) 100%); }
+  background: linear-gradient(90deg, rgba(3, 12, 30, 0.6) 0%, rgba(3, 12, 30, 0.35) 40%, rgba(3, 12, 30, 0) 65%, rgba(3, 12, 30, 0.25) 100%); }
 .marine-banner-body { width: 100%; padding: 26px 30px; position: relative; z-index: 1; }
 .marine-banner-body::before { content: ""; display: block; width: 52px; height: 4px; border-radius: 4px; background: #3fd3ff; margin-bottom: 14px;
   box-shadow: 0 0 12px rgba(63, 211, 255, 0.7); }
@@ -1507,21 +1504,21 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .marine-banner-chips li:first-child { padding-left: 0; }
 .marine-banner-chips li + li { border-left: 1px solid rgba(255, 255, 255, 0.25); }
 .marine-banner-chips .icon { color: #3fd3ff; }
-.marine-banner-vessel { position: absolute; z-index: -1; right: 24%; bottom: 8%; height: 72%; width: auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5)); }
-.marine-banner-part { position: absolute; z-index: -1; right: 2%; top: 50%; transform: translateY(-50%); height: 112%; width: auto; }
+.marine-banner-part { position: absolute; z-index: -1; right: 2%; top: 50%; transform: translateY(-50%); height: 118%; width: auto; mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent 100%); mask-image: radial-gradient(closest-side, #000 70%, transparent 100%); }
+.marine-banner-tagline { margin: 0 0 4px; color: #63d9f6; font-weight: 650; font-size: var(--fs-sm); letter-spacing: 0.08em; text-transform: uppercase; }
 .marine-banner-compact { min-height: 112px; }
 .marine-banner-compact .marine-banner-body { padding: 16px 24px; }
 .marine-banner-compact .marine-banner-body::before { width: 36px; height: 3px; margin-bottom: 10px; }
 .marine-banner-compact .page-header { align-items: center; max-width: none; }
 .marine-banner-compact .page-header h1 { font-size: var(--fs-xl); }
-.marine-banner-compact .marine-banner-vessel { right: 20%; height: 64%; bottom: 6%; opacity: 0.9; }
 .marine-banner-compact .marine-banner-part { height: 130%; opacity: 0.8; }
 .marine-banner-compact:has(.page-actions) .marine-banner-part { display: none; }
-.marine-banner-compact:has(.page-actions) .marine-banner-vessel { right: 30%; }
-@media (max-width: 1100px) { .marine-banner .page-header { max-width: none; } .marine-banner-vessel { opacity: 0.35; } }
+@media (max-width: 1100px) { .marine-banner .page-header { max-width: none; } }
 @media (max-width: 720px) {
+  .marine-banner-photo, .marine-banner-compact .marine-banner-photo { width: 100%; opacity: 0.45; }
   .marine-banner { min-height: 150px; } .marine-banner-compact { min-height: 96px; }
-  .marine-banner-body { padding: 18px; } .marine-banner-part { display: none; } .marine-banner-vessel { right: -6%; opacity: 0.3; }
+  .marine-banner-body { padding: 18px; } .marine-banner-part { display: none; }
   .marine-banner .page-header { flex-wrap: wrap; gap: 10px; }
 }
 .main { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 240' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%2322c4ee' stroke-opacity='.07' stroke-width='1.5'%3E%3Cpath d='M0 120c150-40 300 40 450 0s300-40 450 0 250 40 300 10'/%3E%3Cpath d='M0 160c160-36 320 36 520 0s340-36 480 4 160 30 200 6'/%3E%3Cpath d='M0 200c200-30 360 30 600 0s380-30 600 6'/%3E%3C/g%3E%3C/svg%3E");

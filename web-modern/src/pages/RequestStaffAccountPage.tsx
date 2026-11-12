@@ -81,24 +81,24 @@ export default function RequestStaffAccountPage() {
     <PublicShell title={title} subtitle="For Aries employees: Engineers, QA and Support" wide>
       <form className="form-grid" onSubmit={submit} aria-label="Request an Aries staff account">
         <ErrorNotice error={error} />
-        <Field label="Full name"><input required autoComplete="name" maxLength={150} value={form.full_name} onChange={set("full_name")} /></Field>
+        <Field label="Full name"><input required autoComplete="name" placeholder="Enter your full name" maxLength={150} value={form.full_name} onChange={set("full_name")} /></Field>
         <Field label="Role requested" hint="The approving Aries Admin confirms or changes it.">
           <select value={role} onChange={set("requested_role")}>
             {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </Field>
         <Field label="Work email" hint="Used to sign in. A verification link is sent here.">
-          <input type="email" required autoComplete="email" value={form.email} onChange={set("email")} />
+          <input type="email" required autoComplete="email" placeholder="Enter your work email" value={form.email} onChange={set("email")} />
         </Field>
-        <Field label="Job title (optional)"><input maxLength={120} value={form.job_title} onChange={set("job_title")} /></Field>
+        <Field label="Job title (optional)"><input maxLength={120} placeholder="Enter your job title" value={form.job_title} onChange={set("job_title")} /></Field>
         <Field label="Phone (optional)" hint="International format, e.g. +971 50 123 4567">
-          <input type="tel" autoComplete="tel" maxLength={40} value={form.phone} onChange={set("phone")} />
+          <input type="tel" autoComplete="tel" placeholder="e.g. +971 50 123 4567" maxLength={40} value={form.phone} onChange={set("phone")} />
         </Field>
         <div />
         <Field label="Password" hint="At least 12 characters; not a common or all-numeric password.">
-          <PasswordInput required autoComplete="new-password" minLength={12} value={form.password} onChange={set("password")} />
+          <PasswordInput required autoComplete="new-password" placeholder="Create a password" minLength={12} value={form.password} onChange={set("password")} />
         </Field>
-        <Field label="Confirm password"><PasswordInput required autoComplete="new-password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
+        <Field label="Confirm password"><PasswordInput required autoComplete="new-password" placeholder="Re-enter your password" value={form.password_confirm} onChange={set("password_confirm")} /></Field>
         <div className="honeypot" aria-hidden="true">
           <label>Website<input tabIndex={-1} autoComplete="off" value={form.website} onChange={set("website")} /></label>
         </div>
@@ -106,7 +106,7 @@ export default function RequestStaffAccountPage() {
           <input type="checkbox" required checked={form.accept_terms} onChange={(e) => setForm({ ...form, accept_terms: e.target.checked })} />
           <span>I work for Aries and I accept the platform terms and privacy notice.</span>
         </label>
-        <p className="muted small span-2">
+        <p className="notice notice-info small span-2">
           After you verify your email address, an Aries Admin reviews the request. You can sign in once it is approved; access to client
           companies and projects is then given by the admin. Client users are invited by their company's Client Administrator instead.
         </p>
