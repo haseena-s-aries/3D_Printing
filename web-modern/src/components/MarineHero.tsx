@@ -1,18 +1,93 @@
 /**
- * Aries artwork for the public pages and page banners, from the supplied images: a metal 3D printer building an
- * impeller, its dimension drawing, a holographic wireframe model and an example digital-passport card, plus animated
- * wave lines. All decorative (aria-hidden / empty alt); the text is real text; motion stops with prefers-reduced-motion.
+ * Aries artwork for the public pages and page banners, built from the supplied images (metal 3D printer building an
+ * impeller, impeller CAD drawing, layered wireframe model) plus SVG decorations (dotted mesh wave, layered card wave,
+ * angled engineering panels). All decorative (aria-hidden / empty alt); the text is real text; the slow wave motion
+ * stops with prefers-reduced-motion. No functional logic lives here.
  */
 import type { ReactNode } from "react";
 
 import ariesLogo from "../assets/aries-logo.png";
 import hudDimensions from "../assets/hud-dimensions.jpg";
-import hudHolo from "../assets/hud-holo.jpg";
+import hudLayers from "../assets/hud-layers.jpg";
 import printImpeller from "../assets/print-impeller.jpg";
-import propellerWireframe from "../assets/propeller-wireframe.jpg";
 import { Icon, type IconName } from "./icons";
 
-export { ariesLogo, propellerWireframe };
+export { ariesLogo };
+
+/* ------------------------------------------------------------------ SVG decorations */
+
+/** Points of one mesh line: a blend between two gentle sine curves (t = 0 back line … 1 front line). */
+function meshY(x: number, t: number): number {
+  const a = 120 + 46 * Math.sin((x / 1200) * Math.PI * 2.1 + 0.4);
+  const b = 230 + 34 * Math.sin((x / 1200) * Math.PI * 2.7 + 1.9);
+  return a + (b - a) * t;
+}
+const MESH_LINES = 14;
+const MESH_STEP = 24;
+const MESH = (() => {
+  const lines: string[] = [];
+  const dots: { x: number; y: number; o: number; r: number }[] = [];
+  for (let i = 0; i < MESH_LINES; i++) {
+    const t = i / (MESH_LINES - 1);
+    let d = "";
+    for (let x = 0; x <= 1200; x += MESH_STEP) d += `${x === 0 ? "M" : "L"}${x} ${meshY(x, t).toFixed(1)} `;
+    lines.push(d);
+    for (let x = 0; x <= 1200; x += MESH_STEP * 2) dots.push({ x, y: meshY(x, t), o: 0.25 + 0.6 * t * (0.5 + 0.5 * Math.sin(x / 140 + i)), r: 0.9 + 0.9 * t });
+  }
+  const cross: string[] = [];
+  for (let x = 0; x <= 1200; x += MESH_STEP * 2) cross.push(`M${x} ${meshY(x, 0).toFixed(1)} L${x} ${meshY(x, 1).toFixed(1)}`);
+  return { lines, dots, cross: cross.join(" ") };
+})();
+
+/** Flowing cyan dotted mesh wave (curved lines, cross lines and small glowing dots; slow drift). */
+export function MeshWave({ className = "", slice = false }: { className?: string; slice?: boolean }) {
+  // slice: keep the mesh proportions in narrow boxes (sidebar) by cropping instead of squeezing
+  return (
+    <svg className={`mesh-wave ${className}`} viewBox="0 0 1200 300" preserveAspectRatio={slice ? "xMidYMax slice" : "none"} aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="mw-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#11c5e8" stopOpacity="0.15" />
+          <stop offset="0.45" stopColor="#11c5e8" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#146db6" stopOpacity="0.35" />
+        </linearGradient>
+        <linearGradient id="mw-fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.35" stopColor="#fff" stopOpacity="1" />
+        </linearGradient>
+        <mask id="mw-mask"><rect width="1200" height="300" fill="url(#mw-fade)" /></mask>
+      </defs>
+      <g className="mw-drift" mask="url(#mw-mask)">
+        {!slice && <path d={MESH.cross} fill="none" stroke="#11c5e8" strokeOpacity="0.16" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />}
+        {MESH.lines.map((d, i) => (
+          <path key={i} d={d} fill="none" stroke="url(#mw-line)" strokeWidth={i === MESH_LINES - 1 ? 2 : 1.1}
+            strokeOpacity={0.35 + 0.65 * (i / (MESH_LINES - 1))} vectorEffect="non-scaling-stroke" />
+        ))}
+        <g fill="#8eeeff">{MESH.dots.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.r * 1.3} opacity={Math.min(1, p.o * 1.3)} />)}</g>
+      </g>
+    </svg>
+  );
+}
+
+/** Soft layered light-blue wave (between the card heading and the email field). */
+export function CardWave({ className = "" }: { className?: string }) {
+  return (
+    <svg className={`card-wave ${className}`} viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="cw-a" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#bfe6f6" stopOpacity="0.75" /><stop offset="1" stopColor="#bfe6f6" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="cw-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8fd3f0" stopOpacity="0.5" /><stop offset="1" stopColor="#8fd3f0" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M0 30 C 120 12, 250 46, 380 28 S 560 10, 600 18 V 60 H 0 Z" fill="url(#cw-a)" />
+      <path d="M0 40 C 150 24, 270 54, 420 36 S 570 24, 600 30 V 60 H 0 Z" fill="url(#cw-b)" />
+      <path d="M0 40 C 150 24, 270 54, 420 36 S 570 24, 600 30" fill="none" stroke="#11c5e8" strokeOpacity="0.3" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ engineering panels */
 
 /** Decorative QR-style mark (a fixed pattern, not a readable code). */
 function QrMark() {
@@ -45,17 +120,20 @@ const PASSPORT_ROWS: [string, string][] = [["Part ID", "IMP-01427"], ["Material"
   ["Traceability", "End-to-End"]];
 const STEPS = ["Design", "Build", "Inspect", "Certify", "Register"];
 
-/** Technical overlay: dimension drawing, holographic model, example passport card and (optionally) the build steps. */
+/**
+ * CAD drawing (angled top-left corner with a border following the edge), layered wireframe model and a sample digital
+ * passport (illustrative values, not application data); optionally the build workflow.
+ */
 function PrintHud({ steps = false }: { steps?: boolean }) {
   return (
     <div className="print-hud" aria-hidden="true">
-      <div className="hud-panel hud-dims"><img src={hudDimensions} alt="" /></div>
+      <div className="hud-angled hud-dims"><div className="hud-angled-inner"><img src={hudDimensions} alt="" /></div></div>
       <div className="hud-row">
-        <div className="hud-panel hud-holo"><img src={hudHolo} alt="" /></div>
+        <div className="hud-panel hud-holo"><img src={hudLayers} alt="" /></div>
         <div className="hud-panel hud-passport">
-          <div className="hud-passport-head"><Icon name="file" /><strong>Digital Passport</strong></div>
+          <div className="hud-passport-head"><Icon name="file" /><strong>Digital Passport</strong><span className="hud-sample">Sample</span></div>
           <div className="hud-passport-body">
-            <ul>{PASSPORT_ROWS.map(([k, v]) => <li key={k}><Icon name="check" />{k}: {v}</li>)}</ul>
+            <ul>{PASSPORT_ROWS.map(([k, v]) => <li key={k}><Icon name="check" /><span>{k}:</span> {v}</li>)}</ul>
             <QrMark />
           </div>
         </div>
@@ -70,30 +148,17 @@ function PrintHud({ steps = false }: { steps?: boolean }) {
   );
 }
 
-/** Animated cyan wave lines (a slow drift; still for reduced motion). */
-export function WaveLines({ className = "" }: { className?: string }) {
-  // Each line is drawn twice as wide as the box and moved by half its width, so the drift loops seamlessly.
-  const line = (y: number, amp: number) =>
-    `M0 ${y} ` + Array.from({ length: 8 }, (_, i) => `q 150 ${i % 2 ? amp : -amp} 300 0`).join(" ");
-  return (
-    <svg className={`wave-lines ${className}`} viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <g className="wl-a"><path d={line(120, 38)} /></g>
-      <g className="wl-b"><path d={line(140, 30)} /></g>
-      <g className="wl-c"><path d={line(160, 24)} /></g>
-      <g className="wl-d"><path d={line(178, 18)} /></g>
-    </svg>
-  );
-}
+/* ------------------------------------------------------------------ public pages */
 
 const HERO_FEATURES: [IconName, string][] = [["cube", "3D Printing"], ["gear", "Print Workflows"], ["layers", "Digital Passports"], ["nodes", "Traceability"]];
 
-/** Left-hand panel of the public pages (on small screens only the photograph shows, behind the card). */
+/** Left-hand panel of the public pages: one continuous navy section (photo blended in with gradient overlays). */
 export function MarineHero() {
   return (
     <aside className="marine-hero">
-      <div className="marine-hero-bg" aria-hidden="true" />
-      <img className="marine-hero-photo" src={printImpeller} alt="" />
-      <WaveLines className="marine-hero-waves" />
+      <div className="marine-hero-photo" aria-hidden="true"><img src={printImpeller} alt="" /></div>
+      <div className="marine-hero-shade" aria-hidden="true" />
+      <MeshWave className="marine-hero-wave" />
       <div className="marine-hero-hud"><PrintHud steps /></div>
       <div className="marine-hero-copy">
         <img className="marine-hero-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
@@ -108,17 +173,19 @@ export function MarineHero() {
   );
 }
 
+/* ------------------------------------------------------------------ in the app */
+
 const BANNER_FEATURES: [IconName, string][] = [["printer3d", "3D Printing"], ["gear", "Spare Parts"], ["passport", "Digital Passports"], ["nodes", "Traceability"]];
 
 /**
- * Page-title banner: the printer photograph with the eyebrow, title and four features. Dashboards (hud) also show the
- * technical overlay; section pages (compact) show the photograph only. The same height everywhere.
+ * Page-title banner: heading on the left, the printer photograph as the central visual; dashboards (default) add the
+ * engineering panels on the right, section pages (compact) show the photograph only. The same height everywhere.
  */
 export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
     <div className={`marine-banner${compact ? "" : " marine-banner-hud"}`}>
       <img className="marine-banner-photo" src={printImpeller} alt="" />
-      <WaveLines className="marine-banner-waves" />
+      <div className="marine-banner-shade" aria-hidden="true" />
       {!compact && <div className="marine-banner-overlay"><PrintHud /></div>}
       <div className="marine-banner-body">
         <p className="marine-banner-tagline">Marine 3D printing &amp; digital passport operations</p>
