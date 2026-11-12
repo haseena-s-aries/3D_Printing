@@ -1401,10 +1401,11 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .sidebar { background: linear-gradient(180deg, #0c2b55 0%, #071a36 55%, #041229 100%); }
 /* fixed to the foot of the sidebar (inside the phone drawer it moves with the drawer); dark image background blended
    away and the edges faded, so only the glowing propeller shows */
-.sidebar::before { content: ""; position: fixed; left: 0; bottom: 40px; width: var(--sidebar); height: min(36vh, 280px); z-index: 0; pointer-events: none;
-  background: url("./assets/propeller-wireframe.jpg") center bottom / auto 100% no-repeat; mix-blend-mode: screen; opacity: 0.8;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%); }
+/* sidebar foot artwork: full-width waves (edge to edge) + the propeller above them; dark backgrounds are pure black,
+   so the "screen" blend leaves no visible edges */
+.sidebar::before { content: ""; position: fixed; left: 0; bottom: 40px; width: var(--sidebar); height: min(40vh, 300px); z-index: 0; pointer-events: none;
+  background: url("./assets/sidebar-propeller.jpg") center top / auto 64% no-repeat, url("./assets/sidebar-waves.jpg") center bottom / 100% 52% no-repeat;
+  mix-blend-mode: screen; opacity: 0.85; }
 .is-rail .sidebar::before { display: none; }
 @media (max-width: 960px) { .sidebar::before { width: min(var(--sidebar), 86vw); } }
 .sidebar nav { position: relative; z-index: 1; }
@@ -1458,8 +1459,8 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
   .marine-hero-holo { display: block; position: absolute; right: 2%; top: 10%; width: min(36%, 370px); height: auto; z-index: 1;
     filter: drop-shadow(0 0 22px rgba(42, 216, 255, 0.35)); animation: holo-float 7s ease-in-out infinite; }
   .login-page:has(.login-card-wide) .marine-hero-holo { display: none; }
-  /* curved edge between the dark panel and the page, as in the design */
-  .marine-hero { clip-path: ellipse(106% 210% at 0% 0%); }
+  /* straight edge between the dark panel and the page */
+  .marine-hero { box-shadow: 1px 0 0 rgba(64, 200, 255, 0.35), 18px 0 50px rgba(4, 18, 42, 0.25); }
 }
 @media (min-width: 1100px) and (max-height: 820px) { .marine-hero-holo { width: min(32%, 300px); top: 6%; } }
 .marine-hero-brand { display: flex; align-items: center; gap: 16px; font-weight: 650; color: #f1f6fc; font-size: 1.15rem; line-height: 1.2; letter-spacing: 0.01em; }
@@ -1529,7 +1530,7 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 @media (prefers-reduced-motion: reduce) { .wave-lines g { animation: none; } }
 
 /* short screens (laptops): smaller, fainter propeller so the last menu items stay easy to read */
-@media (max-height: 800px) { .sidebar::before { height: min(28vh, 200px); opacity: 0.5; } }
+@media (max-height: 800px) { .sidebar::before { height: min(30vh, 210px); opacity: 0.55; } }
 
 @keyframes holo-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 .login-page:has(.login-card-wide) .marine-hero-title { max-width: none; }
