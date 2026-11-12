@@ -80,6 +80,7 @@ def test_admin_and_manager_approve_from_the_aries_queue(ap, who):
     detail_url = f"/api/v1/operator/passport-approvals/{w['a'].pk}/{p['id']}/"
     detail = c.get(detail_url).json()
     assert detail["revision"]["status"] == "submitted" and detail["submitted_by_email"] == "op.eng@example.test"
+    assert detail["evidence_files"] == {}  # R-L3 evidence references are resolved to document names (none attached here)
     assert c.post(detail_url, {"decision": "return"}, format="json").json()["error"]["code"] == "note_required"
     r = c.post(detail_url, {"decision": "approve"}, format="json")
     assert r.status_code == 200 and r.json() == {"status": "approved", "passport_state": "engineering_approved"}
