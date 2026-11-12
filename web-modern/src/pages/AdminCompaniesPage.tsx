@@ -27,7 +27,7 @@ export default function AdminCompaniesPage() {
   const companies = (m.data ?? []).filter((x) => x.tenant.kind === "client" && x.tenant.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <>
-      <PageHeader title="Choose a client company" subtitle={`Open ${MODULES[next] ?? "the module"} in a client company's own workspace.`} />
+      <PageHeader marine title="Choose a client company" subtitle={`Open ${MODULES[next] ?? "the module"} in a client company's own workspace.`} />
       <Notice kind="info">You work inside the company you choose: its data stays in its own workspace and every action is recorded in its
         audit trail. Engineering sign-off, passport approval and manufacturing release are not part of Aries Admin access.</Notice>
       <ErrorNotice error={m.error ?? error} />

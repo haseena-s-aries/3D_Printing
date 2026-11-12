@@ -54,7 +54,7 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <PageHeader title="Projects" subtitle="Group spare parts by digitalisation project." />
+      <PageHeader marine title="Projects" subtitle="Group spare parts by digitalisation project." />
       {message && <Notice kind="success"><span role="status">{message}</span></Notice>}
       <div className={can("projects.manage") ? "grid-2 wide-left" : ""}>
         <Card title="Projects">

@@ -39,7 +39,7 @@ export default function IncomingRequestsPage() {
 
   return (
     <>
-      <PageHeader title="Incoming requests" subtitle="Manufacturing enquiries, 3D scanning and AI assessment requests from client organisations." />
+      <PageHeader marine title="Incoming requests" subtitle="Manufacturing enquiries, 3D scanning and AI assessment requests from client organisations." />
       <Card>
         {list.data && <p className="list-summary">{rows.length} {openOnly && !status ? "open " : ""}requests · {waiting} awaiting acknowledgement ·{" "}
           {rows.filter((r) => r.priority === "urgent").length} urgent · {new Set(rows.map((r) => r.client_name)).size} client organisations</p>}

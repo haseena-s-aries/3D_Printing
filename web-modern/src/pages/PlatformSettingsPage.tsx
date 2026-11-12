@@ -18,7 +18,7 @@ export default function PlatformSettingsPage() {
   const s = useApi<Settings>("/admin/platform-settings/");
   return (
     <>
-      <PageHeader title="Platform settings" subtitle="Feature switches, AI limits and access decisions of this deployment." />
+      <PageHeader marine title="Platform settings" subtitle="Feature switches, AI limits and access decisions of this deployment." />
       <ErrorNotice error={s.error} />
       {s.loading && !s.data && <Loading />}
       {s.data && (

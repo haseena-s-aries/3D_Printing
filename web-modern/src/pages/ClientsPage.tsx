@@ -59,7 +59,7 @@ export default function ClientsPage() {
 
   return (
     <>
-      <PageHeader title="Client organisations" subtitle="Each client is an isolated tenant. Dedicated hosting is recorded per client."
+      <PageHeader marine title="Client organisations" subtitle="Each client is an isolated tenant. Dedicated hosting is recorded per client."
         actions={view === "list" ? <button type="button" className="btn btn-primary" onClick={() => setParams({ view: "new" })}>Add a client</button> : undefined} />
       <div className="tabs" role="tablist" aria-label="Client organisations">
         {VIEWS.map(([v, name]) => (

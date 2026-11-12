@@ -76,7 +76,7 @@ export default function AdminInventoryPage({ clientId }: { clientId?: string } =
   const [expanded, setExpanded] = useState("");
   return (
     <>
-      {!clientId && <PageHeader title="Digital inventory · all client companies"
+      {!clientId && <PageHeader marine title="Digital inventory · all client companies"
         subtitle="Administrative summaries across client companies, to follow review backlogs and digitisation progress." />}
       <Notice>
         {o?.detail_access.enabled

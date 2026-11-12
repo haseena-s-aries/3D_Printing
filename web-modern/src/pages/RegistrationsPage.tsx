@@ -156,7 +156,7 @@ export default function RegistrationsPage() {
 
   return (
     <>
-      <PageHeader title="Registrations" subtitle="New client companies and Aries staff account requests waiting for review." />
+      <PageHeader marine title="Registrations" subtitle="New client companies and Aries staff account requests waiting for review." />
       <div className="tabs" role="tablist" aria-label="Registration status">
         {TABS.map(([key, name]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab${tab === key ? " active" : ""}`} onClick={() => setTab(key)}>

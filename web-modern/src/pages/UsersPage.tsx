@@ -158,7 +158,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" subtitle={`People with access to ${session?.tenant.name}`} />
+      <PageHeader marine title="Users" subtitle={`People with access to ${session?.tenant.name}`} />
       {session?.membership.role === "client_admin" && <CompanyProfileCard />}
       {accessMsg && <div className="notice notice-success" role="status">{accessMsg}</div>}
       {clientAdmin && <p className="muted small">You see every project of your company. Each Client User sees only the projects you give them

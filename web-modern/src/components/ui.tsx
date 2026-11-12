@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { Icon, type IconName } from "./icons";
+import { MarineBanner } from "./MarineHero";
 
 /** Text with a line-break opportunity after commas and slashes (long material texts such as RING,WEAR,95MM,135MM). */
 export function Breakable({ text }: { text: string }) {
@@ -11,8 +12,9 @@ export function Breakable({ text }: { text: string }) {
   return <>{parts.map((p, i) => <span key={i}>{p}{i < parts.length - 1 && <wbr />}</span>)}</>;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
-  return (
+/** Page title. marine: shown on a compact marine banner (main section pages; detail pages and forms stay plain). */
+export function PageHeader({ title, subtitle, actions, marine = false }: { title: string; subtitle?: ReactNode; actions?: ReactNode; marine?: boolean }) {
+  const header = (
     <header className="page-header">
       <div>
         <h1><Breakable text={title} /></h1>
@@ -21,6 +23,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
       {actions && <div className="page-actions">{actions}</div>}
     </header>
   );
+  return marine ? <MarineBanner compact>{header}</MarineBanner> : header;
 }
 
 export function Card({ title, children, actions }: { title?: string; children: ReactNode; actions?: ReactNode }) {

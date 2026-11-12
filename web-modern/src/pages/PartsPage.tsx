@@ -86,7 +86,7 @@ export default function PartsPage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader marine
         title="Digital inventory"
         subtitle="Spare parts and their digital passports. Each part can hold one passport."
         actions={

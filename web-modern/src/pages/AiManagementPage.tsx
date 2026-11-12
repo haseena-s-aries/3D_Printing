@@ -65,7 +65,7 @@ export default function AiManagementPage() {
 
   return (
     <>
-      <PageHeader title="AI management" subtitle="Spare Parts Intelligence across client companies: coverage, reviews, savings, client access and AI cost." />
+      <PageHeader marine title="AI management" subtitle="Spare Parts Intelligence across client companies: coverage, reviews, savings, client access and AI cost." />
       <div className="tabs" role="tablist" aria-label="AI management">
         {TABS.map(([t, name]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "is-active" : ""}`}

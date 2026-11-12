@@ -132,9 +132,9 @@ export function MarineScene({ className = "", viewBox = "0 0 1200 900" }: { clas
 }
 
 /** Dashboard header: the page title over the horizon band of the marine scene. */
-export function MarineBanner({ children }: { children: ReactNode }) {
+export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
-    <div className="marine-banner">
+    <div className={`marine-banner${compact ? " marine-banner-compact" : ""}`}>
       <MarineScene viewBox="0 432 1200 200" />
       <svg className="marine-scene marine-banner-part" viewBox="-200 -150 400 330" aria-hidden="true" focusable="false">
         <Impeller transform="translate(0 0) scale(0.9)" />

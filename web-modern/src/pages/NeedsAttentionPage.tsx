@@ -5,7 +5,7 @@ import { PageHeader } from "../components/ui";
 export default function NeedsAttentionPage() {
   return (
     <>
-      <PageHeader title="Needs attention" subtitle="Work waiting for you, within your role, company and project scope. Open an item to act on it." />
+      <PageHeader marine title="Needs attention" subtitle="Work waiting for you, within your role, company and project scope. Open an item to act on it." />
       <NeedsAttention />
     </>
   );
