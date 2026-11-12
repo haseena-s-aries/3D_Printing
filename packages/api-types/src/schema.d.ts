@@ -1451,6 +1451,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/passport-approvals/{client_id}/{passport_id}/files/{file_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Content of one engineering file of the passport's spare part, for the approver: `variant=preview` (PDF or photo,
+         *     inline), `original` (download) or `glb` (the 3D model derivative of a STEP file).
+         */
+        get: operations["v1_operator_passport_approvals_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/": {
         parameters: {
             query?: never;
@@ -3729,6 +3749,7 @@ export interface components {
          *     * `decline` - decline
          *     * `hand_over` - hand_over
          *     * `link_project` - link_project
+         *     * `message` - message
          *     * `record_deliverable` - record_deliverable
          *     * `request_information` - request_information
          *     * `respond` - respond
@@ -3736,7 +3757,7 @@ export interface components {
          *     * `start` - start
          * @enum {string}
          */
-        OperatorActionInputActionEnum: "acknowledge" | "assign" | "close" | "complete" | "create_project" | "decline" | "hand_over" | "link_project" | "record_deliverable" | "request_information" | "respond" | "schedule" | "start";
+        OperatorActionInputActionEnum: "acknowledge" | "assign" | "close" | "complete" | "create_project" | "decline" | "hand_over" | "link_project" | "message" | "record_deliverable" | "request_information" | "respond" | "schedule" | "start";
         OperatorActionInputRequest: {
             action: components["schemas"]["OperatorActionInputActionEnum"];
             /** @default  */
@@ -7995,6 +8016,29 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_operator_passport_approvals_files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                file_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
         };
