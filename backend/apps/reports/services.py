@@ -28,7 +28,7 @@ from .models import PassportReport, PassportReportEvent, PassportReportReplaceme
 
 RENDERER = Path(settings.BASE_DIR) / "scripts" / "report_render.mjs"
 ROLE_NAMES = {Role.OPERATOR_ENGINEER: "Aries Engineer", Role.OPERATOR_QA: "Aries QA", Role.CLIENT_ADMIN: "Client Administrator",
-              Role.CLIENT_ENGINEER: "Client Engineer", Role.CLIENT_USER: "Client User", Role.OPERATOR_ADMIN: "Aries Admin"}
+              Role.CLIENT_ENGINEER: "Client Engineer", Role.CLIENT_USER: "Client User", Role.OPERATOR_ADMIN: "Aries Admin", Role.OPERATOR_MANAGER: "Aries Manager"}
 
 
 def _run(job: dict, workdir: Path) -> dict:

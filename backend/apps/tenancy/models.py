@@ -50,6 +50,7 @@ class Tenant(TimeStampedModel):
 
 class Role(models.TextChoices):
     OPERATOR_ADMIN = "operator_admin", "Operator administrator"
+    OPERATOR_MANAGER = "operator_manager", "Operator manager"
     OPERATOR_ENGINEER = "operator_engineer", "Operator engineer"
     OPERATOR_QA = "operator_qa", "Operator QA"
     OPERATOR_SUPPORT = "operator_support", "Operator support"
@@ -60,7 +61,10 @@ class Role(models.TextChoices):
     AUDITOR = "auditor", "Auditor"
 
 
-OPERATOR_ROLES = {Role.OPERATOR_ADMIN, Role.OPERATOR_ENGINEER, Role.OPERATOR_QA, Role.OPERATOR_SUPPORT}
+OPERATOR_ROLES = {Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER, Role.OPERATOR_ENGINEER, Role.OPERATOR_QA, Role.OPERATOR_SUPPORT}
+# Aries Manager: administers the platform like the Aries Admin (users, registrations, clients, assignments) without the audit
+# trail, and can never create, approve, change or deactivate an Aries Admin (apps.tenancy.membership_policy).
+PLATFORM_ADMIN_ROLES = {Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER}
 CLIENT_ROLES = {Role.CLIENT_ADMIN, Role.CLIENT_ENGINEER, Role.CLIENT_USER, Role.PROCUREMENT, Role.AUDITOR}
 
 

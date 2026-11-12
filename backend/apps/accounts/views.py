@@ -179,7 +179,7 @@ def selectable_workspaces(memberships, keep=None):
     memberships = list(memberships)
     assigned = any(m.tenant.kind == Tenant.Kind.CLIENT and m.role in OPERATOR_ROLES for m in memberships)
     def offered(m):
-        operator_home = m.tenant.kind == Tenant.Kind.OPERATOR and m.role != Role.OPERATOR_ADMIN
+        operator_home = m.tenant.kind == Tenant.Kind.OPERATOR and m.role not in (Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER)
         if operator_home and "contracts.thumbnail_view" in capabilities_for(m):
             return True
         return not (assigned and operator_home) or (keep is not None and m.pk == keep.pk)

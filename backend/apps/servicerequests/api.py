@@ -431,7 +431,7 @@ def _operator_staff(request):
 
 
 def _is_operator_admin(user, op) -> bool:
-    return Membership.objects.filter(user=user, tenant=op, role=Role.OPERATOR_ADMIN, is_active=True).exists()
+    return Membership.objects.filter(user=user, tenant=op, role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True).exists()
 
 
 def _assigned_clients(user) -> set[str]:

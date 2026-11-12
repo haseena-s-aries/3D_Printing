@@ -124,7 +124,7 @@ export default function LoginPage() {
         </Link>
         <Link to="/register/staff" className="login-option">
           <Icon name="users" />
-          <span><strong>Request an account</strong><small>For Aries Engineer / QA / Support</small></span>
+          <span><strong>Request an account</strong><small>For Aries Manager / Engineer / QA / Support</small></span>
           <Icon name="arrowRight" className="login-option-go" />
         </Link>
         <p className="login-info"><Icon name="info" /><span>Authorized access only. All activities are recorded and fully auditable for traceability

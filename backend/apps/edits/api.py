@@ -18,7 +18,7 @@ from . import fields as F
 from . import services
 from .models import EditRequest
 
-ROLE_NAMES = {"operator_engineer": "Aries Engineer", "client_admin": "Client Administrator", "client_engineer": "Client Engineer",
+ROLE_NAMES = {"operator_manager": "Aries Manager", "operator_engineer": "Aries Engineer", "client_admin": "Client Administrator", "client_engineer": "Client Engineer",
               "client_user": "Client User"}
 
 

@@ -52,7 +52,7 @@ LIFECYCLE = [E.VERIFIED, E.REJECTED, E.ENDED]
 REVIEWS = [E.CONFLICT_PROCEED, E.CONFLICT_SUSTAINED]
 # Stored role values stay as recorded (history is never rewritten). An Aries Engineer acting under a four-role permission is
 # recorded as "operator_engineer:qa" or "operator_engineer:contract".
-ROLE_LABELS = {"operator_admin": "Aries Admin", "operator_qa": "Aries QA", "operator_engineer": "Aries Engineer",
+ROLE_LABELS = {"operator_admin": "Aries Admin", "operator_manager": "Aries Manager", "operator_qa": "Aries QA", "operator_engineer": "Aries Engineer",
                "operator_engineer:qa": "Aries Engineer (QA)", "operator_engineer:contract": "Aries Engineer (contract reviewer)"}
 
 STATUS = {  # status -> (label, explanation for the client company)

@@ -274,7 +274,7 @@ def operator_recipients(obj: ClientRequest):
     from apps.projects.scoping import allowed_project_ids_for
 
     op = operator_tenant()
-    admins = {m.user for m in Membership.objects.filter(tenant=op, role=Role.OPERATOR_ADMIN, is_active=True,
+    admins = {m.user for m in Membership.objects.filter(tenant=op, role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True,
                                                         user__is_active=True).select_related("user")}
     project_id = obj.project_id or (obj.part.project_id if obj.part_id else None)
     staff = set()

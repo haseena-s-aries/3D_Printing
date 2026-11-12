@@ -202,8 +202,8 @@ def update_member(request, m: Membership, data: dict) -> Membership:
         if (role or m.role) != Role.OPERATOR_ENGINEER:
             raise DomainError("not_engineer", f"{what} is given to Aries Engineers only.", http_status=400)
     if importing is not None:
-        if request.membership.role != Role.OPERATOR_ADMIN:
-            raise DomainError("not_permitted", "Only an Aries Admin can allow inventory import.", http_status=403)
+        if not policy.is_platform_admin(request.membership):
+            raise DomainError("not_permitted", "Only an Aries Admin or Manager can allow inventory import.", http_status=403)
         if (role or m.role) != Role.CLIENT_ADMIN:
             raise DomainError("not_applicable", "Inventory import can be allowed for Client Administrators only.", http_status=400)
     if allowed is not None and (role or m.role) != Role.CLIENT_USER:
@@ -415,7 +415,7 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
             record(request, "client.details_viewed", obj=client, tenant=client, data={"by_operator": True})
         record(request, "client.details_viewed", obj=client)
         people = [{"email": m.user.email, "role": m.role, "is_active": m.is_active}
-                  for m in client.memberships.select_related("user").exclude(role__in=CLIENT_ASSIGNABLE_OPERATOR_ROLES | {Role.OPERATOR_ADMIN})]
+                  for m in client.memberships.select_related("user").exclude(role__in=CLIENT_ASSIGNABLE_OPERATOR_ROLES | {Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER})]
         approved_reg = reg if reg is not None and reg.status == CompanyRegistration.Status.APPROVED else None
         return Response({"id": str(client.pk), "name": client.name, "slug": client.slug, "status": client.status,
                          "hosting_model": client.hosting_model, "region_code": client.region_code,
