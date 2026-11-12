@@ -11,7 +11,7 @@ import { roleLabel } from "./roles";
 import { ThemeToggle, useAppKeyboard } from "./theme";
 import { Loading } from "./ui";
 import ariesMark from "../assets/aries-mark.png";
-import { MeshWave, ariesLogo } from "./MarineHero";
+import { SidebarWave, ariesLogo } from "./MarineHero";
 
 interface NavItem {
   to: string;
@@ -244,7 +244,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
             ) : null;
           })}
         </nav>}
-        <div className="sidebar-wave" aria-hidden="true"><MeshWave slice /></div>
+        <SidebarWave />
         <div className="sidebar-foot">
           <span className="sidebar-foot-text">{session.tenant.hosting_model === "dedicated" ? "Dedicated deployment" : "Shared platform"}</span>
           <button type="button" className="rail-toggle" onClick={toggleRail} aria-label={rail ? "Expand navigation" : "Collapse navigation"}

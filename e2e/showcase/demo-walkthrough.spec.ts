@@ -34,7 +34,7 @@ async function authHeader(page: Page): Promise<string> {
 test.describe.serial("Showcase demonstration walkthrough", () => {
   test("1-2 operator administrator: sign in and select a demo client organisation", async ({ page }) => {
     await signIn(page, "admin@operator.demo");
-    await expect(page.getByRole("heading", { name: "Aries Admin dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Aries Admin Dashboard" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Client overview" })).toContainText("Demo Maritime Engineering");
     await expect(page.getByRole("link", { name: "Digital inventory", exact: true })).toHaveCount(0); // no empty inventory menus
     await page.getByRole("link", { name: "Clients", exact: true }).click();

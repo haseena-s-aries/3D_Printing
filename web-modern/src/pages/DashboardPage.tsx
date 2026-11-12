@@ -11,7 +11,7 @@ import { ListPager, ListToolbar, useListControls } from "../components/ListContr
 import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
-import { MarineBanner } from "../components/MarineHero";
+import { KpiWave, MarineBanner } from "../components/MarineHero";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
 
 function Stat({ label, value, to, icon, hint }: { label: string; value: number | string; to?: string; icon?: IconName; hint?: string }) {
@@ -21,6 +21,7 @@ function Stat({ label, value, to, icon, hint }: { label: string; value: number |
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
       {hint && <div className="muted small">{hint}</div>}
+      <KpiWave />
     </>
   );
   return to ? (
@@ -280,7 +281,7 @@ function OperatorHome() {
   return (
     <>
       <MarineBanner>
-        <PageHeader title="Aries Admin dashboard" subtitle="Client companies, registrations, assignments and incoming requests" />
+        <PageHeader title="Aries Admin Dashboard" subtitle="Manage client companies, registrations, assignments and incoming requests." />
       </MarineBanner>
       <NeedsAttention compact />
       <div className="stats stats-3">
