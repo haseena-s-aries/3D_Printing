@@ -224,6 +224,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
           <img className="brand-logo-mark" src={ariesMark} alt="Aries" />
           <div className="brand-text">
             <div className="brand-name">Digital Passport Platform</div>
+            <div className="brand-sub">Marine 3D Printing</div>
           </div>
         </div>
         {superAdmin ? <AdminNav rail={rail} /> : <nav>
