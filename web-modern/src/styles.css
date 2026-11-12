@@ -1403,7 +1403,8 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
    away and the edges faded, so only the glowing propeller shows */
 .sidebar::before { content: ""; position: fixed; left: 0; bottom: 40px; width: var(--sidebar); height: min(36vh, 280px); z-index: 0; pointer-events: none;
   background: url("./assets/propeller-wireframe.jpg") center bottom / auto 100% no-repeat; mix-blend-mode: screen; opacity: 0.8;
-  -webkit-mask-image: radial-gradient(60% 55% at 50% 55%, #000 55%, transparent 100%); mask-image: radial-gradient(60% 55% at 50% 55%, #000 55%, transparent 100%); }
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%); }
 .is-rail .sidebar::before { display: none; }
 @media (max-width: 960px) { .sidebar::before { width: min(var(--sidebar), 86vw); } }
 .sidebar nav { position: relative; z-index: 1; }
@@ -1411,11 +1412,9 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
   background: linear-gradient(180deg, rgba(4, 18, 41, 0.6), #041229 40%); }
 
 /* ---------- wireframe propeller and metallic impeller */
-.metal-impeller .mi-spin { animation: mh-spin 36s linear infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes mh-spin { to { transform: rotate(360deg); } }
-@keyframes mh-ring { 0% { transform: translate(-50%, 0) scale(0.92); opacity: 0.9; } 100% { transform: translate(-50%, 0) scale(1.12); opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) {
-  .metal-impeller .mi-spin, .marine-hero-rings span { animation: none; }
+  .marine-hero-holo { animation: none; }
 }
 
 /* ---------- public pages: marine panel (left) + glass card (right) */
@@ -1446,45 +1445,32 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .marine-hero-bg { position: absolute; inset: 0; background: radial-gradient(700px 420px at 20% 0%, rgba(34, 196, 238, 0.16), transparent 65%),
   linear-gradient(180deg, #051634 0%, #0a2550 55%, #0b2a52 100%); }
 .marine-hero-photo { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%; display: block; }
-.marine-hero-stage, .marine-hero-copy { display: none; }
+.marine-hero-holo, .marine-hero-copy { display: none; }
 @media (min-width: 1100px) {
   .login-page { --hero-w: min(56vw, calc(100vw - 520px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: stretch; }
   .login-page:has(.login-card-wide) { --hero-w: min(40vw, calc(100vw - 860px)); }
-  .marine-hero { position: fixed; top: 0; bottom: 0; left: 0; right: auto; width: var(--hero-w); height: 100vh;
-    box-shadow: 1px 0 0 rgba(64, 200, 255, 0.25), 20px 0 60px rgba(0, 0, 0, 0.35); }
+  .marine-hero { position: fixed; top: 0; bottom: 0; left: 0; right: auto; width: var(--hero-w); height: 100vh; }
   .login-page > .login-card, .login-page > form.login-card { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; margin: 40px 32px; }
   .marine-hero-copy { display: flex; flex-direction: column; gap: 16px; position: absolute; left: clamp(32px, 4.5vw, 72px); right: clamp(24px, 4vw, 64px);
     top: clamp(28px, 6vh, 64px); color: #e8f1fa; max-width: 640px; }
-  /* the impeller and its rings share one box, so the rings are always centred under it */
   .marine-hero-photo { height: 58%; object-position: 22% 45%;
     -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%); mask-image: linear-gradient(180deg, transparent 0%, #000 30%); }
-  .marine-hero-stage { display: block; position: absolute; right: 3%; bottom: 3%; width: min(40%, 360px); z-index: 1; }
-  .login-page:has(.login-card-wide) .marine-hero-stage { width: min(46%, 300px); }
-  .marine-hero-part { display: block; position: relative; width: 100%; height: auto; z-index: 1; }
-  .marine-hero-rings { position: absolute; left: 50%; bottom: 2%; width: 118%; height: 0; transform: translateX(-50%); z-index: 0; }
+  .marine-hero-holo { display: block; position: absolute; right: 2%; top: 10%; width: min(36%, 370px); height: auto; z-index: 1;
+    filter: drop-shadow(0 0 22px rgba(42, 216, 255, 0.35)); animation: holo-float 7s ease-in-out infinite; }
+  .login-page:has(.login-card-wide) .marine-hero-holo { display: none; }
+  /* curved edge between the dark panel and the page, as in the design */
+  .marine-hero { clip-path: ellipse(106% 210% at 0% 0%); }
 }
-@media (min-width: 1100px) and (max-height: 820px) { .marine-hero-features { display: none; } .marine-hero-stage { width: min(32%, 280px); } }
-.marine-hero-rings span { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 0); border-radius: 50%; border: 2px solid rgba(63, 211, 255, 0.75);
-  box-shadow: 0 0 18px rgba(63, 211, 255, 0.6), 0 0 18px rgba(63, 211, 255, 0.4) inset; animation: mh-ring 3.6s ease-out infinite alternate; }
-.marine-hero-rings span:nth-child(1) { width: 100%; aspect-ratio: 4 / 1; }
-.marine-hero-rings span:nth-child(2) { width: 78%; aspect-ratio: 4 / 1; bottom: 4%; animation-delay: 0.6s; opacity: 0.7; }
-.marine-hero-rings span:nth-child(3) { width: 56%; aspect-ratio: 4 / 1; bottom: 8%; animation-delay: 1.2s; opacity: 0.5; }
-.marine-hero-brand { display: flex; align-items: center; gap: 14px; font-weight: 650; color: #f1f6fc; font-size: 1.08rem; letter-spacing: 0.01em; white-space: nowrap; }
+@media (min-width: 1100px) and (max-height: 820px) { .marine-hero-holo { width: min(32%, 300px); top: 6%; } }
+.marine-hero-brand { display: flex; align-items: center; gap: 16px; font-weight: 650; color: #f1f6fc; font-size: 1.15rem; line-height: 1.2; letter-spacing: 0.01em; }
 .marine-hero-brand img { height: 46px; width: auto; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45)); }
 .marine-hero-divider { width: 1px; align-self: stretch; background: rgba(255, 255, 255, 0.35); }
-.marine-hero-title { margin: 10px 0 0; font-size: clamp(1.9rem, 3vw, 2.9rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; color: #fff;
+.marine-hero-title { margin: 22px 0 0; max-width: min(600px, 66%); font-size: clamp(1.8rem, 2.7vw, 2.85rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; color: #fff;
   text-wrap: balance; text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45); }
-.marine-hero-title .accent { display: inline-block; position: relative; background: linear-gradient(90deg, #3fd3ff, #8ae9ff); -webkit-background-clip: text;
-  background-clip: text; color: transparent; padding-bottom: 6px; }
-.marine-hero-title .accent::after { content: ""; position: absolute; left: 4%; right: 6%; bottom: -2px; height: 8px; border-radius: 50%;
-  border-bottom: 3px solid #3fd3ff; box-shadow: 0 6px 12px -6px rgba(63, 211, 255, 0.8); }
-.marine-hero-lead { margin: 0; color: #c8d8e8; font-size: var(--fs-lg); line-height: 1.5; max-width: 52ch; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
-.marine-hero-features { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 560px; }
-.marine-hero-features li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; color: #e6f0f8; font-weight: 600;
-  font-size: var(--fs-sm); padding: 4px 12px; }
-.marine-hero-features li + li { border-left: 1px solid rgba(255, 255, 255, 0.2); }
-.marine-hero-icon { display: grid; place-items: center; color: #3fd3ff; filter: drop-shadow(0 0 8px rgba(63, 211, 255, 0.6)); }
-.marine-hero-icon .icon { width: 38px; height: 38px; stroke-width: 1.5; }
+.marine-hero-title .accent { display: inline-block; background: linear-gradient(90deg, #22c4ee, #7fe6ff); -webkit-background-clip: text; background-clip: text;
+  color: transparent; }
+.marine-hero-rule { display: block; width: 88px; height: 4px; border-radius: 4px; background: #22c4ee; box-shadow: 0 0 14px rgba(34, 196, 238, 0.7); }
+.marine-hero-lead { margin: 0; color: #c8d8e8; font-size: var(--fs-lg); line-height: 1.5; max-width: min(46ch, 64%); text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
 .public-theme { z-index: 5; }
 @media (max-width: 1099px) { .login-page { padding-top: 64px; } }
 
@@ -1542,7 +1528,37 @@ a.stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(4, 18, 
 .marine-hero-waves { z-index: 1; height: 28%; }
 @media (prefers-reduced-motion: reduce) { .wave-lines g { animation: none; } }
 
-/* holographic impeller (matches the blue wireframe propeller) */
-.metal-impeller { filter: drop-shadow(0 0 18px rgba(42, 216, 255, 0.35)); }
 /* short screens (laptops): smaller, fainter propeller so the last menu items stay easy to read */
 @media (max-height: 800px) { .sidebar::before { height: min(28vh, 200px); opacity: 0.5; } }
+
+@keyframes holo-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.login-page:has(.login-card-wide) .marine-hero-title { max-width: none; }
+
+/* ---------- public pages, right side: light page and white card (as in the design); dark theme keeps the glass card */
+:root[data-theme="light"] .login-page { background: radial-gradient(800px 500px at 90% 10%, rgba(34, 140, 220, 0.12), transparent 60%),
+  linear-gradient(160deg, #f1f6fb 0%, #e3edf7 100%); }
+:root[data-theme="light"] .login-card { background: #ffffff; border: 1px solid #dde7f1; border-radius: 26px;
+  box-shadow: 0 30px 70px rgba(16, 52, 96, 0.16), 0 2px 6px rgba(16, 52, 96, 0.06); }
+:root[data-theme="light"] .login-card::after { display: none; }
+.login-card { padding: 34px 36px 30px; gap: 16px; }
+.login-card .brand-lg h1 { font-size: 1.45rem; }
+.login-card input, .login-card select { min-height: 46px; border-radius: 10px; }
+:root[data-theme="light"] .login-card input, :root[data-theme="light"] .login-card select { background-color: #f4f7fb; border-color: #cfdae6; }
+.login-card .btn-primary.btn-block { min-height: 48px; border-radius: 10px; font-size: var(--fs-md); font-weight: 650; gap: 10px; }
+:root[data-theme="light"] .login-card .btn-primary { background: linear-gradient(180deg, #1a86c7, #0b4f8c); border-color: #0b4f8c;
+  box-shadow: 0 10px 22px rgba(11, 79, 140, 0.3); }
+:root[data-theme="light"] .login-card .btn-primary:hover:not(:disabled) { background: linear-gradient(180deg, #1c92d8, #0d5a9e); }
+.login-option { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid var(--line-strong); border-radius: 12px;
+  text-decoration: none; color: var(--ink); background: var(--surface); transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast), transform 80ms; }
+.login-option:hover { border-color: var(--accent-line); box-shadow: 0 6px 18px rgba(16, 52, 96, 0.1); transform: translateY(-1px); }
+.login-option > .icon:first-child { width: 28px; height: 28px; color: var(--accent); flex: none; }
+.login-option > span { display: flex; flex-direction: column; line-height: 1.3; flex: 1; min-width: 0; }
+.login-option small { color: var(--muted); font-size: var(--fs-sm); }
+.login-option strong { color: var(--accent); font-size: var(--fs-md); }
+.login-option-go { color: var(--accent); flex: none; }
+:root:not([data-theme="light"]) .login-option { background: rgba(255, 255, 255, 0.03); border-color: rgba(99, 217, 246, 0.25); }
+.login-info { display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+.login-info .icon { color: var(--accent); flex: none; margin-top: 1px; }
+.public-theme { background: #0b2a52; color: #fff; border-radius: 10px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25); }
+.login-page > .login-card:not(.login-card-wide), .login-page > form.login-card { width: min(520px, 100%); }
+.login-page:has(.login-card-wide) .marine-hero-lead { max-width: none; }

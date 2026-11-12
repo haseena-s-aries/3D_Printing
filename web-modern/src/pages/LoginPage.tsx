@@ -6,6 +6,7 @@ import { postLoginTarget, useAuth } from "../auth/AuthContext";
 import { ThemeToggle } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
+import { Icon } from "../components/icons";
 import { MarineHero } from "../components/MarineHero";
 import ariesMark from "../assets/aries-mark.png";
 
@@ -113,17 +114,21 @@ export default function LoginPage() {
           </Field>
         )}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy} aria-busy={busy}>
-          {busy ? "Signing in…" : "Sign in"}
+          {!busy && <Icon name="login" />}{busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="center small"><Link to="/forgot-password">Forgot password?</Link></p>
-        <div className="login-register">
-          <span className="muted small">New client company?</span> <Link to="/register" className="btn btn-small">Register your company</Link>
-        </div>
-        <div className="login-register">
-          <span className="muted small">Aries Engineer, QA or Support?</span> <Link to="/register/staff" className="btn btn-small">Request an account</Link>
-        </div>
-        <p className="muted small">One sign-in for Aries Admins, Aries Engineers and client users. Access is limited to authorised users of each
-          organisation. Activity is audited.</p>
+        <Link to="/register" className="login-option">
+          <Icon name="building" />
+          <span><small>New client company?</small><strong>Register your company</strong></span>
+          <Icon name="chevron" className="login-option-go" />
+        </Link>
+        <Link to="/register/staff" className="login-option">
+          <Icon name="users" />
+          <span><small>Aries Engineer, QA or Support?</small><strong>Request an account</strong></span>
+          <Icon name="chevron" className="login-option-go" />
+        </Link>
+        <p className="login-info"><Icon name="info" /><span>One sign-in for Aries Admins, Aries Engineers and client users. Access is limited to
+          authorised users of each organisation. Activity is audited.</span></p>
       </form>
     </div>
   );
