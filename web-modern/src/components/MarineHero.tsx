@@ -1,8 +1,8 @@
 /**
  * Aries artwork for the public pages, page banners, sidebar and KPI tiles, built from the supplied images (metal 3D
- * printer building an impeller, impeller CAD drawing, layered wireframe model) and the dotted-mesh wave SVGs (login hero,
- * sidebar foot, dashboard banner), each placed once as a decorative layer (never tiled). Also the filled layered waves of
- * the sign-in card and KPI tiles (inline SVG) and the angled engineering panels. All decorative (aria-hidden / empty alt); the text is real text; the slow wave motion
+ * printer building an impeller, impeller CAD drawing, layered wireframe model). Each section has its own wave, placed once
+ * as a decorative layer (never tiled or stretched): the supplied dotted mesh waves (login hero, sidebar foot), a thin
+ * flowing line wave (dashboard banner) and soft filled waves (sign-in card, KPI tiles). Also the angled engineering panels. All decorative (aria-hidden / empty alt); the text is real text; the slow wave motion
  * stops with prefers-reduced-motion. Presentation only: no functional logic lives here.
  */
 import type { ReactNode } from "react";
@@ -10,17 +10,16 @@ import type { ReactNode } from "react";
 import ariesLogo from "../assets/aries-logo.png";
 import hudDimensions from "../assets/hud-dimensions.jpg";
 import hudLayers from "../assets/hud-layers.jpg";
-import bannerWave from "../assets/banner_mesh_wave.svg";
-import heroWave from "../assets/hero_mesh_wave.svg";
+import heroWave from "../assets/login_bottom_dotted_wave.svg";
 import printImpeller from "../assets/print-impeller.jpg";
-import sidebarWave from "../assets/sidebar_mesh_wave.svg";
+import sidebarWave from "../assets/sidebar_bottom_dotted_wave.svg";
 import { Icon, type IconName } from "./icons";
 
 export { ariesLogo };
 
 /* ------------------------------------------------------------------ waves */
 
-/** Dotted mesh wave in the lower part of the sidebar: rises on the left and flows down to the right, fades upwards. */
+/** Sidebar foot: the supplied compact dotted wave (cropped to its band, drawn at its own proportions). */
 export function SidebarWave() {
   return <img className="sidebar-wave" src={sidebarWave} alt="" aria-hidden="true" />;
 }
@@ -32,6 +31,27 @@ export function CardWave({ className = "" }: { className?: string }) {
       <path d="M0 20 C 90 6, 170 30, 270 20 S 430 4, 520 14 V 44 H 0 Z" fill="#e3f6fc" />
       <path d="M0 27 C 110 14, 200 38, 300 27 S 450 14, 520 22 V 44 H 0 Z" fill="#cdeef9" fillOpacity="0.75" />
       <path d="M0 34 C 120 25, 230 44, 330 34 S 460 25, 520 30 V 44 H 0 Z" fill="#b5e3f6" fillOpacity="0.5" />
+    </svg>
+  );
+}
+
+/** Dashboard banner: a few thin flowing cyan lines along the bottom (its own wave, not shared with other sections). */
+export function BannerWave() {
+  return (
+    <svg className="marine-banner-wave" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="banner-wave-stroke" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#11c5e8" stopOpacity="0" />
+          <stop offset="0.35" stopColor="#11c5e8" stopOpacity="0.85" />
+          <stop offset="0.75" stopColor="#3d9bff" stopOpacity="0.8" />
+          <stop offset="1" stopColor="#3d9bff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#banner-wave-stroke)" vectorEffect="non-scaling-stroke">
+        <path d="M0 52 C 180 50, 330 30, 520 30 S 860 50, 1000 40 S 1140 22, 1200 26" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        <path d="M0 56 C 200 54, 350 38, 540 38 S 880 56, 1020 47 S 1150 32, 1200 35" strokeWidth="1.2" strokeOpacity="0.75" vectorEffect="non-scaling-stroke" />
+        <path d="M0 59 C 220 58, 370 46, 560 46 S 900 60, 1040 54 S 1160 42, 1200 44" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
+      </g>
     </svg>
   );
 }
@@ -114,7 +134,8 @@ const HERO_FEATURES: [IconName, string][] = [["cube", "3D Printing"], ["gear", "
 
 /**
  * Left-hand panel of the public pages: one continuous navy section laid out with flex/grid: the copy on top, then the
- * visual area (printer photograph left, the four engineering panels right); the dotted wave is a single overlay behind.
+ * visual area (printer photograph left, the four engineering panels right). On desktops it stays in view (one screen
+ * high, sticky) while the form column scrolls; its composition tightens on shorter screens so nothing is cut off.
  */
 export function MarineHero() {
   return (
@@ -157,7 +178,7 @@ export function MarineBanner({ children, compact = false }: { children: ReactNod
       </div>
       <div className="marine-banner-photo" aria-hidden="true"><img src={printImpeller} alt="" /></div>
       {!compact && <div className="marine-banner-overlay"><PrintHud /></div>}
-      <img className="marine-banner-wave" src={bannerWave} alt="" aria-hidden="true" />
+      <BannerWave />
     </div>
   );
 }
