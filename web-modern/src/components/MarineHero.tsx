@@ -26,47 +26,48 @@ export function MetalImpeller({ className = "", spin = true }: { className?: str
     <svg className={`metal-impeller ${className}`} viewBox="-200 -150 400 330" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="mi-face" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f4f8fb" />
-          <stop offset="0.35" stopColor="#b9c6d1" />
-          <stop offset="0.6" stopColor="#6d7c89" />
-          <stop offset="0.8" stopColor="#d5dde4" />
-          <stop offset="1" stopColor="#59656f" />
+          <stop offset="0" stopColor="#bff4ff" stopOpacity="0.95" />
+          <stop offset="0.4" stopColor="#3cc8f5" stopOpacity="0.75" />
+          <stop offset="0.75" stopColor="#1567b8" stopOpacity="0.7" />
+          <stop offset="1" stopColor="#0b3a7a" stopOpacity="0.8" />
         </linearGradient>
         <linearGradient id="mi-edge" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3b4650" />
-          <stop offset="1" stopColor="#141b22" />
+          <stop offset="0" stopColor="#0d4f95" />
+          <stop offset="1" stopColor="#051a3d" />
         </linearGradient>
-        <radialGradient id="mi-disc" cx="0.4" cy="0.35" r="0.75">
-          <stop offset="0" stopColor="#e6edf3" />
-          <stop offset="0.55" stopColor="#8796a3" />
-          <stop offset="1" stopColor="#36414b" />
+        <radialGradient id="mi-disc" cx="0.42" cy="0.38" r="0.72">
+          <stop offset="0" stopColor="#5fd8ff" stopOpacity="0.55" />
+          <stop offset="0.6" stopColor="#135aa6" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#06224d" stopOpacity="0.85" />
         </radialGradient>
         <linearGradient id="mi-hub" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#5d6a75" />
-          <stop offset="0.35" stopColor="#f2f6f9" />
-          <stop offset="0.7" stopColor="#9aa8b4" />
-          <stop offset="1" stopColor="#47525c" />
+          <stop offset="0" stopColor="#0d4f95" />
+          <stop offset="0.4" stopColor="#9eeaff" />
+          <stop offset="0.75" stopColor="#2a8fd6" />
+          <stop offset="1" stopColor="#0b3a7a" />
         </linearGradient>
         <filter id="mi-shadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="14" stdDeviation="12" floodColor="#000814" floodOpacity="0.55" />
+          <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#2ad8ff" floodOpacity="0.55" />
         </filter>
       </defs>
       <g filter="url(#mi-shadow)">
         {/* back shroud with thickness */}
         <ellipse cx="0" cy="22" rx="168" ry="94" fill="url(#mi-edge)" />
-        <ellipse cx="0" cy="10" rx="168" ry="92" fill="url(#mi-disc)" />
+        <ellipse cx="0" cy="10" rx="168" ry="92" fill="url(#mi-disc)" stroke="#7fe6ff" strokeOpacity="0.8" strokeWidth="1.6" />
+        <ellipse cx="0" cy="10" rx="140" ry="76" fill="none" stroke="#7fe6ff" strokeOpacity="0.25" strokeWidth="1" />
+        <ellipse cx="0" cy="10" rx="105" ry="57" fill="none" stroke="#7fe6ff" strokeOpacity="0.2" strokeWidth="1" />
         <g transform="scale(1 0.55)">
           <g className={spin ? "mi-spin" : ""}>
             {/* blade thickness first (darker, offset), then the bright blade faces */}
             {blades.map((a) => <path key={`e${a}`} d={blade} transform={`rotate(${a}) translate(0 16)`} fill="url(#mi-edge)" />)}
-            {blades.map((a) => <path key={`f${a}`} d={blade} transform={`rotate(${a})`} fill="url(#mi-face)" stroke="#e9f0f5" strokeOpacity="0.6" strokeWidth="1" />)}
+            {blades.map((a) => <path key={`f${a}`} d={blade} transform={`rotate(${a})`} fill="url(#mi-face)" stroke="#a8f0ff" strokeOpacity="0.95" strokeWidth="1.6" />)}
           </g>
         </g>
         {/* hub: cylinder with a bore */}
         <path d="M-44 -6 V -40 A 44 24 0 0 1 44 -40 V -6 A 44 24 0 0 1 -44 -6 Z" fill="url(#mi-hub)" />
-        <ellipse cx="0" cy="-40" rx="44" ry="24" fill="#e9eff4" stroke="#7d8a96" strokeWidth="1" />
-        <ellipse cx="0" cy="-40" rx="22" ry="12" fill="#1c252e" />
-        <ellipse cx="0" cy="-37" rx="16" ry="8" fill="#0b1117" />
+        <ellipse cx="0" cy="-40" rx="44" ry="24" fill="#bff4ff" fillOpacity="0.9" stroke="#e6fbff" strokeWidth="1.4" />
+        <ellipse cx="0" cy="-40" rx="22" ry="12" fill="#06224d" stroke="#7fe6ff" strokeWidth="1" />
+        <ellipse cx="0" cy="-37" rx="16" ry="8" fill="#031332" />
       </g>
     </svg>
   );
@@ -82,6 +83,7 @@ export function MarineHero() {
     <aside className="marine-hero">
       <div className="marine-hero-bg" aria-hidden="true" />
       <img className="marine-hero-photo" src={marineVessel} alt="" />
+      <WaveLines className="marine-hero-waves" />
       <div className="marine-hero-stage" aria-hidden="true">
         <div className="marine-hero-rings"><span /><span /><span /></div>
         <MetalImpeller className="marine-hero-part" />
@@ -109,20 +111,35 @@ export function MarineHero() {
 const CHIPS: [IconName, string][] = [["cube", "3D spare parts"], ["shield", "Digital passports"], ["anchor", "Marine assets"]];
 
 /** Page-title banner over the vessel photograph. Dashboards: large, with a tagline and chips. Section pages: compact. */
-export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+export function MarineBanner({ children }: { children: ReactNode; compact?: boolean }) {
+  // One layout and one height on every page (dashboards and section pages alike): tagline, title, chips.
   return (
-    <div className={`marine-banner${compact ? " marine-banner-compact" : ""}`}>
+    <div className="marine-banner">
       <img className="marine-banner-photo" src={marineVessel} alt="" />
+      <WaveLines className="marine-banner-waves" />
       <img className="marine-banner-part" src={propellerWireframe} alt="" />
       <div className="marine-banner-body">
-        {!compact && <p className="marine-banner-tagline">Marine 3D spare parts &amp; digital passport operations</p>}
+        <p className="marine-banner-tagline">Marine 3D spare parts &amp; digital passport operations</p>
         {children}
-        {!compact && (
-          <ul className="marine-banner-chips" aria-label="Platform">
-            {CHIPS.map(([icon, text]) => <li key={text}><Icon name={icon} />{text}</li>)}
-          </ul>
-        )}
+        <ul className="marine-banner-chips" aria-label="Platform">
+          {CHIPS.map(([icon, text]) => <li key={text}><Icon name={icon} />{text}</li>)}
+        </ul>
       </div>
     </div>
+  );
+}
+
+/** Animated cyan wave lines (a slow drift; still for reduced motion). */
+export function WaveLines({ className = "" }: { className?: string }) {
+  // Each line is drawn twice as wide as the box and moved by half its width, so the drift loops seamlessly.
+  const line = (y: number, amp: number) =>
+    `M0 ${y} ` + Array.from({ length: 8 }, (_, i) => `q 150 ${i % 2 ? amp : -amp} 300 0`).join(" ");
+  return (
+    <svg className={`wave-lines ${className}`} viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <g className="wl-a"><path d={line(120, 38)} /></g>
+      <g className="wl-b"><path d={line(140, 30)} /></g>
+      <g className="wl-c"><path d={line(160, 24)} /></g>
+      <g className="wl-d"><path d={line(178, 18)} /></g>
+    </svg>
   );
 }

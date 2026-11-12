@@ -11,7 +11,7 @@ import { roleLabel } from "./roles";
 import { ThemeToggle, useAppKeyboard } from "./theme";
 import { Loading } from "./ui";
 import ariesMark from "../assets/aries-mark.png";
-import { ariesLogo, propellerWireframe } from "./MarineHero";
+import { ariesLogo } from "./MarineHero";
 
 interface NavItem {
   to: string;
@@ -192,7 +192,6 @@ export default function Layout({ children }: { children?: ReactNode }) {
   if (!session) return null;
   const crumbs = breadcrumbs(location.pathname, session.tenant.name);
   const isOperator = session.tenant.kind === "operator";
-  const portal = portalLabel(session.tenant.kind, session.membership.role);
   const operatorStaff = session.membership.role.startsWith("operator_");
   const items = visibleNav(can, isOperator);
   const tab = new URLSearchParams(location.search).get("tab") ?? "";
@@ -225,7 +224,6 @@ export default function Layout({ children }: { children?: ReactNode }) {
           <img className="brand-logo-mark" src={ariesMark} alt="Aries" />
           <div className="brand-text">
             <div className="brand-name">Digital Passport Platform</div>
-            <div className="brand-sub">{portal} · Marine 3D spare parts</div>
           </div>
         </div>
         {superAdmin ? <AdminNav rail={rail} /> : <nav>
@@ -245,7 +243,6 @@ export default function Layout({ children }: { children?: ReactNode }) {
             ) : null;
           })}
         </nav>}
-        <div className="sidebar-art" aria-hidden="true"><img src={propellerWireframe} alt="" /></div>
         <div className="sidebar-foot">
           <span className="sidebar-foot-text">{session.tenant.hosting_model === "dedicated" ? "Dedicated deployment" : "Shared platform"}</span>
           <button type="button" className="rail-toggle" onClick={toggleRail} aria-label={rail ? "Expand navigation" : "Collapse navigation"}
