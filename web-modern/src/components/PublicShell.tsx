@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { Icon } from "./icons";
 import { MarineHero } from "./MarineHero";
-import { ThemeToggle } from "./theme";
+import { ThemeSwitch } from "./theme";
 import ariesMark from "../assets/aries-mark.png";
 
 export interface RegistrationConfig {
@@ -27,7 +27,7 @@ export function PublicShell({ title, subtitle, children, wide }: { title: string
   return (
     <div className="login-page">
       <MarineHero />
-      <ThemeToggle className="public-theme" />
+      <ThemeSwitch className="public-theme" />
       <div className={`login-card${wide ? " login-card-wide" : ""}`}>
         <div className="brand brand-lg">
           <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>

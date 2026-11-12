@@ -36,6 +36,17 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   );
 }
 
+/** Two-button dark / light switch (public pages). */
+export function ThemeSwitch({ className = "" }: { className?: string }) {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div className={`theme-switch ${className}`} role="group" aria-label="Colour theme">
+      <button type="button" aria-pressed={theme === "dark"} aria-label="Dark theme" title="Dark theme" onClick={() => setTheme("dark")}><Icon name="moon" /></button>
+      <button type="button" aria-pressed={theme === "light"} aria-label="Light theme" title="Light theme" onClick={() => setTheme("light")}><Icon name="sun" /></button>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ toasts
 
 type Toast = { id: number; text: string; tone: "success" | "warning" | "error" };

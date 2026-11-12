@@ -3,11 +3,11 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { postLoginTarget, useAuth } from "../auth/AuthContext";
-import { ThemeToggle } from "../components/theme";
+import { ThemeSwitch } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
 import { Icon } from "../components/icons";
-import { MarineHero } from "../components/MarineHero";
+import { MarineHero, ariesLogo } from "../components/MarineHero";
 import ariesMark from "../assets/aries-mark.png";
 
 interface TenantChoice {
@@ -54,7 +54,7 @@ export default function LoginPage() {
     return (
       <div className="login-page">
       <MarineHero />
-      <ThemeToggle className="public-theme" />
+      <ThemeSwitch className="public-theme" />
         <div className="login-card" data-testid={`registration-${registration.status}`}>
           <div className="brand brand-lg">
             <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
@@ -85,14 +85,12 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <MarineHero />
-      <ThemeToggle className="public-theme" />
-      <form className="login-card" onSubmit={submit} aria-labelledby="login-title">
-        <div className="brand brand-lg">
-          <span className="brand-tile" aria-hidden><img src={ariesMark} alt="" /></span>
-          <div>
-            <h1 id="login-title">Digital Passport Platform</h1>
-            <p className="muted">Spare-part digital passports and inventory</p>
-          </div>
+      <ThemeSwitch className="public-theme" />
+      <form className="login-card login-card-signin" onSubmit={submit} aria-labelledby="login-title">
+        <div className="signin-head">
+          <img className="signin-logo" src={ariesLogo} alt="Aries Marine & Engg. Services" />
+          <h1 id="login-title">Digital Passport Platform</h1>
+          <p className="muted">Spare-part digital passports and inventory</p>
         </div>
         <ErrorNotice error={error} />
         <Field label="Email">
@@ -114,21 +112,22 @@ export default function LoginPage() {
           </Field>
         )}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy} aria-busy={busy}>
-          {!busy && <Icon name="login" />}{busy ? "Signing in…" : "Sign in"}
+          {busy ? "Signing in…" : "Sign in"}{!busy && <Icon name="arrowRight" />}
         </button>
         <p className="center small"><Link to="/forgot-password">Forgot password?</Link></p>
+        <p className="login-divider"><span>New to the platform?</span></p>
         <Link to="/register" className="login-option">
           <Icon name="building" />
-          <span><small>New client company?</small><strong>Register your company</strong></span>
-          <Icon name="chevron" className="login-option-go" />
+          <span><strong>Register your company</strong></span>
+          <Icon name="arrowRight" className="login-option-go" />
         </Link>
         <Link to="/register/staff" className="login-option">
           <Icon name="users" />
-          <span><small>Aries Engineer, QA or Support?</small><strong>Request an account</strong></span>
-          <Icon name="chevron" className="login-option-go" />
+          <span><strong>Request an account</strong><small>For Aries Engineer / QA / Support</small></span>
+          <Icon name="arrowRight" className="login-option-go" />
         </Link>
-        <p className="login-info"><Icon name="info" /><span>One sign-in for Aries Admins, Aries Engineers and client users. Access is limited to
-          authorised users of each organisation. Activity is audited.</span></p>
+        <p className="login-info"><Icon name="info" /><span>Authorized access only. All activities are recorded and fully auditable for traceability
+          and compliance.</span></p>
       </form>
     </div>
   );
