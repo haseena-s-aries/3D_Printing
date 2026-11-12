@@ -1410,10 +1410,10 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .sidebar nav a.active::before { display: none; }
 .sidebar nav { position: relative; z-index: 1; }
 .sidebar > * { flex-shrink: 0; }
-.sidebar > .sidebar-wave { display: block; flex: 0 1 auto; min-height: 64px; width: calc(100% + 20px); max-width: none; height: clamp(120px, 20vh, 170px); margin: auto -10px -10px;
-  object-fit: cover; object-position: left bottom; pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 40%, #000 72%, rgba(0, 0, 0, 0.18) 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 40%, #000 72%, rgba(0, 0, 0, 0.18) 100%); }
+.sidebar > .sidebar-wave { display: block; flex: 0 1 auto; min-height: 56px; width: calc(100% + 20px); max-width: none; height: auto; aspect-ratio: 550 / 250;
+  margin: auto -10px -4px; object-fit: cover; object-position: left bottom; pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 80%, rgba(0, 0, 0, 0.35) 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 80%, rgba(0, 0, 0, 0.35) 100%); }
 .sidebar-wave + .sidebar-foot { margin-top: -6px; }
 .is-rail .sidebar-wave { display: none; }
 .is-rail .sidebar-foot { margin-top: auto; }
@@ -1468,13 +1468,13 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .public-theme { position: fixed; top: 16px; right: 16px; z-index: 5; }
 @media (max-width: 1099px) { .login-page { padding-top: 68px; padding-bottom: 24px; place-items: start center; } .login-page > .login-card { order: 1; } }
 
-/* left: one continuous navy section: copy on top, visual area (printer | panels) below. It is in the normal flow and
-   grows with its content (min. one screen high), so on short screens the page scrolls instead of clipping the panels.
-   Only the decorative layers (printer photo, dotted mesh wave) are positioned / clipped. */
+/* left: one continuous navy section: copy on top, visual area (printer | panels) below, the supplied dotted wave behind.
+   Phones/tablets: stacked below the form. Desktops: one screen high and sticky (it never scrolls) while the form column
+   scrolls; the composition tightens on shorter screens so all four panels always fit. Only decorative layers are clipped. */
 .marine-hero { position: relative; z-index: 0; justify-self: stretch; display: flex; flex-direction: column; gap: 22px; order: 2; margin: 28px -16px -24px; padding: 32px 20px 40px;
+  overflow: hidden; container: hero / inline-size;
   background: radial-gradient(900px 520px at 75% 70%, rgba(20, 109, 182, 0.18), transparent 65%), linear-gradient(180deg, var(--aries-navy) 0%, #05182f 60%, var(--aries-deep) 100%); }
-.marine-hero-wave { position: absolute; left: 0; bottom: 0; width: 100%; height: clamp(120px, 24vh, 250px); max-width: none; pointer-events: none; z-index: 0;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 35%); mask-image: linear-gradient(180deg, transparent 0%, #000 35%);
+.marine-hero-wave { position: absolute; left: 0; bottom: 0; z-index: 1; display: block; mix-blend-mode: screen; width: 100%; max-width: none; height: auto; pointer-events: none;
   animation: hero-wave-float 9s ease-in-out infinite alternate; }
 @keyframes hero-wave-float { from { transform: translateY(0); } to { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .marine-hero-wave { animation: none; } }
@@ -1487,38 +1487,42 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
   letter-spacing: -0.02em; text-wrap: balance; }
 .marine-hero-lead { margin: 0; max-width: 40em; color: #cbd8e6; font-size: var(--fs-md); line-height: 1.5; }
 .marine-hero-copy .hero-features { margin-top: 8px; }
-.marine-hero-visual { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); }
-.marine-hero-photo { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.marine-hero-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; opacity: 0.3; }
-.marine-hero-hud { position: relative; z-index: 1; width: min(100%, 460px); justify-self: center; }
-@media (max-width: 600px) { .marine-hero-copy .hero-features { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+.marine-hero-visual { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); } /* no stacking context: the wave sits between photo and panels */
+/* printer photo: sized from its own box (container units) so the nozzle, impeller and build plate (about the middle
+   two thirds of the photo, centred at 55 %) are always inside, whatever the box shape; soft edges, no hard crop */
+.marine-hero-photo { position: absolute; inset: 0; z-index: 0; pointer-events: none; container-type: size; }
+.marine-hero-photo img { --w: min(185cqw, 190cqh); position: absolute; left: calc(50cqw - 0.55 * var(--w)); bottom: 2cqh; display: block;
+  width: var(--w); max-width: none; height: auto; opacity: 0.3;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 16%, #000 90%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 12%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 16%, #000 90%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 12%, #000 84%, transparent 100%);
+  mask-composite: intersect; }
+.marine-hero-hud { position: relative; z-index: 2; width: min(100%, 460px); justify-self: center; }
+@media (max-width: 600px) { .marine-hero-hud .qr-mark { display: none; }
+  .marine-hero-copy .hero-features { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
   .marine-hero-copy .hero-features li:nth-child(3) { border-left: 0; } }
 @media (min-width: 1100px) {
-  .login-page { --hero-w: min(56vw, calc(100vw - 520px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: stretch; min-height: 100vh; }
-  .login-page:has(.login-card-wide) { --hero-w: min(40vw, calc(100vw - 860px)); }
-  .marine-hero { grid-column: 1; grid-row: 1; order: 0; margin: 0; min-height: 100vh; gap: 0;
-    padding: clamp(20px, 3.6vh, 44px) clamp(28px, 4vw, 64px) clamp(16px, 2.6vh, 32px); }
-  .login-page > .login-card, .login-page > form.login-card { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; margin: 32px; }
+  .login-page { --hero-w: min(56vw, calc(100vw - 520px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: start;
+    min-height: 100vh; min-height: 100dvh; }
+  .login-page:has(.login-card-wide) { --hero-w: min(46vw, calc(100vw - 840px)); }
+  .marine-hero { grid-column: 1; grid-row: 1; order: 0; margin: 0; gap: 0; position: sticky; top: 0; height: 100vh; height: 100dvh;
+    padding: clamp(20px, 3.6vh, 44px) clamp(28px, 4vw, 64px) clamp(14px, 2.4vh, 30px); }
+  .login-page > .login-card, .login-page > form.login-card { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; margin: 32px clamp(16px, 2.4vw, 32px); }
   .marine-hero-copy { gap: 12px; flex: none; }
   .marine-hero-logo { height: 52px; margin-bottom: 8px; }
   .marine-hero-eyebrow { letter-spacing: 0.2em; font-size: var(--fs-md); }
   .marine-hero-title { font-size: clamp(1.8rem, 2.6vw, 2.9rem); }
   .marine-hero-lead { font-size: var(--fs-lg); }
   .marine-hero-copy .hero-features { margin-top: 10px; }
-  /* visual area: fills the remaining height; printer (decorative, bleeds to the left and bottom edges) | panels grid */
-  .marine-hero-visual { flex: 1 0 auto; margin-top: clamp(12px, 2.2vh, 30px); grid-template-columns: minmax(0, 1fr) minmax(0, min(46%, 420px));
+  /* visual area: the remaining height; printer (bleeds to the left and bottom edges) | the panels grid */
+  .marine-hero-visual { flex: 1 1 0; min-height: 0; margin-top: clamp(12px, 2.2vh, 30px); grid-template-columns: minmax(0, 1fr) minmax(0, min(46%, 420px));
     align-items: end; gap: 16px; }
-  .marine-hero-photo { position: relative; inset: auto; grid-column: 1; grid-row: 1; align-self: stretch; overflow: visible;
-    margin: 0 0 calc(-1 * clamp(16px, 2.6vh, 32px)) calc(-1 * clamp(28px, 4vw, 64px)); }
-  .marine-hero-photo img { opacity: 1; object-position: 54% 60%;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 80%, transparent 100%), linear-gradient(90deg, #000 72%, transparent 100%);
-    -webkit-mask-composite: source-in;
-    mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 80%, transparent 100%), linear-gradient(90deg, #000 72%, transparent 100%); mask-composite: intersect; }
-  .marine-hero-hud { grid-column: 2; grid-row: 1; width: auto; align-self: end; margin-bottom: clamp(6px, 1.6vh, 20px); }
-  .login-page:has(.login-card-wide) .marine-hero-visual { grid-template-columns: minmax(0, 1fr); min-height: 280px; }
-  .login-page:has(.login-card-wide) .marine-hero-hud, .login-page:has(.login-card-wide) .hero-features { display: none; }
+  .marine-hero-photo { position: relative; inset: auto; grid-column: 1; grid-row: 1; align-self: stretch;
+    margin: 0 0 calc(-1 * clamp(14px, 2.4vh, 30px)) calc(-1 * clamp(28px, 4vw, 64px)); }
+  .marine-hero-photo img { opacity: 1; }
+  .marine-hero-hud { grid-column: 2; grid-row: 1; width: auto; align-self: end; margin-bottom: clamp(4px, 1.4vh, 18px); }
 }
-/* shorter desktops (1366 x 768, 1600 x 900): tighter copy and panels; all four panels stay */
+/* shorter desktops (1600 x 900, 1366 x 768): tighter copy and panels; all four panels stay */
 @media (min-width: 1100px) and (max-height: 920px) {
   .marine-hero-copy { gap: 8px; } .marine-hero-logo { height: 44px; margin-bottom: 4px; }
   .marine-hero-title { font-size: clamp(1.7rem, 2.3vw, 2.4rem); } .marine-hero-lead { font-size: var(--fs-md); }
@@ -1534,15 +1538,30 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 @media (min-width: 1100px) and (max-height: 800px) {
   .marine-hero-eyebrow { font-size: var(--fs-sm); } .marine-hero-lead { font-size: var(--fs-sm); line-height: 1.4; }
   .hero-features li { font-size: var(--fs-xs); }
-  .marine-hero-hud { margin-bottom: 4px; }
-  .login-page > .login-card, .login-page > form.login-card { margin: 16px 32px; }
+  .login-page > .login-card, .login-page > form.login-card { margin-top: 16px; margin-bottom: 16px; }
 }
-@media (min-width: 1100px) and (max-height: 700px) {
-  .marine-hero-logo { height: 40px; margin-bottom: 2px; } .marine-hero-copy { gap: 6px; }
-  .marine-hero-title { font-size: clamp(1.6rem, 2.1vw, 2.1rem); }
-  .hero-features .icon { width: 24px; height: 24px; }
-  .marine-hero-visual { grid-template-columns: minmax(0, 1fr) minmax(0, min(44%, 330px)); margin-top: 12px; }
+/* 1366 x 768 screens with browser toolbars (about 650 px of page): smaller logo/title, flatter CAD panel */
+@media (min-width: 1100px) and (max-height: 720px) {
+  .marine-hero-logo { height: 36px; margin-bottom: 0; } .marine-hero-copy { gap: 5px; }
+  .marine-hero-title { font-size: clamp(1.5rem, 1.9vw, 1.9rem); }
+  .marine-hero-copy .hero-features { margin-top: 4px; }
+  .hero-features .icon { width: 22px; height: 22px; } .hero-features li { gap: 3px; }
+  .marine-hero-visual { grid-template-columns: minmax(0, 1fr) minmax(0, min(44%, 320px)); margin-top: 10px; }
+  .marine-hero-hud .hud-dims { aspect-ratio: 2.5 / 1; }
+  .marine-hero-hud .hud-steps li span { width: 18px; height: 18px; } .marine-hero-hud .hud-steps ol::before { top: 8px; }
 }
+@media (min-width: 1100px) and (max-height: 600px) { .marine-hero-lead { display: none; } }
+@media (min-width: 1100px) and (max-height: 520px) { .marine-hero-hud { display: none; } }
+/* narrow hero (registration pages next to the wide form): the printer becomes the backdrop of the panels */
+@media (min-width: 1100px) { @container hero (max-width: 560px) {
+  .marine-hero-visual { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+  .marine-hero-photo { grid-column: 1; grid-row: 1; justify-self: stretch; margin-right: calc(-1 * clamp(28px, 4vw, 64px)); }
+  .marine-hero-photo img { opacity: 0.55; }
+  .marine-hero-hud { grid-column: 1; width: min(100%, 330px); }
+} }
+@media (min-width: 1100px) and (max-height: 800px) { @container hero (max-width: 560px) { .marine-hero-hud { width: min(100%, 290px); } } }
+@media (min-width: 1100px) and (max-height: 720px) { @container hero (max-width: 560px) { .marine-hero-hud { width: min(100%, 262px); } } }
+.login-page:has(.login-card-wide) .marine-hero-hud .qr-mark { display: none; }
 /* narrower desktops: the passport card keeps all five lines readable (QR code left out rather than overlapping text) */
 @media (min-width: 1100px) and (max-width: 1500px) { .marine-hero-hud .qr-mark { display: none; } }
 .hud-passport-head strong { white-space: nowrap; }
@@ -1636,9 +1655,8 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .marine-banner-overlay .hud-passport-head { font-size: 0.76rem; }
 .marine-banner-overlay .hud-passport ul { font-size: 0.66rem; gap: 2px; line-height: 1.35; }
 .marine-banner-overlay .qr-mark { width: 42px; height: 42px; }
-.marine-banner-wave { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; width: 100%; max-width: none; height: 58px; pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.15) 34%, #000 50%, #000 94%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.15) 34%, #000 50%, #000 94%, transparent 100%); }
+.marine-banner-wave { position: absolute; left: 0; right: 0; bottom: 4px; z-index: 1; display: block; width: 100%; height: 52px; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 28%, #000 48%); mask-image: linear-gradient(90deg, transparent 0%, transparent 28%, #000 48%); }
 .banner-features { margin-top: 16px; max-width: 520px; }
 .banner-features li { white-space: nowrap; padding: 2px 8px; color: #eef4fb; }
 .banner-features .icon { width: 28px; height: 28px; }
