@@ -213,7 +213,7 @@ export default function InventoryImportPage() {
   const tab = tabs.some(([t]) => t === params.get("tab")) ? params.get("tab") : "new";
   return (
     <>
-      <PageHeader title="Inventory import" subtitle="Bulk-import this company's spare-parts inventory from Excel or CSV and review its data quality." />
+      <PageHeader marine title="Inventory import" subtitle="Bulk-import this company's spare-parts inventory from Excel or CSV and review its data quality." />
       <div className="tabs" role="tablist" aria-label="Inventory import">
         {tabs.map(([t, l]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "is-active" : ""}`}

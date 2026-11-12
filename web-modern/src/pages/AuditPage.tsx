@@ -21,7 +21,7 @@ export default function AuditPage({ clientId }: { clientId?: string } = {}) {
   const list = useApi<Paginated<AuditEvent>>("/audit-events/", { query: { ...query, page_size: PAGE_SIZE } });
   return (
     <>
-      {!clientId && <PageHeader title="Audit trail" subtitle="Append-only record of activity in this organisation." />}
+      {!clientId && <PageHeader marine title="Audit trail" subtitle="Append-only record of activity in this organisation." />}
       <Card>
         <form className="toolbar" role="search" onSubmit={(e) => { e.preventDefault(); setFilters({ ...filters, action: action.trim(), page: 1 }); }}>
           <input aria-label="Filter by action" placeholder="Action, e.g. file.downloaded" value={action} onChange={(e) => setAction(e.target.value)} />

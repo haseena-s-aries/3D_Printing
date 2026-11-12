@@ -15,7 +15,7 @@ export default function PassportsPage() {
   const list = useApi<Paginated<Passport>>("/passports/", { query: { ...filters, page_size: PAGE_SIZE } });
   return (
     <>
-      <PageHeader title="Digital passports" subtitle="Passport drafts are created from a spare part." />
+      <PageHeader marine title="Digital passports" subtitle="Passport drafts are created from a spare part." />
       <Card>
         <form className="toolbar" onSubmit={(e) => { e.preventDefault(); setFilters({ search, page: 1 }); }} role="search">
           <input type="search" placeholder="Search by passport number, title or part number" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search passports" />

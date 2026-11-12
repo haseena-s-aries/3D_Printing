@@ -56,7 +56,7 @@ export default function MyPartsIntelligencePage() {
   const tab = tabs.some(([t]) => t === params.get("tab")) ? params.get("tab")! : "parts";
   return (
     <>
-      <PageHeader title="My parts intelligence" subtitle="Assessment results that Aries Engineering has shared with your company, and your assessment requests." />
+      <PageHeader marine title="My parts intelligence" subtitle="Assessment results that Aries Engineering has shared with your company, and your assessment requests." />
       <ErrorNotice error={ov.error} />
       {ov.loading && !ov.data ? <Loading variant="cards" /> : acc && (!acc.enabled || !acc.allowed) ? <NotAvailable access={acc} /> : ov.data && (
         <>

@@ -53,7 +53,7 @@ export default function ScanRequestPage() {
   return (
     <>
       <BackLink to="/requests">My requests</BackLink>
-      <PageHeader title="Request 3D scanning" subtitle="Ask our team to scan and digitise a physical spare part that is not yet in your digital inventory." />
+      <PageHeader marine title="Request 3D scanning" subtitle="Ask our team to scan and digitise a physical spare part that is not yet in your digital inventory." />
       <Card>
         <Notice>
           Our engineers perform the scanning and reverse engineering on site or in our facility. After acknowledgement we will contact you to agree the

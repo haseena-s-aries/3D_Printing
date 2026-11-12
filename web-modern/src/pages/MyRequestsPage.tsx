@@ -24,7 +24,7 @@ export default function MyRequestsPage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader marine
         title="My requests"
         subtitle="Manufacturing enquiries and 3D scanning requests of your organisation, and their status."
         actions={can("requests.create") && (

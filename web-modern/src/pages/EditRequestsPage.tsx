@@ -58,7 +58,7 @@ export default function EditRequestsPage() {
   const tabs: [string, string][] = [...(reviewer ? [["review", "Review queue"] as [string, string]] : []), ["mine", "My requests"], ["all", "All requests"]];
   return (
     <>
-      <PageHeader title="Edit requests" subtitle="Controlled changes to spare-part master data and Digital Passport drafts, decided by an authorised edit reviewer." />
+      <PageHeader marine title="Edit requests" subtitle="Controlled changes to spare-part master data and Digital Passport drafts, decided by an authorised edit reviewer." />
       <div className="segmented" role="group" aria-label="Edit request lists">
         {tabs.map(([t, l]) => <button key={t} type="button" aria-pressed={tab === t} onClick={() => setParams({ tab: t })}>{l}</button>)}
       </div>
