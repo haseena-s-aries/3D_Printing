@@ -1410,17 +1410,20 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .sidebar nav a.active::before { display: none; }
 .sidebar nav { position: relative; z-index: 1; }
 .sidebar > * { flex-shrink: 0; }
-.sidebar > .sidebar-wave { display: block; flex: 0 1 auto; min-height: 56px; width: calc(100% + 20px); max-width: none; height: auto; aspect-ratio: 550 / 250;
-  margin: auto -10px -4px; object-fit: cover; object-position: left bottom; pointer-events: none;
+.sidebar > .sidebar-wave { position: relative; display: block; flex: 0 1 auto; min-height: 56px; width: calc(100% + 20px); aspect-ratio: 550 / 250;
+  margin: auto -10px -4px; pointer-events: none;
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 80%, rgba(0, 0, 0, 0.35) 100%);
   mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 80%, rgba(0, 0, 0, 0.35) 100%); }
+.sidebar-wave img { display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: left bottom;
+  animation: wave-drift-x 10s ease-in-out infinite alternate; }
 .sidebar-wave + .sidebar-foot { margin-top: -6px; }
 .is-rail .sidebar-wave { display: none; }
 .is-rail .sidebar-foot { margin-top: auto; }
 .sidebar-foot { position: relative; z-index: 2; background: transparent; border-top-color: rgba(255, 255, 255, 0.08); }
 
 /* ---------- decorations */
-.card-wave { display: block; width: 100%; max-width: none; height: 44px; pointer-events: none; }
+.card-wave { position: relative; display: block; width: 100%; max-width: none; height: 44px; pointer-events: none; }
+.card-wave svg, .kpi-wave svg, .marine-banner-wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
 
 /* ---------- shared feature row (icon above label, thin dividers) */
 .hero-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 680px; }
@@ -1690,4 +1693,77 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
   .marine-banner-overlay .qr-mark { display: none; }
   .banner-features li { white-space: normal; }
   .marine-banner-hud { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(290px, 0.85fr); }
+}
+
+/* ---------- motion & sparkle: waves breathe / drift, light runs along the banner lines and around the panel borders,
+   small star points twinkle. Purely decorative; everything stops with prefers-reduced-motion. */
+.sparkles { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.sparkles-hero { inset: auto 0 0 0; height: clamp(90px, 15vh, 170px); }
+.sparkle { position: absolute; display: block; transform: translate(-50%, -50%) scale(0.2); opacity: 0;
+  background: radial-gradient(circle, #fff 0 14%, rgba(127, 236, 255, 0.9) 26%, rgba(17, 197, 232, 0.25) 46%, transparent 68%);
+  border-radius: 50%; animation: sparkle-twinkle 3.6s ease-in-out infinite; }
+.sparkle::before, .sparkle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 220%; height: 1.5px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #e9fdff 50%, transparent); transform: translate(-50%, -50%); }
+.sparkle::after { transform: translate(-50%, -50%) rotate(90deg); }
+.sparkles-light .sparkle { background: radial-gradient(circle, #fff 0 14%, rgba(17, 197, 232, 0.85) 30%, rgba(17, 197, 232, 0.2) 50%, transparent 70%); }
+.sparkles-light .sparkle::before, .sparkles-light .sparkle::after { background: linear-gradient(90deg, transparent, #11c5e8 50%, transparent); }
+@keyframes sparkle-twinkle {
+  0%, 62%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+  76% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(45deg); }
+  88% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.6) rotate(80deg); }
+}
+
+/* filled waves (sign-in card, KPI tiles): the three layers drift sideways at different speeds and gently rise */
+.wave-layer { transform-box: fill-box; transform-origin: 50% 100%; animation: wave-layer-drift 7s ease-in-out infinite alternate; }
+.wave-layer-2 { animation-duration: 9s; animation-delay: -3s; }
+.wave-layer-3 { animation-duration: 11s; animation-delay: -6s; }
+@keyframes wave-layer-drift { from { transform: scaleX(1.12) translateX(-4%) scaleY(0.92); } to { transform: scaleX(1.12) translateX(4%) scaleY(1.08); } }
+.kpi-wave { overflow: hidden; }
+.card-wave { overflow: hidden; }
+.signin-wave .sparkles { overflow: visible; }
+
+/* dotted waves (login hero, sidebar): slow sideways drift and a soft glow pulse */
+@keyframes wave-drift-x { from { transform: translateX(-2.5%) scale(1.05); } to { transform: translateX(2.5%) scale(1.05); } }
+.marine-hero-wave { animation: hero-wave-flow 12s ease-in-out infinite alternate; }
+@keyframes hero-wave-flow {
+  0% { transform: translateX(-1.5%) translateY(0) scaleX(1.04); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateX(1.5%) translateY(-6px) scaleX(1.04); opacity: 0.8; }
+}
+
+/* banner wave: light pulses run along the thin lines */
+.marine-banner-wave { overflow: hidden; }
+.wave-flow { stroke-dasharray: 70 930; stroke-dashoffset: 1000; opacity: 0.9; animation: wave-flow 6s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(127, 236, 255, 0.9)); }
+.wave-flow-2 { animation-duration: 8s; animation-delay: -2.5s; }
+.wave-flow-3 { animation-duration: 10s; animation-delay: -5s; }
+@keyframes wave-flow { to { stroke-dashoffset: 0; } }
+
+/* engineering panels (login hero and dashboard banner): bolder glowing border with a light sweeping around it */
+@property --hud-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.hud-panel { border-color: rgba(17, 197, 232, 0.75); box-shadow: 0 0 0 1px rgba(17, 197, 232, 0.12), 0 0 16px rgba(17, 197, 232, 0.2), inset 0 0 18px rgba(17, 197, 232, 0.08);
+  animation: hud-glow 4.5s ease-in-out infinite; }
+.hud-panel::after { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--hud-a), transparent 0deg 240deg, rgba(127, 236, 255, 0.35) 285deg, #e9fdff 318deg, rgba(127, 236, 255, 0.35) 335deg, transparent 350deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: hud-sweep 6s linear infinite; }
+.hud-row .hud-panel:nth-child(2)::after { animation-delay: -2s; } .hud-steps::after { animation-delay: -4s; }
+.hud-angled { --hud-a: 0deg; background: conic-gradient(from var(--hud-a), rgba(17, 197, 232, 0.8) 0deg 230deg, #e9fdff 300deg, rgba(17, 197, 232, 0.8) 345deg);
+  filter: drop-shadow(0 0 10px rgba(17, 197, 232, 0.28)); animation: hud-sweep 6s linear infinite; animation-delay: -1s; }
+.hud-angled-inner { inset: 1.5px; }
+@keyframes hud-sweep { to { --hud-a: 360deg; } }
+@keyframes hud-glow { 50% { box-shadow: 0 0 0 1px rgba(17, 197, 232, 0.22), 0 0 24px rgba(17, 197, 232, 0.36), inset 0 0 22px rgba(17, 197, 232, 0.12); } }
+/* wireframe panel: a scan line passes over the layered model */
+.hud-holo::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 34%; z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(127, 236, 255, 0.28) 70%, rgba(233, 253, 255, 0.55) 72%, transparent 76%);
+  animation: holo-scan 3.8s linear infinite; }
+@keyframes holo-scan { from { transform: translateY(-100%); } to { transform: translateY(300%); } }
+/* current workflow step pulses */
+.hud-steps li.is-current span { animation: step-pulse 2.2s ease-out infinite; }
+@keyframes step-pulse { 0% { box-shadow: 0 0 0 0 rgba(17, 197, 232, 0.65); } 100% { box-shadow: 0 0 0 9px rgba(17, 197, 232, 0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkle, .wave-layer, .sidebar-wave img, .marine-hero-wave, .wave-flow, .hud-panel, .hud-panel::after, .hud-angled, .hud-holo::before,
+  .hud-steps li.is-current span { animation: none; }
+  .sparkle, .wave-flow, .hud-holo::before { display: none; }
 }
