@@ -1379,10 +1379,13 @@ details > table.table { display: block; overflow-x: auto; }
 .back-to-sign-in a { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 
 /* ---------- KPI tiles: same height, aligned icon / value / label, soft wave inside the bottom */
-.stats .stat { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-content: center; align-items: center; min-height: 96px;
-  padding: 16px 20px; border-radius: 14px; overflow: hidden; isolation: isolate;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 60' preserveAspectRatio='none'%3E%3Cpath d='M0 44 C60 30 110 56 170 40 S260 22 300 34 V60 H0 Z' fill='%2311c5e8' fill-opacity='.08'/%3E%3Cpath d='M0 52 C70 42 130 62 200 50 S270 40 300 46 V60 H0 Z' fill='%23146db6' fill-opacity='.06'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right bottom; background-size: 66% 36px; }
+.stats .stat { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-content: center; align-items: center;
+  min-height: 104px; padding: 16px 20px 26px; border-radius: 14px; border: 1px solid #d9e4f1; background: #fff; overflow: hidden; isolation: isolate;
+  box-shadow: 0 1px 2px rgba(21, 34, 56, 0.04), 0 6px 18px rgba(21, 34, 56, 0.05); }
+.stats .stat > :not(.kpi-wave) { position: relative; z-index: 1; }
+.kpi-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 32px; z-index: 0; pointer-events: none; display: block; }
+:root:not([data-theme="light"]) .stats .stat { background: var(--surface); border-color: var(--line); }
+:root:not([data-theme="light"]) .kpi-wave { opacity: 0.12; }
 .stats .stat > .icon { position: static; grid-row: 1 / span 3; width: 50px; height: 50px; padding: 13px; border-radius: 50%; opacity: 1;
   color: var(--c, var(--aries-blue)); background: color-mix(in srgb, var(--c, var(--aries-blue)) 11%, transparent); }
 .stats .stat > .stat-value, .stats .stat > .stat-label, .stats .stat > .muted { grid-column: 2; }
@@ -1406,18 +1409,16 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .sidebar nav a.active .icon { color: #fff; }
 .sidebar nav a.active::before { display: none; }
 .sidebar nav { position: relative; z-index: 1; }
-.sidebar-wave { position: fixed; left: 0; bottom: 44px; width: var(--sidebar); height: min(24vh, 180px); z-index: 0; pointer-events: none; opacity: 0.85; overflow: hidden; }
-.sidebar-wave .mesh-wave { width: 100%; height: 100%; }
+.sidebar-wave { display: block; max-width: none; width: calc(100% + 20px); margin: auto -10px 0; height: auto; aspect-ratio: 550 / 230; object-fit: cover; object-position: center bottom;
+  pointer-events: none; opacity: 0.9; flex: none; }
+.sidebar-wave + .sidebar-foot { margin-top: -18px; }
 .is-rail .sidebar-wave { display: none; }
-@media (max-width: 960px) { .sidebar-wave { width: min(var(--sidebar), 86vw); } }
-.sidebar-foot { position: sticky; bottom: -12px; margin-bottom: -12px; padding-bottom: 12px; z-index: 2; background: var(--aries-deep); }
+.is-rail .sidebar-foot { margin-top: auto; }
+@media (max-height: 760px) { .sidebar-wave { aspect-ratio: 550 / 160; } }
+.sidebar-foot { position: relative; z-index: 2; background: transparent; border-top-color: rgba(255, 255, 255, 0.08); }
 
 /* ---------- decorations */
-.mesh-wave { display: block; overflow: visible; }
-.mesh-wave .mw-drift { animation: mw-drift 18s ease-in-out infinite alternate; }
-@keyframes mw-drift { from { transform: translateX(0); } to { transform: translateX(-3%); } }
-.card-wave { display: block; width: 100%; height: 44px; }
-@media (prefers-reduced-motion: reduce) { .mesh-wave .mw-drift { animation: none; } }
+.card-wave { display: block; width: 100%; max-width: none; height: 44px; object-fit: fill; pointer-events: none; }
 
 /* ---------- shared feature row (icon above label, thin dividers) */
 .hero-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 680px; }
@@ -1465,50 +1466,63 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .public-theme { position: fixed; top: 16px; right: 16px; z-index: 5; }
 @media (max-width: 1099px) { .login-page { padding-top: 68px; } }
 
-/* left: one continuous navy section; the photograph is blended in with gradient overlays (no visible joins) */
-.marine-hero { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: linear-gradient(180deg, var(--aries-navy) 0%, #05182f 60%, var(--aries-deep) 100%); }
+/* left: one continuous navy section: copy on top, visual area (printer | panels) below, the dotted wave behind */
+.marine-hero { position: fixed; inset: 0; z-index: 0; overflow: hidden; display: flex; flex-direction: column;
+  background: radial-gradient(900px 520px at 75% 70%, rgba(20, 109, 182, 0.18), transparent 65%), linear-gradient(180deg, var(--aries-navy) 0%, #05182f 60%, var(--aries-deep) 100%); }
+.marine-hero-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: clamp(110px, 20vh, 220px); object-fit: fill; pointer-events: none;
+  max-width: none; z-index: 0; opacity: 1; animation: hero-wave-float 9s ease-in-out infinite alternate; }
+@keyframes hero-wave-float { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .marine-hero-wave { animation: none; } }
+.marine-hero-copy, .marine-hero-hud { display: none; }
+.marine-hero-visual { position: absolute; inset: 0; }
 .marine-hero-photo { position: absolute; inset: 0; }
-.marine-hero-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; }
-.marine-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 27, 50, 0.55), rgba(4, 18, 37, 0.75)); }
-.marine-hero-wave, .marine-hero-hud, .marine-hero-copy { display: none; }
+.marine-hero-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; opacity: 0.45; }
 @media (min-width: 1100px) {
-  .login-page { --hero-w: min(58vw, calc(100vw - 540px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: stretch; }
+  .login-page { --hero-w: min(56vw, calc(100vw - 520px)); grid-template-columns: var(--hero-w) minmax(0, 1fr); padding: 0; align-items: stretch; }
   .login-page:has(.login-card-wide) { --hero-w: min(40vw, calc(100vw - 860px)); }
-  .marine-hero { right: auto; width: var(--hero-w); }
+  .marine-hero { right: auto; width: var(--hero-w); padding: clamp(22px, 4.2vh, 48px) clamp(28px, 4vw, 64px) clamp(18px, 3vh, 36px); }
   .login-page > .login-card, .login-page > form.login-card { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; margin: 32px; }
-  /* the printer sits in the lower-left area; its top and right edges fade into the navy */
-  .marine-hero-photo { inset: auto auto 0 0; width: 68%; height: 62%; }
-  /* the photograph fades out towards the top and right inside its own box: no visible join with the navy */
-  .marine-hero-photo img { object-position: 46% 62%;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 34%), linear-gradient(90deg, #000 52%, transparent 100%);
-    -webkit-mask-composite: source-in;
-    mask-image: linear-gradient(180deg, transparent 0%, #000 34%), linear-gradient(90deg, #000 52%, transparent 100%); mask-composite: intersect; }
-  .marine-hero-shade { background: linear-gradient(0deg, rgba(4, 18, 37, 0.85) 0%, rgba(4, 18, 37, 0) 22%); }
-  .marine-hero-wave { display: block; position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26%; z-index: 1; }
-  .marine-hero-copy { display: flex; flex-direction: column; gap: 14px; position: absolute; z-index: 2; left: clamp(32px, 4.5vw, 72px);
-    right: clamp(24px, 4vw, 64px); top: clamp(24px, 4.5vh, 48px); color: #eef4fb; }
-  .marine-hero-logo { height: 54px; width: auto; align-self: flex-start; margin-bottom: 10px; }
+  .marine-hero-copy { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 2; flex: none; color: #eef4fb; }
+  .marine-hero-logo { height: 52px; width: auto; align-self: flex-start; margin-bottom: 8px; }
   .marine-hero-eyebrow { display: flex; align-items: center; gap: 16px; margin: 0; color: var(--aries-cyan); font-weight: 650; letter-spacing: 0.2em;
     text-transform: uppercase; font-size: var(--fs-md); }
   .marine-hero-eyebrow::after { content: ""; flex: 0 1 200px; height: 2px; background: linear-gradient(90deg, var(--aries-cyan), transparent); }
-  .marine-hero-title { margin: 0; max-width: 15em; color: #fff; font-size: clamp(1.9rem, 2.7vw, 2.95rem); line-height: 1.12; font-weight: 750;
+  .marine-hero-title { margin: 0; max-width: 15em; color: #fff; font-size: clamp(1.8rem, 2.6vw, 2.9rem); line-height: 1.12; font-weight: 750;
     letter-spacing: -0.02em; text-wrap: balance; }
   .marine-hero-lead { margin: 0; max-width: 40em; color: #cbd8e6; font-size: var(--fs-lg); line-height: 1.5; }
-  .marine-hero-copy .hero-features { margin-top: 12px; }
-  .marine-hero-hud { display: block; position: absolute; z-index: 2; right: 4%; bottom: 12%; width: min(41%, 400px); }
+  .marine-hero-copy .hero-features { margin-top: 10px; }
+  /* visual area: fills the remaining height; printer left (bleeds to the left and bottom edges), panels right */
+  .marine-hero-visual { position: relative; inset: auto; z-index: 1; flex: 1 1 auto; min-height: 0; margin-top: clamp(14px, 2.5vh, 32px);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, min(46%, 420px)); align-items: end; gap: 16px; }
+  .marine-hero-photo { position: relative; inset: auto; align-self: stretch; margin: 0 0 calc(-1 * clamp(18px, 3vh, 36px)) calc(-1 * clamp(28px, 4vw, 64px)); min-height: 0; }
+  .marine-hero-photo img { position: absolute; inset: 0; opacity: 1; object-fit: cover; object-position: 54% 60%;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%), linear-gradient(90deg, #000 72%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%), linear-gradient(90deg, #000 72%, transparent 100%); mask-composite: intersect; }
+  .marine-hero-hud { display: block; position: relative; z-index: 2; align-self: end; margin-bottom: clamp(8px, 2vh, 24px); }
+  .login-page:has(.login-card-wide) .marine-hero-visual { grid-template-columns: minmax(0, 1fr); }
   .login-page:has(.login-card-wide) .marine-hero-hud, .login-page:has(.login-card-wide) .hero-features { display: none; }
-  .login-page:has(.login-card-wide) .marine-hero-photo { width: 100%; }
 }
-/* shorter desktops (e.g. 1366 x 768): no build-steps panel, smaller panels, more room between copy and visuals */
-@media (min-width: 1100px) and (max-height: 900px) { .hud-steps { display: none; } .marine-hero-hud { bottom: 14%; } }
+/* shorter desktops (1366 x 768, 1600 x 900): tighter copy and panels; all four panels stay */
+@media (min-width: 1100px) and (max-height: 920px) {
+  .marine-hero-copy { gap: 8px; } .marine-hero-logo { height: 44px; margin-bottom: 4px; }
+  .marine-hero-title { font-size: clamp(1.7rem, 2.3vw, 2.4rem); } .marine-hero-lead { font-size: var(--fs-md); }
+  .hero-features .icon { width: 26px; height: 26px; } .hero-features li { gap: 5px; }
+  .marine-hero-visual { grid-template-columns: minmax(0, 1fr) minmax(0, min(46%, 360px)); }
+  .marine-hero-hud .print-hud { gap: 7px; } .marine-hero-hud .hud-row { gap: 7px; }
+  .marine-hero-hud .hud-passport { padding: 7px 10px; gap: 3px; } .marine-hero-hud .hud-passport ul { font-size: 0.66rem; gap: 2px; }
+  .marine-hero-hud .qr-mark { width: 40px; height: 40px; }
+  .marine-hero-hud .hud-steps { padding: 7px 10px 8px; } .marine-hero-hud .hud-steps ol { margin-top: 6px; }
+  .marine-hero-hud .hud-steps li { font-size: 0.64rem; gap: 4px; } .marine-hero-hud .hud-steps li span { width: 20px; height: 20px; }
+  .marine-hero-hud .hud-steps ol::before { top: 9px; }
+}
 @media (min-width: 1100px) and (max-height: 800px) {
-  .marine-hero-copy { gap: 10px; } .marine-hero-logo { height: 46px; margin-bottom: 4px; }
-  .marine-hero-lead { font-size: var(--fs-md); } .hero-features .icon { width: 26px; height: 26px; }
-  .marine-hero-hud { width: min(46%, 360px); bottom: 10%; }
-  .marine-hero-hud .hud-dims, .marine-hero-hud .qr-mark { display: none; }
-  .marine-hero-hud .hud-passport ul { font-size: 0.7rem; }
-  .login-page > .login-card, .login-page > form.login-card { margin: 20px 76px 20px 28px; }
+  .marine-hero-eyebrow { font-size: var(--fs-sm); } .marine-hero-lead { font-size: var(--fs-sm); line-height: 1.4; }
+  .hero-features li { font-size: var(--fs-xs); }
 }
+/* narrower desktops: the passport card keeps all five lines readable (QR code left out rather than overlapping text) */
+@media (min-width: 1100px) and (max-width: 1500px) { .marine-hero-hud .qr-mark { display: none; } }
+.hud-passport-head strong { white-space: nowrap; }
 
 /* right: light page, white card */
 .login-card { width: min(520px, 100%); padding: 32px 36px 28px; gap: 16px; border-radius: 22px; border: 1px solid var(--line); overflow: hidden;
@@ -1523,8 +1537,9 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .signin-logo { width: min(250px, 78%); height: auto; margin-bottom: 10px; }
 .login-card-signin .signin-head h1 { font-size: clamp(1.6rem, 2.1vw, 1.95rem); margin: 0; font-weight: 750; letter-spacing: -0.02em; color: var(--ink); }
 .login-card-signin .signin-head p { margin: 0; font-size: var(--fs-md); }
-.signin-wave { margin: 8px -36px -4px; width: calc(100% + 72px); }
-:root:not([data-theme="light"]) .signin-wave { opacity: 0.25; }
+.signin-wave { margin: 6px -36px -6px; width: calc(100% + 72px); max-width: none; height: 46px;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 55%, transparent 100%); }
+:root:not([data-theme="light"]) .signin-wave { opacity: 0.35; }
 .login-card input, .login-card select { min-height: 46px; border-radius: 10px; padding-top: 10px; padding-bottom: 10px; }
 :root[data-theme="light"] .login-card input, :root[data-theme="light"] .login-card select { background-color: #f6f9fd; border-color: var(--line); }
 /* field icons on the public forms */
@@ -1568,48 +1583,67 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 :root:not([data-theme="light"]) .theme-switch button { color: #cfe0ee; }
 :root:not([data-theme="light"]) .theme-switch button[aria-pressed="true"] { background: var(--aries-cyan); color: #02202c; }
 
-/* ---------- page banners: heading left, printer photograph centre, engineering panels right (dashboards) */
-.marine-banner { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; min-height: 300px; margin-bottom: 18px;
-  border-radius: 16px; border: 1px solid rgba(17, 197, 232, 0.25); background: var(--aries-navy); box-shadow: 0 12px 32px rgba(6, 27, 50, 0.18); }
-.marine-banner-photo { position: absolute; top: 0; bottom: 0; right: 0; width: 60%; height: 100%; object-fit: cover; object-position: 48% 58%; z-index: -2; display: block; }
-.marine-banner-hud .marine-banner-photo { right: 27%; width: 46%; }
-.marine-banner-shade { position: absolute; inset: 0; z-index: -1; background:
-  linear-gradient(90deg, var(--aries-navy) 0%, var(--aries-navy) 38%, rgba(6, 27, 50, 0) 60%) ,
-  linear-gradient(0deg, rgba(4, 18, 37, 0.45), rgba(4, 18, 37, 0) 40%); }
-.marine-banner-hud .marine-banner-shade { background:
-  linear-gradient(90deg, var(--aries-navy) 0%, var(--aries-navy) 28%, rgba(6, 27, 50, 0) 46%, rgba(6, 27, 50, 0) 60%, var(--aries-navy) 72%),
-  linear-gradient(0deg, rgba(4, 18, 37, 0.45), rgba(4, 18, 37, 0) 40%); }
-.marine-banner-overlay { position: absolute; z-index: 1; right: 16px; top: 16px; bottom: 16px; width: min(27%, 390px); }
-.marine-banner-overlay .print-hud { height: 100%; gap: 8px; grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); }
-.marine-banner-overlay .hud-dims { aspect-ratio: auto; min-height: 0; }
-.marine-banner-overlay .hud-row { min-height: 0; }
-.marine-banner-overlay .hud-passport { padding: 8px 10px; gap: 4px; min-height: 0; justify-content: center; }
-.marine-banner-overlay .hud-passport-head { font-size: 0.76rem; }
-.marine-banner-overlay .hud-passport ul { font-size: 0.64rem; gap: 2px; }
-.marine-banner-overlay .qr-mark { width: 44px; height: 44px; }
-.marine-banner-body { width: 100%; padding: 24px 30px; position: relative; z-index: 1; }
+/* ---------- page banners: a grid of heading | printer | engineering panels (dashboards); heading | printer elsewhere.
+   Panels are in the normal flow of their grid cell, so the passport card always gets the height it needs. */
+.marine-banner { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: stretch;
+  min-height: 280px; margin-bottom: 18px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(17, 197, 232, 0.25);
+  background: radial-gradient(600px 300px at 55% 60%, rgba(20, 109, 182, 0.22), transparent 70%), linear-gradient(100deg, var(--aries-deep), var(--aries-navy));
+  box-shadow: 0 12px 32px rgba(6, 27, 50, 0.18); }
+.marine-banner-hud { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) minmax(300px, 0.8fr); }
+.marine-banner-body { grid-column: 1; grid-row: 1; padding: 24px 30px; position: relative; z-index: 2; align-self: center; }
 .marine-banner-body::before { content: ""; display: block; width: 52px; height: 4px; border-radius: 4px; background: var(--aries-cyan); margin-bottom: 14px; }
 .marine-banner-tagline { margin: 0 0 4px; color: var(--aries-cyan); font-weight: 650; font-size: var(--fs-sm); letter-spacing: 0.08em; text-transform: uppercase; }
-.marine-banner .page-header { margin: 0; max-width: 50%; align-items: center; }
-.marine-banner-hud .page-header { max-width: 38%; }
-.marine-banner:has(.page-actions) .page-header { max-width: none; flex-wrap: nowrap; }
-.marine-banner .page-header h1 { color: #fff; font-size: clamp(1.4rem, 2.3vw, 2.1rem); font-weight: 750; }
+.marine-banner .page-header { margin: 0; align-items: center; }
+.marine-banner:has(.page-actions) .page-header { flex-wrap: nowrap; }
+.marine-banner .page-header h1 { color: #fff; font-size: clamp(1.4rem, 2.2vw, 2.1rem); font-weight: 750; }
 .marine-banner .page-header .muted { color: #cbd8e6; }
-.marine-banner .page-actions { position: relative; z-index: 2; }
+.marine-banner .page-actions { position: relative; z-index: 3; }
+/* printer: own grid cell; extends a little under the heading and fades out at both sides (no hard edges) */
+.marine-banner-photo { grid-column: 2; grid-row: 1; position: relative; z-index: 1; margin-left: -18%; min-height: 0; }
+.marine-banner-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 52% 62%; display: block;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 26%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 26%, #000 80%, transparent 100%); }
+.marine-banner:not(.marine-banner-hud) .marine-banner-photo img { -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%); }
+.marine-banner-overlay { grid-column: 3; grid-row: 1; position: relative; z-index: 2; padding: 14px 14px 14px 0; align-self: center; }
+.marine-banner-overlay .print-hud { gap: 8px; }
+.marine-banner-overlay .hud-dims { aspect-ratio: 2.35 / 1; }
+.marine-banner-overlay .hud-row { gap: 8px; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr); }
+.marine-banner-overlay .hud-passport { padding: 8px 10px; gap: 4px; overflow: visible; }
+.marine-banner-overlay .hud-passport-head { font-size: 0.76rem; }
+.marine-banner-overlay .hud-passport ul { font-size: 0.66rem; gap: 2px; line-height: 1.35; }
+.marine-banner-overlay .qr-mark { width: 42px; height: 42px; }
 .banner-features { margin-top: 16px; max-width: 520px; }
-.banner-features li { white-space: nowrap; padding: 2px 8px; }
+.banner-features li { white-space: nowrap; padding: 2px 8px; color: #eef4fb; }
 .banner-features .icon { width: 28px; height: 28px; }
-@media (max-width: 1280px) {
+@media (max-width: 1360px) {
+  .marine-banner-hud { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
   .marine-banner-overlay { display: none; }
-  .marine-banner-hud .marine-banner-photo { right: 0; width: 60%; }
-  .marine-banner-hud .marine-banner-shade { background: linear-gradient(90deg, var(--aries-navy) 0%, var(--aries-navy) 38%, rgba(6, 27, 50, 0) 60%); }
-  .marine-banner-hud .page-header { max-width: 50%; }
+  .marine-banner-hud .marine-banner-photo img { -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%); mask-image: linear-gradient(90deg, transparent 0%, #000 30%); }
 }
-@media (max-width: 900px) { .marine-banner .page-header { max-width: none; } .banner-features { max-width: none; } }
+@media (max-width: 900px) {
+  .marine-banner, .marine-banner-hud { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .marine-banner-photo { grid-column: 1; grid-row: 1; margin: 0; }
+  .marine-banner-photo img { opacity: 0.35; -webkit-mask-image: none; mask-image: none; }
+  .banner-features { max-width: none; }
+}
 @media (max-width: 720px) {
-  .marine-banner { min-height: 0; }
-  .marine-banner-photo, .marine-banner-hud .marine-banner-photo { width: 100%; right: 0; opacity: 0.35; }
   .marine-banner-body { padding: 18px; }
   .marine-banner .page-header { flex-wrap: wrap; gap: 10px; }
   .banner-features li { white-space: normal; font-size: var(--fs-xs); padding: 2px 4px; } .banner-features .icon { width: 22px; height: 22px; }
+}
+
+/* ---------- "Needs your attention": clean white card, aligned heading, compact */
+.card.attention { border-radius: 14px; border: 1px solid #d9e4f1; background: #fff; padding: 16px 20px; }
+:root:not([data-theme="light"]) .card.attention { background: var(--surface); border-color: var(--line); }
+.card.attention .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
+.card.attention .card-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-lg); }
+.card.attention .attention-clear { margin: 4px 0 0; }
+
+/* narrower desktops: the passport card keeps every line inside its border */
+.hud-passport-head { flex-wrap: wrap; row-gap: 3px; }
+@media (max-width: 1600px) {
+  .marine-banner-overlay .qr-mark { display: none; }
+  .banner-features li { white-space: normal; }
+  .marine-banner-hud { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(290px, 0.85fr); }
 }
