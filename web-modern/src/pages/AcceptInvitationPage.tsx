@@ -9,6 +9,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ErrorNotice, Field, Loading, label } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
+import { MarineHero } from "../components/MarineHero";
 
 export default function AcceptInvitationPage() {
   const { token } = useParams();
@@ -42,6 +43,7 @@ export default function AcceptInvitationPage() {
 
   return (
     <div className="login-page">
+      <MarineHero />
       <div className="login-card">
         <div className="brand brand-lg">
           <span className="brand-mark" aria-hidden>DP</span>

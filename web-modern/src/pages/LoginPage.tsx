@@ -6,6 +6,7 @@ import { postLoginTarget, useAuth } from "../auth/AuthContext";
 import { ThemeToggle } from "../components/theme";
 import { ErrorNotice, Field, formatDate } from "../components/ui";
 import { PasswordInput } from "../components/PasswordInput";
+import { MarineHero } from "../components/MarineHero";
 
 interface TenantChoice {
   slug: string;
@@ -50,6 +51,7 @@ export default function LoginPage() {
   if (registration) {
     return (
       <div className="login-page">
+      <MarineHero />
       <ThemeToggle className="public-theme" />
         <div className="login-card" data-testid={`registration-${registration.status}`}>
           <div className="brand brand-lg">
@@ -80,6 +82,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <MarineHero />
       <ThemeToggle className="public-theme" />
       <form className="login-card" onSubmit={submit} aria-labelledby="login-title">
         <div className="brand brand-lg">

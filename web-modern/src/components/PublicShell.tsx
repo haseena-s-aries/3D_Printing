@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
+import { MarineHero } from "./MarineHero";
 import { ThemeToggle } from "./theme";
 
 export interface RegistrationConfig {
@@ -23,6 +24,7 @@ export function useRegistrationConfig(): RegistrationConfig | null {
 export function PublicShell({ title, subtitle, children, wide }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean }) {
   return (
     <div className="login-page">
+      <MarineHero />
       <ThemeToggle className="public-theme" />
       <div className={`login-card${wide ? " login-card-wide" : ""}`}>
         <div className="brand brand-lg">

@@ -1349,3 +1349,79 @@ details > table.table { display: block; overflow-x: auto; }
 
 /* Simple public forms (forgot / reset password, email verification): space between fields and the button */
 .form-stack { display: flex; flex-direction: column; gap: 14px; }
+
+/* ================================================================ marine theme: public pages
+   Two columns on wide screens (marine scene + message | the existing card); on small screens the scene sits behind the
+   card. The scene is dark in both themes; the card follows the theme. */
+.login-page { position: relative; isolation: isolate; overflow-x: hidden; }
+.login-page > .login-card, .login-page > form.login-card { position: relative; z-index: 1; }
+.login-card { border-top: 3px solid var(--accent); }
+.marine-hero { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #06101f; }
+.marine-hero .marine-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.marine-hero-copy { display: none; }
+@media (min-width: 1100px) {
+  .login-page { grid-template-columns: minmax(0, 1.15fr) minmax(480px, 0.85fr); padding: 0; align-items: stretch; }
+  .login-page:has(.login-card-wide) { grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr); }
+  .marine-hero { position: sticky; top: 0; height: 100vh; grid-column: 1; grid-row: 1; inset: auto; justify-self: stretch; align-self: start;
+    width: 100%; }
+  .login-page > .login-card, .login-page > form.login-card { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; margin: 40px 28px; }
+  .marine-hero-copy { display: flex; flex-direction: column; gap: 14px; position: absolute; left: clamp(32px, 5vw, 72px); top: clamp(40px, 9vh, 96px);
+    max-width: min(520px, 80%); color: #e8f1fa; }
+  .login-page:has(.login-card-wide) .marine-hero-copy ul { display: none; }
+}
+.marine-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #cfe7ef; letter-spacing: 0.01em; }
+.marine-hero-copy .marine-hero-title { margin: 0; font-size: clamp(1.6rem, 2.3vw, 2.25rem); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; color: #fff;
+  text-wrap: balance; }
+.marine-hero-copy p { margin: 0; color: #b9cbdc; font-size: var(--fs-md); max-width: 46ch; }
+.marine-hero-copy ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+.marine-hero-copy li { display: flex; gap: 12px; align-items: flex-start; color: #b9cbdc; font-size: var(--fs-sm); line-height: 1.45; }
+.marine-hero-copy li strong { color: #eef6fb; font-weight: 600; font-size: var(--fs-base); }
+.marine-hero-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: #5ccfc2;
+  background: rgba(47, 181, 168, 0.14); border: 1px solid rgba(92, 207, 194, 0.3); }
+.public-theme { z-index: 5; }
+
+/* scene details */
+.marine-scene .mh-shroud { fill: none; stroke: #5ccfc2; stroke-width: 1.6; stroke-opacity: 0.75; }
+.marine-scene .mh-thin { stroke-width: 1; stroke-opacity: 0.45; }
+.marine-scene .mh-back { stroke-opacity: 0.25; stroke-dasharray: 6 6; }
+.marine-scene .mh-hub { fill: rgba(92, 207, 194, 0.08); stroke: #8ee6dc; stroke-width: 1.6; }
+.marine-scene .mh-vanes path { fill: none; stroke: #8ee6dc; stroke-width: 2; stroke-linecap: round; stroke-opacity: 0.85; }
+.marine-scene .mh-shaft { fill: none; stroke: #5ccfc2; stroke-width: 1.4; stroke-opacity: 0.5; }
+.marine-scene .mh-spin { animation: mh-spin 48s linear infinite; transform-box: fill-box; transform-origin: center; }
+.marine-scene .mh-dims path { stroke: #8ee6dc; stroke-opacity: 0.55; stroke-width: 1; fill: none; }
+.marine-scene .mh-dims text { fill: #8ee6dc; fill-opacity: 0.7; font: 600 13px var(--font-mono); text-anchor: middle; letter-spacing: 0.12em; }
+.marine-scene .mh-wave { animation: mh-drift 14s ease-in-out infinite alternate; }
+.marine-scene .mh-wave-b { animation-duration: 18s; animation-direction: alternate-reverse; }
+.marine-scene .mh-wave-c { animation-duration: 22s; }
+@keyframes mh-spin { to { transform: rotate(360deg); } }
+@keyframes mh-drift { from { transform: translateX(0); } to { transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) { .marine-scene .mh-spin, .marine-scene .mh-wave { animation: none; } }
+
+/* ================================================================ marine theme: inside the app
+   Quiet touches only, so tables and forms stay easy to read: a wave line and a part outline at the foot of the sidebar,
+   and faint sea contours behind the page. */
+.sidebar { background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 180'%3E%3Cg fill='none' stroke='%235ccfc2' stroke-opacity='.16' stroke-width='1.2'%3E%3Ccircle cx='190' cy='70' r='46'/%3E%3Ccircle cx='190' cy='70' r='12'/%3E%3Cpath d='M190 58c10-10 22-18 28-32M202 70c14 2 27 8 36 19M190 82c-4 14-12 26-24 33M178 70c-14-2-27-8-36-19'/%3E%3Cpath d='M0 140c40-14 80 14 130 0s90-14 130 0M0 160c40-12 80 12 130 0s90-12 130 0'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg, transparent 60%, rgba(31, 125, 134, 0.08)); background-repeat: no-repeat; background-position: bottom 52px center, 0 0;
+  background-size: 100% auto, 100% 100%; }
+.main { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 240' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%232fb5a8' stroke-opacity='.07' stroke-width='1.5'%3E%3Cpath d='M0 120c150-40 300 40 450 0s300-40 450 0 250 40 300 10'/%3E%3Cpath d='M0 160c160-36 320 36 520 0s340-36 480 4 160 30 200 6'/%3E%3Cpath d='M0 200c200-30 360 30 600 0s380-30 600 6'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: bottom center; background-size: 100% 240px; background-attachment: fixed; }
+
+/* dashboard banner: the page title over the horizon band of the marine scene (dark in both themes, white text) */
+.marine-banner { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--radius-lg); border: 1px solid rgba(92, 207, 194, 0.22);
+  margin-bottom: 18px; min-height: 148px; display: flex; align-items: flex-end; background: #06101f; box-shadow: var(--shadow-1); }
+.marine-banner .marine-scene { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+.marine-banner::after { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(4, 16, 31, 0.88) 0%, rgba(4, 16, 31, 0.55) 45%, rgba(4, 16, 31, 0.05) 80%); }
+.marine-banner-body { width: 100%; padding: 22px 26px 20px; }
+.marine-banner .page-header { margin: 0; }
+.marine-banner .page-header h1 { color: #fff; }
+.marine-banner .page-header .muted { color: #bcd0de; }
+.marine-banner .mh-dims { display: none; }
+.marine-banner .marine-scene.marine-banner-part { inset: auto; right: 2%; top: 50%; transform: translateY(-50%); width: auto; height: 132%; z-index: 0;
+  opacity: 0.9; pointer-events: none; }
+@media (max-width: 900px) { .marine-banner .marine-scene.marine-banner-part { display: none; } }
+@media (max-width: 720px) { .marine-banner { min-height: 112px; } .marine-banner-body { padding: 16px 18px; } }
+
+/* phones: room above the card for the theme button */
+@media (max-width: 1099px) { .login-page { padding-top: 64px; } }
