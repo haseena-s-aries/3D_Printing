@@ -2822,6 +2822,89 @@ paths:
                 items:
                   $ref: '#/components/schemas/OperatorOverviewRow'
           description: ''
+  /api/v1/operator/passport-approvals/:
+    get:
+      operationId: v1_operator_passport_approvals_list
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PassportApprovalRow'
+          description: ''
+  /api/v1/operator/passport-approvals/{client_id}/{passport_id}/:
+    get:
+      operationId: v1_operator_passport_approvals_retrieve
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1_operator_passport_approvals_create
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassportApprovalDecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassportApprovalDecisionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassportApprovalDecisionRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/operator/requests/:
     get:
       operationId: v1_operator_requests_list
@@ -4697,12 +4780,53 @@ paths:
       security:
       - tenantBearer: []
       responses:
-        '409':
+        '200':
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/Revision'
+          description: ''
+  /api/v1/passports/{id}/revisions/{rev}/return/:
+    post:
+      operationId: v1_passports_revisions_return_create
+      description: 'No DELETE by default: business records are retired by status,
+        not removed.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this digital passport.
+        required: true
+      - in: path
+        name: rev
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionReturnInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RevisionReturnInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RevisionReturnInputRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revision'
           description: ''
   /api/v1/passports/{id}/revisions/{rev}/submit/:
     post:
@@ -4728,12 +4852,11 @@ paths:
       security:
       - tenantBearer: []
       responses:
-        '409':
+        '200':
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/Revision'
           description: ''
   /api/v1/projects/:
     get:
@@ -6373,18 +6496,6 @@ components:
         * `aries_master` - Aries-controlled engineering master data
         * `passport_draft` - Digital Passport draft (applied as a new revision)
         * `passport_new_revision` - Approved/submitted passport (new proposed revision)
-    DecisionEnum:
-      enum:
-      - request_info
-      - accept
-      - decline
-      - verify
-      type: string
-      description: |-
-        * `request_info` - request_info
-        * `accept` - accept
-        * `decline` - decline
-        * `verify` - verify
     DecisionInputRequest:
       type: object
       properties:
@@ -7054,6 +7165,15 @@ components:
         assigned_to:
           type: string
           format: uuid
+          nullable: true
+        awaiting_reply:
+          type: boolean
+        last_client_activity:
+          type: string
+          maxLength: 30
+        last_client_activity_at:
+          type: string
+          format: date-time
           nullable: true
         part_number:
           type: string
@@ -9018,11 +9138,23 @@ components:
       properties:
         message:
           type: string
+    PartReviewDecisionEnum:
+      enum:
+      - request_info
+      - accept
+      - decline
+      - verify
+      type: string
+      description: |-
+        * `request_info` - request_info
+        * `accept` - accept
+        * `decline` - decline
+        * `verify` - verify
     PartReviewRequest:
       type: object
       properties:
         decision:
-          $ref: '#/components/schemas/DecisionEnum'
+          $ref: '#/components/schemas/PartReviewDecisionEnum'
         message:
           type: string
         project:
@@ -9121,6 +9253,68 @@ components:
       - policy
       - publication_state
       - updated_at
+    PassportApprovalDecisionDecisionEnum:
+      enum:
+      - approve
+      - return
+      type: string
+      description: |-
+        * `approve` - approve
+        * `return` - return
+    PassportApprovalDecisionRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/PassportApprovalDecisionDecisionEnum'
+        note:
+          type: string
+          minLength: 1
+      required:
+      - decision
+    PassportApprovalRow:
+      type: object
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        client_name:
+          type: string
+        passport_id:
+          type: string
+          format: uuid
+        passport_number:
+          type: string
+        title:
+          type: string
+        part_number:
+          type: string
+        part_name:
+          type: string
+        revision_number:
+          type: integer
+        change_summary:
+          type: string
+        submitted_by_email:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        completeness:
+          type: object
+          additionalProperties: {}
+      required:
+      - change_summary
+      - client_id
+      - client_name
+      - completeness
+      - part_name
+      - part_number
+      - passport_id
+      - passport_number
+      - revision_number
+      - submitted_at
+      - submitted_by_email
+      - title
     PassportRequest:
       type: object
       properties:
@@ -11071,6 +11265,15 @@ components:
         updated_by_email:
           type: string
           readOnly: true
+        submitted_by_email:
+          type: string
+          readOnly: true
+        approved_by_email:
+          type: string
+          readOnly: true
+        review_note:
+          type: string
+          readOnly: true
         submitted_at:
           type: string
           format: date-time
@@ -11091,6 +11294,7 @@ components:
           readOnly: true
       required:
       - approved_at
+      - approved_by_email
       - completeness
       - created_at
       - created_by_email
@@ -11098,9 +11302,11 @@ components:
       - engineering_review_pending
       - id
       - notes_restricted
+      - review_note
       - revision_number
       - status
       - submitted_at
+      - submitted_by_email
       - updated_at
       - updated_by_email
     RevisionContent:
@@ -11149,6 +11355,14 @@ components:
         change_summary:
           type: string
           maxLength: 500
+    RevisionReturnInputRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 1
+      required:
+      - note
     RevisionStatusEnum:
       enum:
       - draft

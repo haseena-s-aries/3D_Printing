@@ -26,8 +26,11 @@ function actionsFor(kind: string, status: string): Action[] {
   if (kind !== "digitisation") {
     if (working || status === "answered") out.push({ action: "request_information", label: "Request information", done: "Information requested", needsMessage: true });
     if (working || status === "answered") out.push({ action: "respond", label: "Send reply", done: "Reply sent", needsMessage: true, primary: true });
+    if (status === "information_requested") out.push({ action: "message", label: "Send message", done: "Message sent", needsMessage: true, primary: true });
     if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "close", label: "Close with reason", done: "Request closed", needsMessage: true });
   } else {
+    // 3D scanning: a plain message to the client (the status stays as it is)
+    if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "message", label: "Send message", done: "Message sent", needsMessage: true });
     if (working || ["scheduled", "in_progress"].includes(status)) out.push({ action: "request_information", label: "Request information", done: "Information requested", needsMessage: true });
     if (working) out.push({ action: "schedule", label: "Mark scheduled", done: "Marked as scheduled", primary: true });
     if (working || status === "scheduled") out.push({ action: "start", label: "Mark in progress", done: "Marked as in progress" });

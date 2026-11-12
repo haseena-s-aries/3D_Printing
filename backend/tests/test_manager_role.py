@@ -49,14 +49,14 @@ def test_manager_cannot_change_or_deactivate_an_admin_or_promote_to_admin(mw):
     mgr, op = login(mw["op_mgr"]), mw["operator"]
     for body in ({"is_active": False}, {"role": "operator_engineer"}):
         r = mgr.patch(f"/api/v1/users/{mid(mw['op_admin'], op)}/", body, format="json")
-        assert r.status_code == 403 and r.json()["error"]["code"] == "admin_managed_by_admin", body
+        assert r.status_code == 404, body  # Aries Admins are not even listed for a Manager
     r = mgr.patch(f"/api/v1/users/{mid(mw['op_eng'], op)}/", {"role": "operator_admin"}, format="json")
     assert r.status_code == 403 and r.json()["error"]["code"] == "role_not_allowed"
     # other staff, including another manager, are managed by the manager
     assert mgr.patch(f"/api/v1/users/{mid(mw['op_eng'], op)}/", {"role": "operator_qa"}, format="json").status_code == 200
     assert mgr.patch(f"/api/v1/users/{mid(mw['op_mgr2'], op)}/", {"is_active": False}, format="json").status_code == 200
     rows = {r["email"]: r for r in mgr.get("/api/v1/users/").json()["results"]}
-    assert rows["op.admin@example.test"]["can_manage"] is False and rows["op.eng@example.test"]["can_manage"] is True
+    assert "op.admin@example.test" not in rows and rows["op.eng@example.test"]["can_manage"] is True
     # the Admin manages managers
     assert login(mw["op_admin"]).patch(f"/api/v1/users/{mid(mw['op_mgr'], op)}/", {"role": "operator_engineer"},
                                        format="json").status_code == 200

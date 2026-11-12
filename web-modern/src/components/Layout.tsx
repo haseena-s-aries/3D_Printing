@@ -20,6 +20,10 @@ interface NavItem {
   operatorOnly?: boolean;
   /** Client-inventory screens: hidden in the Platform Operator organisation, which holds no client records. */
   clientOrgOnly?: boolean;
+  /** Only the Aries Admin role (not an Aries Manager, client administrators or auditors). */
+  ariesAdminOnly?: boolean;
+  /** Aries Admin or Aries Manager (platform administration). */
+  platformAdminOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -32,11 +36,12 @@ const NAV: NavItem[] = [
   { to: "/inventory-import", label: "Inventory import", capability: "inventory.import", clientOrgOnly: true },
   { to: "/projects", label: "Projects", capability: "projects.view", clientOrgOnly: true },
   { to: "/passports", label: "Digital passports", capability: "passports.view", clientOrgOnly: true },
+  { to: "/passport-approvals", label: "Passport approvals", capability: "passports.approve", operatorOnly: true, platformAdminOnly: true },
   { to: "/requests", label: "My requests", capability: "requests.view" },
   { to: "/incoming", label: "Incoming requests", capability: "requests.handle" },
   { to: "/edit-requests", label: "Edit requests", capability: "edits.request" },
   { to: "/users", label: "Users", capability: "users.view" },
-  { to: "/audit", label: "Audit trail", capability: "audit.view" },
+  { to: "/audit", label: "Audit trail", capability: "audit.view", ariesAdminOnly: true },
   // Client Administrator: what the company shares with Aries (Aries Admin inventory thumbnails, default not allowed)
   { to: "/company/data-sharing", label: "Data sharing", capability: "files.admin_thumbnail_consent", clientOrgOnly: true },
   // QA inside a client company (Aries Engineers with QA permission; legacy Aries QA): photo-origin claims awaiting an independent decision
@@ -45,8 +50,9 @@ const NAV: NavItem[] = [
   { to: "/thumbnail-contracts", label: "Thumbnail contracts", capability: "contracts.thumbnail_view", operatorOnly: true },
 ];
 
-export function visibleNav(can: (c: string) => boolean, isOperator: boolean): NavItem[] {
-  return NAV.filter((n) => (!n.capability || can(n.capability)) && (!n.operatorOnly || isOperator) && (!n.clientOrgOnly || !isOperator));
+export function visibleNav(can: (c: string) => boolean, isOperator: boolean, role = ""): NavItem[] {
+  return NAV.filter((n) => (!n.capability || can(n.capability)) && (!n.operatorOnly || isOperator) && (!n.clientOrgOnly || !isOperator)
+    && (!n.ariesAdminOnly || role === "operator_admin") && (!n.platformAdminOnly || role === "operator_admin" || role === "operator_manager"));
 }
 
 /** Presentation of the navigation: group and icon per destination (the items and their visibility come from NAV). */
@@ -55,7 +61,7 @@ const GROUPS: [string, string][] = [["overview", "Overview"], ["inventory", "Inv
 const META: Record<string, [string, IconName]> = {
   "/": ["overview", "dashboard"], "/registrations": ["admin", "inbox"], "/clients": ["admin", "building"],
   "/admin/inventory": ["inventory", "boxes"], "/parts": ["inventory", "boxes"], "/inventory-import": ["inventory", "upload"],
-  "/projects": ["inventory", "folder"], "/passports": ["inventory", "passport"], "/requests": ["requests", "message"],
+  "/projects": ["inventory", "folder"], "/passports": ["inventory", "passport"], "/passport-approvals": ["inventory", "review"], "/requests": ["requests", "message"],
   "/incoming": ["requests", "incoming"], "/edit-requests": ["requests", "edit"], "/users": ["admin", "users"], "/audit": ["admin", "shield"],
   "/company/data-sharing": ["admin", "lock"], "/origin-claims": ["inventory", "review"], "/thumbnail-contracts": ["admin", "lock"],
 };
@@ -193,7 +199,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
   const crumbs = breadcrumbs(location.pathname, session.tenant.name);
   const isOperator = session.tenant.kind === "operator";
   const operatorStaff = session.membership.role.startsWith("operator_");
-  const items = visibleNav(can, isOperator);
+  const items = visibleNav(can, isOperator, session.membership.role);
   const tab = new URLSearchParams(location.search).get("tab") ?? "";
   const aiTab = location.pathname === "/inventory-import" && AI_LINKS.some((a) => a.tab === tab);
   const showAi = !isOperator && can("inventory.import") && can("intelligence.view");

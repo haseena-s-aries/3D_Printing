@@ -2,13 +2,13 @@
 
 Decided (BRD v0.4): operator creates passports (OQ-05); evidence level, publication state and
 manufacturing eligibility are separate fields (PUB-001..PUB-003); approved revisions are immutable.
-Open: transition rules (OQ-35) and manufacturing authorisation (OQ-36). Submit/approve are routed
-to the policy seam and refused with `policy_not_configured`; state fields are read-only.
+Submit / approve / send back follow apps.passports.approval (decision of 12 Nov 2026); manufacturing authorisation
+(OQ-36) stays open and the eligibility field stays read-only.
 """
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_field
+from drf_spectacular.utils import extend_schema, extend_schema_field, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -22,6 +22,7 @@ from apps.projects.scoping import project_allowed, restrict
 from apps.tenancy.permissions import HasCapability, has_capability
 from apps.tenancy.viewsets import TenantModelViewSet, TenantScopedRelatedField
 
+from . import approval
 from .confidential import aries_reader, client_content
 from .content import RevisionContentSerializer, captured_level, completeness
 from .models import DigitalPassport, PassportRevision
@@ -59,6 +60,8 @@ class RevisionSerializer(serializers.ModelSerializer):
     completeness = serializers.SerializerMethodField()
     created_by_email = serializers.SerializerMethodField()
     updated_by_email = serializers.SerializerMethodField()
+    submitted_by_email = serializers.SerializerMethodField()
+    approved_by_email = serializers.SerializerMethodField()
     notes_restricted = serializers.SerializerMethodField(
         help_text="True when this revision holds engineering notes that your role may not read; they are omitted from content.")
     engineering_review_pending = serializers.SerializerMethodField(
@@ -69,9 +72,11 @@ class RevisionSerializer(serializers.ModelSerializer):
         model = PassportRevision
         fields = ["id", "revision_number", "status", "content", "change_summary", "editable", "completeness",
                   "notes_restricted", "engineering_review_pending",
-                  "created_by_email", "updated_by_email", "submitted_at", "approved_at", "created_at", "updated_at"]
+                  "created_by_email", "updated_by_email", "submitted_by_email", "approved_by_email", "review_note",
+                  "submitted_at", "approved_at", "created_at", "updated_at"]
         read_only_fields = ["id", "revision_number", "status", "editable", "completeness", "created_by_email",
-                            "updated_by_email", "submitted_at", "approved_at", "created_at", "updated_at"]
+                            "updated_by_email", "submitted_by_email", "approved_by_email", "review_note",
+                            "submitted_at", "approved_at", "created_at", "updated_at"]
 
     def _may_read_notes(self) -> bool:
         request = self.context.get("request")
@@ -81,7 +86,7 @@ class RevisionSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if not self._may_read_notes() and isinstance(data.get("content"), dict):
             data["content"].pop("notes", None)
-        if isinstance(data.get("content"), dict) and not aries_reader(self.context.get("request")):
+        if isinstance(data.get("content"), dict) and not self.context.get("approver") and not aries_reader(self.context.get("request")):
             data["content"] = client_content(data["content"])  # D-18: Aries manufacturing specification stays internal
         return data
 
@@ -103,6 +108,12 @@ class RevisionSerializer(serializers.ModelSerializer):
 
     def get_updated_by_email(self, obj) -> str:
         return obj.updated_by.email if obj.updated_by_id else ""
+
+    def get_submitted_by_email(self, obj) -> str:
+        return obj.submitted_by.email if obj.submitted_by_id else ""
+
+    def get_approved_by_email(self, obj) -> str:
+        return obj.approved_by.email if obj.approved_by_id else ""
 
 
 class PartSummarySerializer(serializers.Serializer):
@@ -184,7 +195,8 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
     capabilities = {"list": "passports.view", "retrieve": "passports.view", "create": "passports.edit_draft",
                     "update": "passports.edit_draft", "partial_update": "passports.edit_draft",
                     "revisions": "passports.view", "revision_detail": "passports.view",
-                    "submit_revision": "passports.edit_draft", "approve_revision": "passports.edit_draft",
+                    "submit_revision": "passports.edit_draft", "approve_revision": "passports.approve",
+                    "return_revision": "passports.approve",
                     # CN-005 reports: variant rules are checked in apps.reports.api / services (server-side)
                     "reports": "passports.view", "report_pdf": "passports.view", "report_page": "passports.view", "report_withdraw": "reports.withdraw",
                     "report_preview": "passports.view"}
@@ -251,11 +263,16 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
             return Response(RevisionSerializer(passport.revisions.order_by("-revision_number"), many=True, context={"request": request}).data)
         if passport.revisions.filter(status=PassportRevision.Status.DRAFT).exists():
             raise DomainError("draft_exists", "A draft revision already exists. Edit it instead of creating another.")
+        if passport.revisions.filter(status=PassportRevision.Status.SUBMITTED).exists():
+            raise DomainError("revision_awaiting_approval", "A revision is waiting for approval. Approve it or send it back first.")
         latest = passport.revisions.order_by("-revision_number").first()
         number = (passport.revisions.aggregate(m=Max("revision_number"))["m"] or 0) + 1
         rev = PassportRevision.objects.create(
             tenant=request.tenant, created_by=request.user, passport=passport, revision_number=number,
             content=dict(latest.content) if latest else {}, change_summary=str(request.data.get("change_summary", ""))[:500])
+        if passport.revisions.filter(status=PassportRevision.Status.APPROVED).exists():
+            passport.publication_state = DigitalPassport.PublicationState.REVISION_IN_PROGRESS
+            passport.save(update_fields=["publication_state", "updated_at"])
         record(request, "passport.revision_created", obj=rev, data={"revision_number": number})
         return Response(RevisionSerializer(rev, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
@@ -303,17 +320,26 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
             raise DomainError("evidence_file_invalid", "Evidence must be a file attached to this passport.",
                               details={"evidence": missing}, http_status=400)
 
-    @extend_schema(request=None, responses={409: dict})
+    @extend_schema(request=None, responses={200: RevisionSerializer})
     @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/submit")
     def submit_revision(self, request, pk=None, rev=None):
-        self._revision(self.get_object(), rev)
-        seams.require("publication", "Submit revision for approval")
+        passport = self.get_object()
+        revision = approval.submit(request, passport, self._revision(passport, rev))
+        return Response(RevisionSerializer(revision, context={"request": request}).data)
 
-    @extend_schema(request=None, responses={409: dict})
+    @extend_schema(request=None, responses={200: RevisionSerializer})
     @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/approve")
     def approve_revision(self, request, pk=None, rev=None):
-        self._revision(self.get_object(), rev)
-        seams.require("publication", "Approve revision")
+        passport = self.get_object()
+        revision = approval.approve(request, passport, self._revision(passport, rev))
+        return Response(RevisionSerializer(revision, context={"request": request}).data)
+
+    @extend_schema(request=inline_serializer("RevisionReturnInput", {"note": serializers.CharField()}), responses={200: RevisionSerializer})
+    @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/return")
+    def return_revision(self, request, pk=None, rev=None):
+        passport = self.get_object()
+        revision = approval.send_back(request, passport, self._revision(passport, rev), str(request.data.get("note", "")))
+        return Response(RevisionSerializer(revision, context={"request": request}).data)
 
 
 class FieldOptionSerializer(serializers.Serializer):

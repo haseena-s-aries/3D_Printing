@@ -1639,7 +1639,9 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .marine-banner-body::before { content: ""; display: block; width: 52px; height: 4px; border-radius: 4px; background: var(--aries-cyan); margin-bottom: 14px; }
 .marine-banner-tagline { margin: 0 0 4px; color: var(--aries-cyan); font-weight: 650; font-size: var(--fs-sm); letter-spacing: 0.08em; text-transform: uppercase; }
 .marine-banner .page-header { margin: 0; align-items: center; }
-.marine-banner:has(.page-actions) .page-header { flex-wrap: nowrap; }
+/* banner with actions (e.g. My requests): the buttons sit in one row under the subtitle, not squeezed beside the title */
+.marine-banner:has(.page-actions) .page-header { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: 14px; }
+.marine-banner .page-header .page-actions { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: center; }
 .marine-banner .page-header h1 { color: #fff; font-size: clamp(1.4rem, 2.2vw, 2.1rem); font-weight: 750; }
 .marine-banner .page-header .muted { color: #cbd8e6; }
 .marine-banner .page-actions { position: relative; z-index: 3; }
@@ -1744,3 +1746,21 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
   .hud-steps li.is-current span { animation: none; }
   .hud-holo::before { display: none; }
 }
+
+/* ---------- passport approval */
+.hero-gate-warn { color: #8a5a00; background: #fff7e6; border-color: #f3d9a4; }
+:root:not([data-theme="light"]) .hero-gate-warn { color: #f5cf86; background: rgba(201, 138, 18, 0.12); border-color: rgba(201, 138, 18, 0.35); }
+.return-form { display: grid; gap: 10px; margin-top: 12px; max-width: 640px; }
+.return-form textarea, .approvals textarea { width: 100%; }
+.approvals { align-items: start; }
+.approval-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.approval-row { display: grid; gap: 4px; width: 100%; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.approval-row:hover { border-color: var(--accent-line); }
+.approval-row.is-active { border-color: var(--aries-cyan); box-shadow: 0 0 0 2px rgba(17, 197, 232, 0.2); }
+.approval-section { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.approval-section summary { cursor: pointer; font-weight: 600; }
+.approvals .facts { display: grid; grid-template-columns: minmax(140px, 32%) 1fr; gap: 6px 14px; margin: 8px 0 0; }
+.approvals .facts > div { display: contents; }
+.approvals .facts dt { color: var(--ink-2); font-size: var(--fs-sm); }
+.approvals .facts dd { margin: 0; overflow-wrap: anywhere; }

@@ -69,14 +69,12 @@ def test_approved_revision_cannot_be_edited_via_api(world):
     assert r.status_code == 201 and r.json()["revision_number"] == 2 and r.json()["status"] == "draft"
 
 
-def test_submit_and_approve_are_disabled_pending_oq35(world):
+def test_a_draft_cannot_be_approved_before_it_is_submitted(world):
+    """Approval itself is covered in test_passport_approval.py (decision of 12 Nov 2026)."""
     c, part = setup_part(world)
     p = c.post("/api/v1/passports/", {"part": part["id"]}, format="json").json()
-    for verb in ("submit", "approve"):
-        r = c.post(f"/api/v1/passports/{p['id']}/revisions/1/{verb}/", {}, format="json")
-        assert r.status_code == 409
-        err = r.json()["error"]
-        assert err["code"] == "policy_not_configured" and err["details"]["decision"] == "OQ-35"
+    r = c.post(f"/api/v1/passports/{p['id']}/revisions/1/approve/", {}, format="json")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "revision_not_submitted"
 
 
 def test_client_roles_can_view_but_not_create_passports(world):

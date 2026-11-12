@@ -1419,6 +1419,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/passport-approvals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passport_approvals_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/passport-approvals/{client_id}/{passport_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passport_approvals_retrieve"];
+        put?: never;
+        post: operations["v1_operator_passport_approvals_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/": {
         parameters: {
             query?: never;
@@ -2126,6 +2158,23 @@ export interface paths {
         put?: never;
         /** @description No DELETE by default: business records are retired by status, not removed. */
         post: operations["v1_passports_revisions_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passports/{id}/revisions/{rev}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description No DELETE by default: business records are retired by status, not removed. */
+        post: operations["v1_passports_revisions_return_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2893,14 +2942,6 @@ export interface components {
          * @enum {string}
          */
         DataClassEnum: "client_descriptive" | "aries_master" | "passport_draft" | "passport_new_revision";
-        /**
-         * @description * `request_info` - request_info
-         *     * `accept` - accept
-         *     * `decline` - decline
-         *     * `verify` - verify
-         * @enum {string}
-         */
-        DecisionEnum: "request_info" | "accept" | "decline" | "verify";
         DecisionInputRequest: {
             organisation_name?: string;
             /** @description Staff requests: the Aries role to grant (default: the requested role). */
@@ -3177,6 +3218,10 @@ export interface components {
             project_ref?: string | null;
             /** Format: uuid */
             assigned_to?: string | null;
+            awaiting_reply?: boolean;
+            last_client_activity?: string;
+            /** Format: date-time */
+            last_client_activity_at?: string | null;
             part_number?: string;
             part_name?: string;
             quantity?: number | null;
@@ -4072,8 +4117,16 @@ export interface components {
         PartResubmitRequest: {
             message?: string;
         };
+        /**
+         * @description * `request_info` - request_info
+         *     * `accept` - accept
+         *     * `decline` - decline
+         *     * `verify` - verify
+         * @enum {string}
+         */
+        PartReviewDecisionEnum: "request_info" | "accept" | "decline" | "verify";
         PartReviewRequest: {
-            decision: components["schemas"]["DecisionEnum"];
+            decision: components["schemas"]["PartReviewDecisionEnum"];
             message?: string;
             /** Format: uuid */
             project?: string | null;
@@ -4108,6 +4161,35 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /**
+         * @description * `approve` - approve
+         *     * `return` - return
+         * @enum {string}
+         */
+        PassportApprovalDecisionDecisionEnum: "approve" | "return";
+        PassportApprovalDecisionRequest: {
+            decision: components["schemas"]["PassportApprovalDecisionDecisionEnum"];
+            note?: string;
+        };
+        PassportApprovalRow: {
+            /** Format: uuid */
+            client_id: string;
+            client_name: string;
+            /** Format: uuid */
+            passport_id: string;
+            passport_number: string;
+            title: string;
+            part_number: string;
+            part_name: string;
+            revision_number: number;
+            change_summary: string;
+            submitted_by_email: string;
+            /** Format: date-time */
+            submitted_at: string;
+            completeness: {
+                [key: string]: unknown;
+            };
         };
         PassportRequest: {
             /** Format: uuid */
@@ -4891,6 +4973,9 @@ export interface components {
             readonly engineering_review_pending: boolean;
             readonly created_by_email: string;
             readonly updated_by_email: string;
+            readonly submitted_by_email: string;
+            readonly approved_by_email: string;
+            readonly review_note: string;
             /** Format: date-time */
             readonly submitted_at: string | null;
             /** Format: date-time */
@@ -4924,6 +5009,9 @@ export interface components {
         RevisionRequest: {
             content?: components["schemas"]["RevisionContentRequest"];
             change_summary?: string;
+        };
+        RevisionReturnInputRequest: {
+            note: string;
         };
         /**
          * @description * `draft` - Draft
@@ -7838,6 +7926,79 @@ export interface operations {
             };
         };
     };
+    v1_operator_passport_approvals_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportApprovalRow"][];
+                };
+            };
+        };
+    };
+    v1_operator_passport_approvals_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_passport_approvals_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PassportApprovalDecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PassportApprovalDecisionRequest"];
+                "multipart/form-data": components["schemas"]["PassportApprovalDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_operator_requests_list: {
         parameters: {
             query?: {
@@ -9304,14 +9465,41 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            409: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Revision"];
+                };
+            };
+        };
+    };
+    v1_passports_revisions_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this digital passport. */
+                id: string;
+                rev: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionReturnInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RevisionReturnInputRequest"];
+                "multipart/form-data": components["schemas"]["RevisionReturnInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Revision"];
                 };
             };
         };
@@ -9329,14 +9517,12 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            409: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Revision"];
                 };
             };
         };

@@ -67,8 +67,8 @@ def test_amsl_criticality_is_provisional_and_changes_no_state(world, docs):
     after = eng.get(f"/api/v1/passports/{p['id']}/").json()
     assert (after["publication_state"], after["evidence_level"], after["manufacturing_eligibility"]) == ("draft", "none", "not_eligible")
     assert after["current_revision"]["status"] == "draft"
-    # gated actions are still refused regardless of the AMSL text
-    assert eng.post(f"/api/v1/passports/{p['id']}/revisions/1/approve/", {}, format="json").json()["error"]["code"] == "policy_not_configured"
+    # the AMSL text approves nothing: a draft cannot be approved (it must be submitted and decided by another approver)
+    assert eng.post(f"/api/v1/passports/{p['id']}/revisions/1/approve/", {}, format="json").json()["error"]["code"] == "revision_not_submitted"
     # the state fields cannot be set directly either
     eng.patch(f"/api/v1/passports/{p['id']}/", {"manufacturing_eligibility": "eligible", "evidence_level": "R-L3"}, format="json")
     again = eng.get(f"/api/v1/passports/{p['id']}/").json()

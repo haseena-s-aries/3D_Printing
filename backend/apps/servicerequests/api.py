@@ -190,7 +190,7 @@ HANDOVER_ACTIONS = ("create_project", "link_project", "assign", "record_delivera
 
 
 class OperatorActionInput(serializers.Serializer):
-    action = serializers.ChoiceField(choices=sorted([*svc.OPERATOR_ACTIONS, *HANDOVER_ACTIONS]))
+    action = serializers.ChoiceField(choices=sorted([*svc.OPERATOR_ACTIONS, *HANDOVER_ACTIONS, "message"]))
     message = serializers.CharField(max_length=2000, allow_blank=True, required=False, default="")
     engineer = serializers.UUIDField(required=False, allow_null=True, help_text="assign: the responsible Aries Engineer (user id)")
     project = serializers.UUIDField(required=False, allow_null=True, help_text="link_project: an existing project of the company")
@@ -354,7 +354,7 @@ class EnvelopeSerializer(serializers.ModelSerializer):
     class Meta:
         model = RequestEnvelope
         fields = ["id", "intake_number", "reference", "client_tenant", "client_name", "kind", "kind_label", "status", "status_label", "priority",
-                  "project_ref", "assigned_to",
+                  "project_ref", "assigned_to", "awaiting_reply", "last_client_activity", "last_client_activity_at",
                   "part_number", "part_name", "quantity", "required_date", "submitted_at", "updated_at", "assigned"]
 
     def get_kind_label(self, obj) -> str:
@@ -461,7 +461,10 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             env = RequestEnvelope.objects.filter(pk=pk).first()
         if env is None:
             raise DomainError("not_found", "Request not found.", http_status=404)
-        if str(env.client_tenant_id) not in _assigned_clients(request.user):
+        # Aries Admins and Managers open and answer every client's requests (decision of 12 Nov 2026); other Aries staff only
+        # those of the client organisations they are assigned to. Confidential attachments keep their own rule
+        # (admin_workspace.file_content_blocked_for).
+        if not _is_operator_admin(request.user, op) and str(env.client_tenant_id) not in _assigned_clients(request.user):
             raise DomainError("not_assigned", "You are not assigned to this client organisation.", http_status=403)
         return env
 
@@ -490,6 +493,8 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                     qs = qs.filter(**{field: p[field]})
             if p.get("open") == "true":
                 qs = qs.filter(status__in=svc.OPEN)
+            if p.get("awaiting") == "true":
+                qs = qs.filter(awaiting_reply=True)
             if p.get("mine") == "true":
                 qs = qs.filter(assigned_to=request.user)
             rows = list(qs[:500])
@@ -500,6 +505,8 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                     with tenant_context(r.client_tenant_id):  # the access rows live in the client's row-level-security context
                         scope[r.client_tenant_id] = allowed_project_ids_for(r.client_tenant_id, request.user.pk)
             rows = [r for r in rows if scope[r.client_tenant_id] is None or r.project_ref in scope[r.client_tenant_id]]
+        if _is_operator_admin(request.user, op):
+            assigned = {str(r.client_tenant_id) for r in rows}  # Admins and Managers can open every request
         return Response(EnvelopeSerializer(rows, many=True, context={"assigned": assigned}).data)
 
     @extend_schema(responses={200: OperatorRequestSerializer})
@@ -533,6 +540,8 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                 obj = svc.record_deliverable(request, obj, v["deliverable_kind"], v["title"], v.get("file"), v["note"])
             elif v["action"] == "hand_over":
                 obj = svc.hand_over(request, obj)
+            elif v["action"] == "message":
+                obj = svc.operator_message(request, obj, v["message"])
             else:
                 obj = svc.operator_action(request, obj, s.validated_data["action"], s.validated_data["message"])
             obj = self._load(env)  # fresh history (the earlier prefetch predates this action)

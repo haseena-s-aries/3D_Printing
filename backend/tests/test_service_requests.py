@@ -125,11 +125,11 @@ def test_tenant_isolation_and_operator_assignment(world, catalog):
     assert b.get("/api/v1/requests/").json()["count"] == 0
     assert b.get(f"/api/v1/requests/{ref['id']}/").status_code == 404
     env = envelope_for(world, ref["reference"])
-    # operator admin sees the intake summary, but is not assigned to client A and cannot open it
+    # the Aries Admin opens and answers every client's requests (decision of 12 Nov 2026); unassigned engineers do not
     op_admin = login(world["op_admin"])
     rows = op_admin.get("/api/v1/operator/requests/").json()
-    assert [r["reference"] for r in rows] == [ref["reference"]] and rows[0]["assigned"] is False
-    assert op_admin.get(f"/api/v1/operator/requests/{env.pk}/").json()["error"]["code"] == "not_assigned"
+    assert [r["reference"] for r in rows] == [ref["reference"]] and rows[0]["assigned"] is True
+    assert op_admin.get(f"/api/v1/operator/requests/{env.pk}/").json()["reference"] == ref["reference"]
     # the assigned engineer opens it from either organisation context
     for ctx in (world["a"], world["operator"]):
         assert login(world["op_eng"], ctx).get(f"/api/v1/operator/requests/{env.pk}/").json()["reference"] == ref["reference"]
