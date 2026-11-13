@@ -7,6 +7,8 @@
  */
 import type { ApiErrorBody, Session, TokenResponse } from "@passport/api-types";
 
+import { track } from "./activity";
+
 const BASE = "/api/v1";
 const REFRESH_KEY = "passport.refresh";
 
@@ -80,6 +82,12 @@ export interface RequestOptions {
 }
 
 export async function api<T>(path: string, opts: RequestOptions = {}, retried = false): Promise<T> {
+  // saves show the top progress bar (reads are tracked by useApi on a page's first load only)
+  if (!retried && (opts.method && opts.method !== "GET" || opts.body !== undefined || opts.form)) return track(request<T>(path, opts, retried));
+  return request<T>(path, opts, retried);
+}
+
+async function request<T>(path: string, opts: RequestOptions = {}, retried = false): Promise<T> {
   const url = new URL(`${BASE}${path}`, window.location.origin);
   for (const [k, v] of Object.entries(opts.query ?? {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -102,6 +110,11 @@ export async function api<T>(path: string, opts: RequestOptions = {}, retried = 
 
 /** Authenticated binary fetch (thumbnails): returns an object URL the caller must revoke. */
 export async function fetchObjectUrl(path: string, retried = false): Promise<string> {
+  if (!retried) return track(fetchObjectUrlInner(path));
+  return fetchObjectUrlInner(path, true);
+}
+
+async function fetchObjectUrlInner(path: string, retried = false): Promise<string> {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch(`${BASE}${path}`, { headers });

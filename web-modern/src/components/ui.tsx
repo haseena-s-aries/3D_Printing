@@ -141,10 +141,10 @@ export function Empty({ children, icon = "inbox" }: { children: ReactNode; icon?
 }
 
 /** Content-shaped placeholder while data loads (no layout jump); the text stays available to screen readers. */
-export function Loading({ variant = "lines" }: { variant?: "lines" | "page" | "cards" }) {
+export function Loading({ variant = "lines", label }: { variant?: "lines" | "page" | "cards"; label?: string }) {
   return (
     <div className="loading" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading…</span>
+      {label ? <p className="loading-label"><span className="viewer-spinner" aria-hidden />{label}</p> : <span className="sr-only">Loading…</span>}
       {variant === "page" && <span className="skeleton skeleton-title" />}
       {variant !== "lines" && (
         <div className="skeleton-grid">{[0, 1, 2, 3].map((i) => <span key={i} className="skeleton skeleton-card" />)}</div>

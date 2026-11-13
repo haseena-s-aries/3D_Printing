@@ -70,8 +70,10 @@ def submit(request, passport: DigitalPassport, revision: PassportRevision) -> Pa
     platform, engineers = approvers(passport, exclude_user_id=request.user.pk)
     org = passport.tenant.name
     title = f"Passport waiting for approval: {_label(passport, revision)}"
-    body = f"{passport.title} · submitted by {request.user.email}"
-    _notify(platform, title, body, "/passport-approvals", org)
+    body = f"{passport.title} ({org}) · submitted by {request.user.email}"
+    # Admins and Managers decide from the Aries organisation's approval queue; engineers inside the client company
+    op = _operator_tenant()
+    _notify(platform, title, body, "/passport-approvals", op.name if op else org)
     _notify(engineers, title, body, f"/passports/{passport.pk}", org)
     return revision
 

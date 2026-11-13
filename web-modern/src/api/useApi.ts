@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSessionKey } from "../auth/AuthContext";
+import { track } from "./activity";
 import { api, type RequestOptions } from "./client";
 
 // Identical GETs started while one is still in flight share it (two components mounting with the same query, or
@@ -26,6 +27,9 @@ export function useApi<T>(path: string | null, opts?: RequestOptions) {
   // overwrite the result of a newer one.
   const latest = useRef(0);
   const lastSession = useRef(sessionKey);
+  // the first load of a page's data (or of a new filter / search) shows the top progress bar; background reloads do not
+  const hasData = useRef(false);
+  const loadedKey = useRef("");
 
   if (lastSession.current !== sessionKey) {
     lastSession.current = sessionKey;
@@ -38,8 +42,9 @@ export function useApi<T>(path: string | null, opts?: RequestOptions) {
     setLoading(true);
     setError(null);
     try {
-      const result = reuse && !opts?.body && !opts?.method ? await shared(key, () => api<T>(path, opts)) : await api<T>(path, opts);
-      if (id === latest.current) setData(result);
+      const run = reuse && !opts?.body && !opts?.method ? shared(key, () => api<T>(path, opts)) : api<T>(path, opts);
+      const result = await (hasData.current && loadedKey.current === key ? run : track(run));
+      if (id === latest.current) { hasData.current = true; loadedKey.current = key; setData(result); }
     } catch (e) {
       if (id === latest.current) setError(e);
     } finally {
@@ -51,6 +56,7 @@ export function useApi<T>(path: string | null, opts?: RequestOptions) {
   useEffect(() => {
     setData(null); // organisation changed: never show the previous organisation's data while the new one loads
     setError(null);
+    hasData.current = false;
   }, [sessionKey]);
 
   useEffect(() => {

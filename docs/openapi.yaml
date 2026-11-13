@@ -2942,6 +2942,42 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/operator/passport-approvals/{client_id}/{passport_id}/reports/{report_id}/:
+    get:
+      operationId: v1_operator_passport_approvals_reports_retrieve
+      description: One generated report of the passport as PDF (inline), for the approver;
+        logged as a preview in the client company.
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: report_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/operator/requests/:
     get:
       operationId: v1_operator_requests_list
