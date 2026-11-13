@@ -22,6 +22,7 @@ from apps.files.admin_thumbnails import AdminThumbnailConsentView, AdminThumbnai
 from apps.files.thumbnail_provenance import (ContractAuthorizationEventView, ContractAuthorizationView, ContractListView,
                                              ImageOriginView, OriginClaimsQueueView)
 from apps.parts.admin_overview import AdminInventoryView
+from apps.parts.approval_api import SubmissionApprovalDetailView, SubmissionApprovalFileView, SubmissionApprovalQueueView
 from apps.passports.approval_api import PassportApprovalDetailView, PassportApprovalFileView, PassportApprovalQueueView, PassportApprovalReportView
 from apps.passports.api import PassportFieldOptionsView, PassportViewSet
 from apps.projects.api import ProjectViewSet
@@ -120,6 +121,10 @@ urlpatterns = [
     path("downloads/<str:token>/", DownloadView.as_view(), name="download"),
     path("operator/overview/", OperatorOverviewView.as_view(), name="operator-overview"),
     path("operator/passport-approvals/", PassportApprovalQueueView.as_view(), name="passport-approvals"),
+    path("operator/approvals/", SubmissionApprovalQueueView.as_view(), name="submission-approvals"),
+    path("operator/approvals/<uuid:client_id>/<uuid:part_id>/", SubmissionApprovalDetailView.as_view(), name="submission-approval-detail"),
+    path("operator/approvals/<uuid:client_id>/<uuid:part_id>/files/<uuid:file_id>/", SubmissionApprovalFileView.as_view(),
+         name="submission-approval-file"),
     path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/", PassportApprovalDetailView.as_view(),
          name="passport-approval-detail"),
     path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/files/<uuid:file_id>/", PassportApprovalFileView.as_view(),

@@ -118,8 +118,9 @@ def test_review_workflow_request_info_resubmit_accept_and_passport(world, on):
     assert eng.post(f"/api/v1/parts/{part['id']}/review/", {"decision": "request_info"}, format="json").status_code == 400
     r = eng.post(f"/api/v1/parts/{part['id']}/review/", {"decision": "request_info", "message": "Send the nameplate photo."}, format="json")
     assert r.json()["review_state"] == "info_requested" and r.json()["review_note"] == "Send the nameplate photo."
-    assert any("more information" in t for t in titles(world["a_user"]))
-    assert any("more information" in t for t in titles(world["a_admin"]))
+    assert r.json()["submission_revision"] == 2  # "send back" opens the next revision (decision of 13 Nov 2026)
+    assert any("Sent back for changes" in t for t in titles(world["a_user"]))
+    assert any("Sent back for changes" in t for t in titles(world["a_admin"]))
 
     user = login(world["a_user"])
     assert user.patch(f"/api/v1/parts/{part['id']}/", {"original_material": "CF8M", "unknown_fields": ["part_number"]},
@@ -136,15 +137,18 @@ def test_review_workflow_request_info_resubmit_accept_and_passport(world, on):
                                                          "verified_fields": ["name", "original_material"], "message": "OK"}, format="json")
     body = r.json()
     assert body["review_state"] == "accepted" and body["project"] == proj["id"] and body["reviewed_by_name"]
-    # accepted is not approved: still a draft, no passport, no eligibility, no publication
-    assert body["status"] == "draft" and body["passport_id"] is None and body["evidence_level"] is None
+    # approved (decision of 13 Nov 2026): the passport draft is created for Aries to complete; nothing is published or
+    # made eligible
+    assert body["status"] == "draft" and body["passport_id"] and body["evidence_level"] == "none"
+    assert body["publication_state"] == "draft" and body["manufacturing_eligibility"] == "not_eligible"
     prov = body["field_provenance"]
     assert prov["original_material"]["source"] == "client" and prov["original_material"]["verified_by"]
     assert prov["project"]["source"] == "aries"
     assert prov["dimensions"]["verified_by"] is None  # not verified, still shown as client-supplied
-    passport = eng.post("/api/v1/passports/", {"part": part["id"]}, format="json")
-    assert passport.status_code == 201
+    assert eng.post("/api/v1/passports/", {"part": part["id"]}, format="json").status_code == 400  # one passport per part, already created
+    passport = eng.get(f"/api/v1/passports/{body['passport_id']}/")
     assert passport.json()["manufacturing_eligibility"] == "not_eligible" and passport.json()["publication_state"] != "published"
+    assert passport.json()["current_revision"]["content"]["rl1"]["original_material_grade"] == "CF8M"  # prefilled from the submission
     # clients cannot review or accept their own submissions
     other = submit(world["a_admin"], part_number="X-9", unknown_fields=[])
     assert login(world["a_admin"]).post(f"/api/v1/parts/{other['id']}/review/", {"decision": "accept"}, format="json").status_code == 403
@@ -265,4 +269,4 @@ def test_aries_admins_are_told_when_no_engineer_can_review(world, on):
     admin.put(f"/api/v1/clients/{world['a'].pk}/engineers/{mid}/access/", {"scope": "projects", "project_ids": [p1["id"]]}, format="json")
     submit(world["a_admin"], part_number="NP-1", unknown_fields=[])  # no project: the project-limited engineer cannot see it
     assert not any("NP-1" in t for t in titles(world["op_eng"]))
-    assert any("No assigned Aries Engineer" in t for t in titles(world["op_admin"]))
+    assert any("NP-1" in t and "waiting for approval" in t for t in titles(world["op_admin"]))  # Admins/Managers approve too

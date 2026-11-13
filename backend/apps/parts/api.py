@@ -153,7 +153,7 @@ class SparePartSerializer(serializers.ModelSerializer):
         fields = ["id", "project", "project_name", "part_number", "name", "description", "category", "criticality",
                   "original_material", "dimensions", "application", "equipment_reference", "manufacturer", "status",
                   "origin", "review_state", "submission_kind", "submitted_by", "submitted_by_name", "submitted_at", "reviewed_by_name",
-                  "reviewed_at", "review_note", "unknown_fields", "field_provenance",
+                  "reviewed_at", "review_note", "unknown_fields", "field_provenance", "aries_completion_requested", "submission_revision",
                   "source_part", "source_part_number", "source_passport_number", "source_revision_number", "source_snapshot",
                   "proposed_material", "material_change_reason", "client_remarks", "clone_changes",
                   "plant", "functional_location", "equipment_tag", "customer_abc_class", "manufacturer_reference", "oem_part_number",
@@ -162,6 +162,7 @@ class SparePartSerializer(serializers.ModelSerializer):
                   "data_captured", "revision",
                   "documents", "has_3d", "in_lifecycle", "thumbnail", "last_activity", "created_at", "updated_at"]
         read_only_fields = ["id", "origin", "review_state", "submission_kind", "submitted_by", "submitted_at", "reviewed_at", "review_note",
+                            "submission_revision",
                             "source_part", "source_part_number", "source_passport_number", "source_revision_number",
                             "source_snapshot", "manufacturer_normalized", "import_record", "created_at", "updated_at"]
 
@@ -385,7 +386,7 @@ class SparePartViewSet(TenantModelViewSet):
         obj.save(update_fields=["field_provenance"])
         record(self.request, "spare_part.submitted", obj=obj, data={"kind": kind, "unknown_fields": obj.unknown_fields})
         submissions.log(obj, SparePartReviewEvent.Action.SUBMITTED, self.request.user, side="client")
-        submissions.notify_reviewers(obj, "submitted", body=obj.description[:300])
+        submissions.notify_reviewers(obj, "completion" if obj.aries_completion_requested else "submitted", body=obj.description[:300])
 
     def perform_update(self, serializer):
         client = self._client_submission()
@@ -408,8 +409,9 @@ class SparePartViewSet(TenantModelViewSet):
     }), responses=SparePartSerializer)
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):
-        """Aries review of a client submission: request more information, accept (optionally linking a project and
-        marking fields verified), decline, or verify client-supplied values later. Never approves or publishes."""
+        """Aries decision on a client submission: request_info = send back (opens the next revision), accept = approve
+        (creates the passport draft; a clone's manufacturing request is sent automatically), decline, or verify
+        client-supplied values later. Publication and manufacturing release are not changed."""
         part = self.get_object()
         decision = request.data.get("decision")
         message = str(request.data.get("message") or "")

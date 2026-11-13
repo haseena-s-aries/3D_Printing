@@ -13,6 +13,9 @@ class DigitalPassport(TenantOwnedModel):
         DRAFT = "draft", "Draft"
         SUBMITTED = "submitted", "Submitted"
         ENGINEERING_APPROVED = "engineering_approved", "Engineering approved"
+        # Prepared by Aries (scan, Aries-created part, or completed after a client submission was approved): no approval
+        # step; the Aries Engineer marks the revision complete (decision of 13 Nov 2026).
+        COMPLETE = "complete", "Complete"
         PUBLISHED = "published", "Published"
         REVISION_IN_PROGRESS = "revision_in_progress", "Revision in progress"
         ARCHIVED = "archived", "Archived"

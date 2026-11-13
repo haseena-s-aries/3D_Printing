@@ -7,6 +7,16 @@ into the engineering workflow (optionally linking a project and marking fields a
 
 Nothing here grants engineering approval, publication or manufacturing eligibility: those live on the passport and stay
 gated (OQ-35/OQ-36). Field provenance records who entered each value and whether Aries verified it.
+
+Decision of 13 Nov 2026 (three ways to a passport):
+1. New part from the client: the client enters what it knows and either submits it for approval or asks Aries to complete
+   the missing details (`aries_completion_requested`). Approvers: an Aries Admin or Manager (approval queue in the Aries
+   organisation) or an Aries Engineer covering the part. "Send back" (request_info) opens the next submission revision;
+   only the person who submitted may resubmit. Approval accepts the part and creates its passport draft for Aries.
+2. Scan request: Aries creates the part and passport; no approval (the engineer marks the passport complete).
+3. Clone with a changed material: approved the same way as 1; on approval the manufacturing request is sent
+   automatically on the client's behalf.
+Parts an Aries member creates need no approval.
 """
 import secrets
 
@@ -102,21 +112,20 @@ def reviewers(part: SparePart):
 
 
 def notify_reviewers(part: SparePart, event: str, body: str = "") -> None:
-    """Notify the engineers who can review the part. When none can (no assignment covers it), tell the Aries Admins so
-    they can assign one; they cannot review it themselves (no engineering capability, CN-002)."""
+    """Notify every approver: the engineers who can review the part (link to the part in the client company) and the Aries
+    Admins and Managers (link to the approval queue in the Aries organisation)."""
+    from apps.servicerequests.services import operator_tenant
+
     users = reviewers(part)
     if users:
         notify(part, event, users, body=body)
-        return
-    from apps.servicerequests.services import operator_tenant
-
-    admins = {m.user for m in Membership.objects.filter(tenant=operator_tenant(), role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True,
-                                                        user__is_active=True).select_related("user")}
+    op = operator_tenant()
+    admins = {m.user for m in Membership.objects.filter(tenant=op, role__in=[Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER], is_active=True,
+                                                        user__is_active=True).select_related("user")} - users
     name = Tenant.objects.filter(pk=part.tenant_id).values_list("name", flat=True).first() or ""
+    title = TITLES[event].format(part=f"{part.part_number} {part.name}")
     Notification.objects.bulk_create([
-        Notification(recipient=u, title=f"No assigned Aries Engineer can review a spare-part submission from {name}"[:200],
-                     body="Assign an engineer to this company (or the part's project) so the submission can be reviewed.",
-                     link=f"/clients?client={part.tenant_id}", organisation_name=name)
+        Notification(recipient=u, title=f"{title} ({name})"[:200], body=(body or "")[:500], link="/approvals", organisation_name=op.name)
         for u in admins])
 
 
@@ -129,11 +138,12 @@ def submitter_recipients(part: SparePart):
 
 
 TITLES = {
-    "submitted": "New spare part submitted for review: {part}",
-    "cloned": "Clone submitted for review: {part}",
-    "resubmitted": "Spare part resubmitted with more information: {part}",
-    "info_requested": "Aries requests more information: {part}",
-    "accepted": "Spare part accepted into the engineering workflow: {part}",
+    "submitted": "New spare part waiting for approval: {part}",
+    "completion": "Client asks Aries to complete the details: {part}",
+    "cloned": "Clone waiting for approval: {part}",
+    "resubmitted": "Spare part resubmitted for approval: {part}",
+    "info_requested": "Sent back for changes: {part}",
+    "accepted": "Spare part approved: {part}",
     "declined": "Spare part submission declined: {part}",
 }
 
@@ -175,16 +185,19 @@ def request_info(request, part: SparePart, message: str) -> SparePart:
     if not message.strip():
         raise DomainError("message_required", "Say what information is needed.", http_status=400)
     _close(part, request, R.INFO_REQUESTED, message.strip())
-    part.save(update_fields=["review_state", "reviewed_by", "reviewed_at", "review_note", "updated_at"])
-    record(request, "spare_part.info_requested", obj=part, data={"message": message.strip()[:300]})
+    part.submission_revision += 1  # "send back": the corrected submission is the next revision
+    part.save(update_fields=["review_state", "reviewed_by", "reviewed_at", "review_note", "submission_revision", "updated_at"])
+    record(request, "spare_part.info_requested", obj=part, tenant=part.tenant,
+           data={"message": message.strip()[:300], "next_revision": part.submission_revision})
     log(part, SparePartReviewEvent.Action.INFO_REQUESTED, request.user, message)
     notify(part, "info_requested", submitter_recipients(part), body=message.strip())
     return part
 
 
 def accept(request, part: SparePart, *, project=None, verified_fields=(), note: str = "") -> SparePart:
-    """Accept into the engineering workflow. The part stays a draft without passport: engineering approval,
-    publication and manufacturing eligibility are untouched (OQ-35/OQ-36)."""
+    """Approve the client submission: the part enters the engineering workflow and its passport draft is created for
+    Aries to complete. A clone's manufacturing request is sent automatically on the client's behalf. Publication and
+    manufacturing eligibility are untouched (OQ-36)."""
     _require_open(part)
     fields = ["review_state", "reviewed_by", "reviewed_at", "review_note", "field_provenance", "updated_at"]
     if project is not None and project.pk != part.project_id:
@@ -193,12 +206,37 @@ def accept(request, part: SparePart, *, project=None, verified_fields=(), note: 
         fields.append("project")
     verified = verify(part, verified_fields, request.user)
     _close(part, request, R.ACCEPTED, note.strip())
-    part.save(update_fields=fields)
-    record(request, "spare_part.accepted", obj=part, data={"project": str(part.project_id) if part.project_id else None,
-                                                          "verified_fields": verified})
-    log(part, SparePartReviewEvent.Action.ACCEPTED, request.user, note)
-    notify(part, "accepted", submitter_recipients(part), body=note.strip())
+    with transaction.atomic():
+        part.save(update_fields=fields)
+        record(request, "spare_part.accepted", obj=part, tenant=part.tenant,
+               data={"project": str(part.project_id) if part.project_id else None, "verified_fields": verified,
+                     "revision": part.submission_revision})
+        log(part, SparePartReviewEvent.Action.ACCEPTED, request.user, note)
+        from apps.passports.approval import create_for_part
+
+        passport = create_for_part(request, part)
+        sent = send_manufacturing_request(request, part, passport) if part.submission_kind == SparePart.SubmissionKind.CLONE else None
+    body = note.strip()
+    if sent is not None:
+        body = (f"Manufacturing request {sent.reference} was sent to Aries automatically. " + body).strip()
+    notify(part, "accepted", submitter_recipients(part), body=body)
     return part
+
+
+def send_manufacturing_request(request, part: SparePart, passport):
+    """Approved clone: the manufacturing request goes to Aries automatically, in the client's name (the submitter)."""
+    from apps.servicerequests import services as svc
+
+    kind, _ = svc.classify(part)  # an enquiry until the passport is published and eligible (OQ-36)
+    requester = part.submitted_by or request.user
+    proposed = part.proposed_material and not same(part.proposed_material, part.original_material)
+    return svc.create_request(
+        request, tenant=part.tenant, requested_by=requester, kind=kind, part=part, passport=passport,
+        passport_revision_number=1, part_number=part.part_number, part_name=part.name,
+        publication_state_at_submission=passport.publication_state, eligibility_at_submission=passport.manufacturing_eligibility,
+        material_option="proposed" if proposed else "original", original_material=part.original_material,
+        proposed_material=part.proposed_material if proposed else "", material_change_reason=part.material_change_reason if proposed else "",
+        remarks=f"Sent automatically when Aries approved clone {part.part_number} of {part.source_part_number}.")
 
 
 def decline(request, part: SparePart, reason: str) -> SparePart:
@@ -207,7 +245,7 @@ def decline(request, part: SparePart, reason: str) -> SparePart:
         raise DomainError("reason_required", "Give a reason for declining.", http_status=400)
     _close(part, request, R.DECLINED, reason.strip())
     part.save(update_fields=["review_state", "reviewed_by", "reviewed_at", "review_note", "updated_at"])
-    record(request, "spare_part.declined", obj=part, data={"reason": reason.strip()[:300]})
+    record(request, "spare_part.declined", obj=part, tenant=part.tenant, data={"reason": reason.strip()[:300]})
     log(part, SparePartReviewEvent.Action.DECLINED, request.user, reason)
     notify(part, "declined", submitter_recipients(part), body=reason.strip())
     return part
@@ -218,18 +256,22 @@ def verify_fields(request, part: SparePart, fields) -> SparePart:
         raise DomainError("not_a_submission", "Only client-submitted values need verification.", http_status=400)
     done = verify(part, fields, request.user)
     part.save(update_fields=["field_provenance", "updated_at"])
-    record(request, "spare_part.fields_verified", obj=part, data={"fields": done})
+    record(request, "spare_part.fields_verified", obj=part, tenant=part.tenant, data={"fields": done})
     log(part, SparePartReviewEvent.Action.VERIFIED, request.user, ", ".join(done))
     return part
 
 
 def resubmit(request, part: SparePart, message: str) -> SparePart:
     check_client_may_edit(request, part)
+    if part.submitted_by_id and part.submitted_by_id != request.user.pk:
+        raise DomainError("not_your_submission", "Only the person who filled in and submitted these details can resubmit them.",
+                          http_status=403)
     if part.review_state != R.INFO_REQUESTED:
         raise DomainError("not_requested", "Aries has not asked for more information on this submission.")
     part.review_state = R.PENDING
     part.save(update_fields=["review_state", "updated_at"])
-    record(request, "spare_part.resubmitted", obj=part, data={"message": message.strip()[:300]})
+    record(request, "spare_part.resubmitted", obj=part, tenant=part.tenant,
+           data={"message": message.strip()[:300], "revision": part.submission_revision})
     log(part, SparePartReviewEvent.Action.RESUBMITTED, request.user, message, side="client")
     notify_reviewers(part, "resubmitted", body=message.strip())
     return part

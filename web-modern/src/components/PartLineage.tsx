@@ -104,12 +104,12 @@ export function ClonesList({ part }: { part: Part }) {
 }
 
 const ACTION_LABEL: Record<string, string> = {
-  submitted: "Submitted", cloned: "Clone requested", info_requested: "Corrections requested", resubmitted: "Resubmitted",
-  accepted: "Accepted for engineering work", declined: "Rejected", verified: "Values verified",
+  submitted: "Submitted for approval", cloned: "Clone submitted for approval", info_requested: "Sent back for changes", resubmitted: "Resubmitted",
+  accepted: "Approved", declined: "Declined", verified: "Values verified",
 };
 
 function ReviewStateText({ state }: { state: string }) {
-  const label: Record<string, string> = { pending_review: "Pending Aries review", info_requested: "Corrections requested", accepted: "Accepted", declined: "Rejected" };
+  const label: Record<string, string> = { pending_review: "Waiting for approval", info_requested: "Sent back for changes", accepted: "Approved", declined: "Declined" };
   return label[state] ? <Badge tone={state === "accepted" ? "success" : state === "declined" ? "danger" : "warning"}>{label[state]}</Badge> : null;
 }
 

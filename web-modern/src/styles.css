@@ -1831,3 +1831,11 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .loading-label { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; color: var(--ink-2); font-weight: 600; }
 .model-dialog { width: min(1100px, 100%); }
 .model-dialog .viewer, .model-dialog .model-viewer { min-height: 60vh; }
+.completion-choice { display: grid; gap: 8px; }
+.completion-choice .inline-check { display: flex; align-items: flex-start; gap: 8px; }
+.field-tile.is-missing { border-style: dashed; }
+.field-tile.is-changed { border-color: var(--aries-cyan); background: rgba(17, 197, 232, 0.06); }
+.approval-row-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.approval-row-badges:empty { display: none; }
+.approval-history { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.approval-history p { margin: 2px 0 0; }

@@ -94,7 +94,8 @@ function CloneForm({ source }: { source: Part }) {
       <Card title="New part (clone)">
         <form className="submission-form" onSubmit={submit} aria-label="Clone part">
           <p className="notice notice-info small">
-            The clone is a <strong>separate spare part</strong> linked to {source.part_number}. It starts as <strong>Pending Aries review</strong>.
+            The clone is a <strong>separate spare part</strong> linked to {source.part_number}. It is sent to Aries for <strong>approval</strong>;
+            once approved, your manufacturing request is sent to Aries automatically.
             It does not inherit the original's passport approval, evidence, publication or manufacturing eligibility, and the original CAD
             files stay with the original part as references. Any new material is assessed by Aries Engineering for suitability.
           </p>
@@ -149,7 +150,7 @@ function CloneForm({ source }: { source: Part }) {
           </fieldset>
           <div className="form-actions sticky-actions">
             {missing.length > 0 && <span className="muted small">Still needed: {missing.join(", ")}</span>}
-            <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>{busy ? "Creating…" : "Create clone for Aries review"}</button>
+            <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>{busy ? "Submitting…" : "Submit clone for approval"}</button>
           </div>
         </form>
       </Card>

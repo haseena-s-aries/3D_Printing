@@ -15,10 +15,10 @@ import { Badge, ErrorNotice, Field, formatDate } from "./ui";
 export type ReviewState = Part["review_state"];
 
 export const REVIEW_LABEL: Record<string, string> = {
-  pending_review: "Pending Aries review",
-  info_requested: "Corrections requested",
-  accepted: "Accepted by Aries",
-  declined: "Rejected by Aries",
+  pending_review: "Waiting for approval",
+  info_requested: "Sent back for changes",
+  accepted: "Approved",
+  declined: "Declined",
 };
 const REVIEW_TONE: Record<string, "warning" | "info" | "success" | "danger"> = {
   pending_review: "warning", info_requested: "info", accepted: "success", declined: "danger",
@@ -75,6 +75,8 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  // decision of 13 Nov 2026: all details entered -> submit for approval; otherwise ask Aries to complete the rest
+  const [ariesComplete, setAriesComplete] = useState<boolean>(part?.aries_completion_requested ?? false);
   const files = useRef<HTMLInputElement>(null);
   const set = (k: keyof Values, value: string) => setV({ ...v, [k]: value });
   const unknown = (k: string) => v.unknown_fields.includes(k);
@@ -88,7 +90,7 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
     setError(null);
     setBusy(true);
     try {
-      const body = { ...v, part_number: unknown("part_number") ? "" : v.part_number.trim() };
+      const body = { ...v, part_number: unknown("part_number") ? "" : v.part_number.trim(), aries_completion_requested: ariesComplete || v.unknown_fields.length > 0 };
       if (part && unknown("part_number")) delete (body as Partial<Values>).part_number;
       const saved = part ? await api<Part>(`/parts/${part.id}/`, { method: "PATCH", body }) : await api<Part>("/parts/", { body });
       const chosen = Array.from(files.current?.files ?? []);
@@ -142,8 +144,8 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
     <form className="submission-form" onSubmit={submit} aria-label="Spare part submission">
       <p className="notice notice-info small">
         {isAdmin ? "You are creating a spare-part record for your company." : "You are proposing a new spare part."}{" "}
-        It will be marked <strong>Pending Aries review</strong>. Aries Engineering checks it before it enters the engineering
-        workflow; submitting does not approve the part, publish it or make it eligible for manufacturing.
+        Enter everything you know. If you have all the details, submit them for <strong>approval</strong> by Aries. If some are
+        missing, ask Aries to complete them. Submitting does not publish the part or make it eligible for manufacturing.
       </p>
       <ErrorNotice error={error} />
       <fieldset className="fieldset">
@@ -173,10 +175,25 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
           <input ref={files} type="file" multiple accept=".stp,.step,.dwg,.pdf,.jpg,.jpeg,.png" />
         </Field>
       </fieldset>
+      {!part && (
+        <fieldset className="fieldset completion-choice">
+          <legend>How should Aries handle it?</legend>
+          <label className="inline-check">
+            <input type="radio" name="completion" checked={!ariesComplete && v.unknown_fields.length === 0}
+              disabled={v.unknown_fields.length > 0} onChange={() => setAriesComplete(false)} />{" "}
+            <span><strong>I have entered all the details</strong> — submit them for approval</span>
+          </label>
+          <label className="inline-check">
+            <input type="radio" name="completion" checked={ariesComplete || v.unknown_fields.length > 0} onChange={() => setAriesComplete(true)} />{" "}
+            <span><strong>Some details are missing</strong> — ask Aries to complete them</span>
+          </label>
+          {v.unknown_fields.length > 0 && <p className="muted small">You marked {v.unknown_fields.map((f) => FIELD_NAMES[f] ?? f).join(", ")} as unknown, so Aries completes them.</p>}
+        </fieldset>
+      )}
       <div className="form-actions sticky-actions">
         {missing.length > 0 && <span className="muted small">Still needed: {missing.map((m) => FIELD_NAMES[m]).join(", ")}</span>}
         <button className="btn btn-primary" disabled={busy || missing.length > 0} aria-busy={busy}>
-          {busy ? status || "Saving…" : part ? "Save changes" : isAdmin ? "Submit spare part for Aries review" : "Submit proposal for Aries review"}
+          {busy ? status || "Saving…" : part ? "Save changes" : ariesComplete || v.unknown_fields.length > 0 ? "Send to Aries to complete" : "Submit for approval"}
         </button>
       </div>
     </form>
@@ -185,7 +202,8 @@ export function SubmissionForm({ part, isAdmin, onDone }: { part?: Part; isAdmin
 
 const VERIFIABLE = ["part_number", "name", "equipment_reference", "manufacturer", "application", "original_material", "dimensions", "description"];
 
-/** Aries Engineer review: request information, accept (link project, mark verified values), decline, verify later. */
+/** Aries approval of a client submission (decision of 13 Nov 2026): send back (next revision), approve (passport draft is
+ *  created; a clone's manufacturing request is sent automatically), decline, or verify client values later. */
 export function ReviewPanel({ part, onChange }: { part: Part; onChange: (p: Part) => void }) {
   const projects = useApi<Paginated<Project>>("/projects/", { query: { page_size: 200 } });
   const [mode, setMode] = useState<"" | "request_info" | "accept" | "decline" | "verify">("");
@@ -235,13 +253,18 @@ export function ReviewPanel({ part, onChange }: { part: Part; onChange: (p: Part
     <div className="review-panel" aria-label="Aries review">
       <ErrorNotice error={error} />
       <div className="toolbar wrap">
-        {open && <button type="button" className="btn" aria-pressed={mode === "request_info"} onClick={() => setMode("request_info")}>Request corrections</button>}
-        {open && <button type="button" className="btn btn-primary" aria-pressed={mode === "accept"} onClick={() => setMode("accept")}>Accept for engineering work</button>}
-        {open && <button type="button" className="btn btn-ghost" aria-pressed={mode === "decline"} onClick={() => setMode("decline")}>Reject</button>}
+        {open && <span className="muted small">Revision {part.submission_revision ?? 1}</span>}
+        {open && <button type="button" className="btn" aria-pressed={mode === "request_info"} onClick={() => setMode("request_info")}>Send back for changes</button>}
+        {open && <button type="button" className="btn btn-primary" aria-pressed={mode === "accept"} onClick={() => setMode("accept")}>Approve</button>}
+        {open && <button type="button" className="btn btn-ghost" aria-pressed={mode === "decline"} onClick={() => setMode("decline")}>Decline</button>}
         {!open && part.review_state === "accepted" && clientFields.length > 0 && (
           <button type="button" className="btn" aria-pressed={mode === "verify"} onClick={() => setMode("verify")}>Verify client values</button>
         )}
       </div>
+      {open && part.aries_completion_requested && (
+        <p className="notice notice-warning small">The client asked Aries to complete the missing details
+          {part.unknown_fields?.length ? ` (${part.unknown_fields.map((f) => FIELD_NAMES[f] ?? f).join(", ")})` : ""}. Fill them in with “Edit details”, then approve.</p>
+      )}
       {mode && (
         <form className="form-grid" onSubmit={send}>
           {mode === "accept" && (
@@ -254,7 +277,7 @@ export function ReviewPanel({ part, onChange }: { part: Part; onChange: (p: Part
           )}
           {(mode === "accept" || mode === "verify") && <div className="span-2">{checks}</div>}
           {mode !== "verify" && (
-            <Field label={mode === "request_info" ? "What needs to be corrected or added? *" : mode === "decline" ? "Reason for rejecting *" : "Note to the client (optional)"}>
+            <Field label={mode === "request_info" ? "What needs to be corrected or added? (the client resubmits as the next revision) *" : mode === "decline" ? "Reason for declining *" : "Note to the client (optional)"}>
               <textarea rows={2} required={mode !== "accept"} value={message} onChange={(e) => setMessage(e.target.value)} />
             </Field>
           )}
@@ -266,14 +289,14 @@ export function ReviewPanel({ part, onChange }: { part: Part; onChange: (p: Part
           )}
           {mode === "accept" && (
             <p className="muted small span-2">
-              Accepting admits the part to the engineering workflow so a digital passport draft can be created. It does not
-              approve the part, publish it or change manufacturing eligibility.
+              Approving creates the part's digital passport draft for Aries to complete{part.submission_kind === "clone" ? " and sends the client's manufacturing request to Aries automatically" : ""}.
+              It does not publish the part or change manufacturing eligibility.
             </p>
           )}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={() => setMode("")}>Cancel</button>
             <button className="btn btn-primary" disabled={busy} aria-busy={busy}>
-              {mode === "request_info" ? "Send correction request" : mode === "accept" ? "Accept" : mode === "decline" ? "Reject with reason" : "Mark verified"}
+              {mode === "request_info" ? "Send back" : mode === "accept" ? "Approve" : mode === "decline" ? "Decline with reason" : "Mark verified"}
             </button>
           </div>
         </form>
@@ -304,11 +327,11 @@ export function ResubmitForm({ part, onChange }: { part: Part; onChange: (p: Par
       }}
     >
       <ErrorNotice error={error} />
-      <Field label="Reply to Aries (optional)" hint="Update the details or add files first, then send it back for review.">
+      <Field label="Reply to Aries (optional)" hint={`Update the details or add files first, then resubmit. It is approved as revision ${part.submission_revision ?? 1}.`}>
         <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} />
       </Field>
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>Send back for Aries review</button>
+        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>Resubmit for approval</button>
       </div>
     </form>
   );

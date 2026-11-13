@@ -67,6 +67,10 @@ class SparePart(TenantOwnedModel):
     review_note = models.TextField(blank=True)
     # Fields the submitter marked "Unknown / not available" (e.g. part_number, original_material).
     unknown_fields = models.JSONField(default=list, blank=True)
+    # Client flow (decision of 13 Nov 2026): the client either entered all details and asks for approval, or asks Aries
+    # to complete the missing ones (True). Each "send back" opens the next submission revision (1, 2, 3 ...).
+    aries_completion_requested = models.BooleanField(default=False)
+    submission_revision = models.PositiveIntegerField(default=1)
     # Per-field provenance: {field: {source: client|aries, entered_by, entered_at, verified_by, verified_at}}.
     field_provenance = models.JSONField(default=dict, blank=True)
 

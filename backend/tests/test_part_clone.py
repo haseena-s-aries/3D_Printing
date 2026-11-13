@@ -86,7 +86,7 @@ def test_client_clones_an_aries_scanned_part(on, source):
     # not in the published catalog
     assert login(on["a_user"]).get("/api/v1/parts/?catalog=published").json()["count"] == 0
     # 6: assigned engineer notified; history and audit recorded
-    assert any("Clone submitted" in t for t in titles(on["op_eng"]))
+    assert any("Clone waiting for approval" in t for t in titles(on["op_eng"]))
     hist = login(on["a_admin"]).get(f"/api/v1/parts/{c['id']}/history/").json()
     assert [h["action"] for h in hist] == ["cloned"] and hist[0]["note"] == "Needed for the Q1 overhaul."
     with tenant_context(on["a"]):
@@ -174,16 +174,22 @@ def test_review_corrections_accept_and_gates_stay_closed(on, source):
     hist = client.get(f"/api/v1/parts/{c['id']}/history/").json()
     assert [h["action"] for h in hist] == ["cloned", "info_requested", "resubmitted", "accepted"]
     assert hist[1]["side"] == "aries" and hist[1]["author"] and hist[1]["note"] == "Confirm operating temperature."
-    # 10: acceptance is not approval; the new passport starts empty, not eligible, not published
-    passport = eng.post("/api/v1/passports/", {"part": c["id"]}, format="json").json()
-    assert passport["manufacturing_eligibility"] == "not_eligible" and passport["publication_state"] != "published"
+    # 10: approval creates the clone's own passport draft (not eligible, not published; the source passport is not copied,
+    # only the clone's known values are prefilled) and sends the manufacturing request automatically (decision of 13 Nov 2026)
+    passport = eng.get(f"/api/v1/passports/{acc['passport_id']}/").json()
+    assert passport["manufacturing_eligibility"] == "not_eligible" and passport["publication_state"] == "draft"
     assert passport["evidence_level"] == "none"
     rev = eng.get(f"/api/v1/passports/{passport['id']}/revisions/1/").json()
-    assert rev["content"] == {}  # the source passport is not copied
-    # submitting asks for approval; the submitter can never approve it (separation of duties, decision of 12 Nov 2026)
-    assert eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/submit/", {}, format="json").status_code == 200
-    r = eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/approve/", {}, format="json")
-    assert r.status_code == 403 and r.json()["error"]["code"] == "separation_of_duties"
+    assert rev["content"]["rl1"]["proposed_material"] == "AlSi10Mg" and "rl2" not in rev["content"]
+    reqs = client.get("/api/v1/requests/").json()["results"]
+    auto = [r for r in reqs if r["part_number"] == c["part_number"]]
+    assert len(auto) == 1 and auto[0]["status"] == "submitted"
+    assert any("sent to Aries automatically" in t or "approved" in t for t in titles(on["a_admin"]))
+    # passports prepared by Aries need no approval: the engineer marks the revision complete
+    assert eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/submit/", {}, format="json").json()["error"]["code"] == "approval_not_needed"
+    r = eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/complete/", {}, format="json")
+    assert r.status_code == 200 and r.json()["status"] == "approved"
+    assert eng.get(f"/api/v1/passports/{passport['id']}/").json()["publication_state"] == "complete"
     # client cannot modify the accepted clone or review it
     assert client.patch(f"/api/v1/parts/{c['id']}/", {"name": "x"}, format="json").status_code == 403
     assert client.post(f"/api/v1/parts/{c['id']}/review/", {"decision": "accept"}, format="json").status_code == 403
@@ -255,7 +261,7 @@ def test_clone_feasibility_assesses_the_proposed_material(on, source, settings):
     assert "Proposed material change from AISI 316L" in mat["note"] and "not assessed or approved" in mat["note"]
     assert "AISI 316L" not in mat["value"]
     # an engineer-recorded proposed material in the clone's passport takes precedence and changes the inputs (new version)
-    passport = eng.post("/api/v1/passports/", {"part": c["id"]}, format="json").json()
+    passport = {"id": eng.get(f"/api/v1/parts/{c['id']}/").json()["passport_id"]}  # created on approval
     eng.patch(f"/api/v1/passports/{passport['id']}/revisions/1/", {"content": {"rl1": {"proposed_material": "AlSi10Mg (EN AC-43000)"}}}, format="json")
     v2 = eng.post(f"/api/v1/parts/{c['id']}/feasibility/assess/", {}, format="json").json()
     assert v2["reused"] is False and v2["assessment"]["version"] == 2
