@@ -1,4 +1,4 @@
-import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated } from "@passport/api-types";
+import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated, Passport } from "@passport/api-types";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -12,7 +12,61 @@ import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
 import { KpiWave, MarineBanner } from "../components/MarineHero";
+import { KindBadge, StatusBadge } from "../components/requests";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
+
+/** Aries staff working inside a client company: the company's open client requests (same project rules as Incoming
+ *  requests) and the passports waiting for approval that this person may decide. */
+function StaffWorkCards() {
+  const { session, can } = useAuth();
+  const tenantId = session?.tenant.id;
+  const requests = useApi<IntakeEnvelope[]>(can("requests.handle") && tenantId ? "/operator/requests/" : null,
+    { query: { client_tenant: tenantId, open: "true" } });
+  const passports = useApi<Paginated<Passport>>(can("passports.approve") ? "/passports/" : null, { query: { page_size: 200 } });
+  const rows = requests.data ?? [];
+  const waiting = (passports.data?.results ?? []).filter((p) => p.publication_state === "submitted"
+    && p.current_revision?.submitted_by_email !== session?.user.email);
+  if (!can("requests.handle") && !can("passports.approve")) return null;
+  return (
+    <div className="grid-2 staff-work">
+      {can("requests.handle") && (
+        <Card title={`Client requests (${rows.length} open)`} actions={<Link className="btn btn-small" to={`/incoming?client=${tenantId}`}>Open all</Link>}>
+          <ErrorNotice error={requests.error} />
+          {requests.loading && !requests.data ? <Loading /> : rows.length === 0 ? <Empty icon="message">No open requests from {session?.tenant.name}.</Empty> : (
+            <ul className="list" aria-label="Open client requests">
+              {rows.slice(0, 8).map((r) => (
+                <li key={r.id} className="row-between">
+                  <span>
+                    {r.assigned ? <Link to={`/incoming/${r.id}`}><strong>{r.intake_number || r.reference}</strong></Link> : <strong>{r.intake_number || r.reference}</strong>}{" "}
+                    <KindBadge kind={r.kind} /> <StatusBadge status={r.status} />
+                    {r.awaiting_reply && r.status !== "submitted" && <> <Badge tone="warning">New client message</Badge></>}
+                    <br /><span className="muted small">{r.part_number ? `${r.part_number} · ` : ""}{r.part_name} · {formatDate(r.submitted_at)}</span>
+                  </span>
+                  {r.assigned && <Link className="btn btn-small btn-primary" to={`/incoming/${r.id}`}>{r.status === "submitted" ? "Acknowledge" : "Open"}</Link>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+      {can("passports.approve") && (
+        <Card title={`Passports waiting for approval (${waiting.length})`}>
+          {passports.loading && !passports.data ? <Loading /> : waiting.length === 0 ? <Empty icon="passport">Nothing waiting for your approval.</Empty> : (
+            <ul className="list" aria-label="Passports waiting for approval">
+              {waiting.slice(0, 8).map((p) => (
+                <li key={p.id} className="row-between">
+                  <span><strong>{p.passport_number}</strong> rev {p.current_revision?.revision_number} · {p.title}<br />
+                    <span className="muted small">{p.part_summary.part_number} · submitted by {p.current_revision?.submitted_by_email}</span></span>
+                  <Link className="btn btn-small btn-primary" to={`/passports/${p.id}`}>Review</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
 
 function Stat({ label, value, to, icon, hint }: { label: string; value: number | string; to?: string; icon?: IconName; hint?: string }) {
   const body = (
@@ -150,6 +204,7 @@ function OrganisationDashboard() {
       </MarineBanner>
       {!isOperator && <EntryRoutes />}
       <NeedsAttention compact />
+      {!isOperator && session?.membership.role.startsWith("operator_") && <StaffWorkCards />}
       <ClientIntelligenceCard />
       <ErrorNotice error={summary.error} />
       {summary.loading && !s ? (
@@ -240,7 +295,8 @@ function OrganisationDashboard() {
       <div className="grid-2">
         <Card title="Platform status">
           <Notice kind="warning">
-            Passport approval, publication and manufacturing release are not available yet{oq("OQ-35, OQ-36")}. Manufacturing requests are received as enquiries.
+            Passports are approved by an Aries Admin, Manager or project engineer (never by the person who submitted them). Publication and
+            manufacturing release are not available yet{oq("OQ-36")}; manufacturing requests are received as enquiries.
           </Notice>
           <Notice>DWG drawings can be downloaded; in-browser DWG preview is not available yet{oq("OQ-27")}.</Notice>
         </Card>

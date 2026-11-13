@@ -2905,6 +2905,43 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/operator/passport-approvals/{client_id}/{passport_id}/files/{file_id}/:
+    get:
+      operationId: v1_operator_passport_approvals_files_retrieve
+      description: |-
+        Content of one engineering file of the passport's spare part, for the approver: `variant=preview` (PDF or photo,
+        inline), `original` (download) or `glb` (the 3D model derivative of a STEP file).
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/operator/requests/:
     get:
       operationId: v1_operator_requests_list
@@ -8370,6 +8407,7 @@ components:
       - decline
       - hand_over
       - link_project
+      - message
       - record_deliverable
       - request_information
       - respond
@@ -8385,6 +8423,7 @@ components:
         * `decline` - decline
         * `hand_over` - hand_over
         * `link_project` - link_project
+        * `message` - message
         * `record_deliverable` - record_deliverable
         * `request_information` - request_information
         * `respond` - respond

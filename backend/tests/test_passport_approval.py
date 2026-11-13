@@ -140,3 +140,25 @@ def test_aries_sends_a_message_without_changing_the_status(world, catalog):  # n
     assert r["status"] == "information_provided" and r["events"][-1]["event"] == "operator_message"
     assert not envelope_for(world, ref["reference"]).awaiting_reply
     assert any("new message from Aries" in t for t in unread(world["a_admin"]))
+
+
+def test_approver_opens_the_passport_documents_while_it_waits_for_approval(ap):
+    from .test_files import PDF_BYTES, upload
+
+    w, eng, p = ap["w"], ap["eng"], ap["p"]
+    part_id = eng.get(f"{ap['url']}/").json()["part"]
+    f = upload(eng, part_id, "mtc.pdf", PDF_BYTES, passport=p["id"], category="certificate").json()
+    eng.patch(f"{ap['url']}/revisions/1/", {"content": {"rl3": {"evidence": {"material_test_certificate": f["id"]}}}}, format="json")
+    base = f"/api/v1/operator/passport-approvals/{w['a'].pk}/{p['id']}/"
+    mgr = login(w["op_mgr"])
+    assert mgr.get(f"{base}files/{f['id']}/").status_code == 404  # nothing waiting yet: no access
+    eng.post(f"{ap['url']}/revisions/1/submit/", {}, format="json")
+    detail = mgr.get(base).json()
+    assert [x["id"] for x in detail["files"]] == [f["id"]] and detail["evidence_files"][f["id"]]["title"]
+    r = mgr.get(f"{base}files/{f['id']}/", {"variant": "preview"})
+    assert r.status_code == 200 and b"".join(r.streaming_content).startswith(b"%PDF")
+    assert mgr.get(f"{base}files/{f['id']}/", {"variant": "glb"}).json()["error"]["code"] == "derivative_not_available"
+    assert login(w["op_eng"], w["operator"]).get(f"{base}files/{f['id']}/").status_code == 403  # engineers use the passport page
+    with tenant_context(w["a"]):
+        from apps.audit.models import AuditEvent
+        assert AuditEvent.objects.filter(action="file.previewed", data__for_approval=True).exists()

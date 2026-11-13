@@ -16,7 +16,10 @@ const LOAD_MESSAGES: Record<string, string> = {
   UNSUPPORTED_OR_CORRUPT: "This 3D derivative could not be displayed. The original STEP file is unchanged; an engineer can re-upload it as a new version.",
 };
 
-export default function ModelViewer({ fileId, version, revisionLabel }: { fileId: string; version: FileVersion; revisionLabel: string }) {
+/** `loadUrl` replaces the usual download link (the passport approval queue streams the model through its own endpoint). */
+export default function ModelViewer({ fileId, version, revisionLabel, loadUrl }: {
+  fileId: string; version: FileVersion; revisionLabel: string; loadUrl?: () => Promise<string>;
+}) {
   const wrap = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer | null>(null);
@@ -37,8 +40,9 @@ export default function ModelViewer({ fileId, version, revisionLabel }: { fileId
     const background = /^#[0-9a-f]{6}$/i.test(bg) ? parseInt(bg.slice(1), 16) : undefined;
     const v = createViewer(host.current, { background, onError: (kind) => !cancelled && setViewError(LOAD_MESSAGES[kind]) });
     viewer.current = v;
-    api<{ url: string }>(`/files/${fileId}/versions/${version.version_number}/download-link/`, { body: { variant: "glb" } })
-      .then((link) => v.load(link.url))
+    (loadUrl ? loadUrl() : api<{ url: string }>(`/files/${fileId}/versions/${version.version_number}/download-link/`, { body: { variant: "glb" } })
+      .then((link) => link.url))
+      .then((url) => v.load(url))
       .then((s) => !cancelled && setStats(s))
       .catch((e: unknown) => {
         if (!cancelled && !(e as { kind?: string }).kind) setError(e);

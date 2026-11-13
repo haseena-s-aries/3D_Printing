@@ -1790,7 +1790,7 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 :root:not([data-theme="light"]) .field-tile { background: rgba(255, 255, 255, 0.03); }
 .table.compact th, .table.compact td { padding: 8px 10px; font-size: var(--fs-sm); }
 .evidence-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.evidence-list li { display: grid; grid-template-columns: auto minmax(160px, 260px) 1fr; align-items: center; gap: 10px; padding: 10px 12px;
+.evidence-list li { display: grid; grid-template-columns: auto minmax(160px, 260px) 1fr auto; align-items: center; gap: 10px; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: 10px; }
 .evidence-list li .icon { color: var(--aries-blue); }
 .evidence-list li.is-missing .icon { color: #c98a12; }
@@ -1806,5 +1806,17 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 }
 @media (max-width: 640px) {
   .approval-meters { grid-template-columns: minmax(0, 1fr); }
-  .evidence-list li { grid-template-columns: auto 1fr; } .evidence-file { grid-column: 2; }
+  .evidence-list li { grid-template-columns: auto 1fr; } .evidence-file, .evidence-list .file-actions { grid-column: 2; }
+  .doc-list li { grid-template-columns: auto 1fr; } .doc-list li > .btn, .doc-list .file-actions { grid-column: 2; justify-self: start; }
 }
+.file-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.file-actions .btn .icon, .doc-list .btn .icon { margin-right: 4px; }
+.doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.doc-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; }
+.doc-list li > .icon { color: var(--aries-blue); }
+.doc-name { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.approval-section .viewer, .approval-section .model-viewer { min-height: 380px; }
+.staff-work { margin-bottom: 18px; align-items: start; }
+.staff-work .list li { padding: 10px 0; }
+.doc-image { object-fit: contain; height: auto; max-height: 75vh; }
