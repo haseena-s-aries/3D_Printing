@@ -187,6 +187,9 @@ def test_review_corrections_accept_and_gates_stay_closed(on, source):
     assert any("sent to Aries automatically" in t or "approved" in t for t in titles(on["a_admin"]))
     # passports prepared by Aries need no approval: the engineer marks the revision complete
     assert eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/submit/", {}, format="json").json()["error"]["code"] == "approval_not_needed"
+    assert eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/complete/", {}, format="json").json()["error"]["code"] == "passport_incomplete"
+    from .test_passport_approval import fill
+    fill(eng, f"/api/v1/passports/{passport['id']}")
     r = eng.post(f"/api/v1/passports/{passport['id']}/revisions/1/complete/", {}, format="json")
     assert r.status_code == 200 and r.json()["status"] == "approved"
     assert eng.get(f"/api/v1/passports/{passport['id']}/").json()["publication_state"] == "complete"

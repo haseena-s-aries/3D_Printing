@@ -11,6 +11,17 @@ from .conftest import login, make_user
 from .test_service_requests import catalog, envelope_for, manufacturing, unread  # noqa: F401
 
 
+RL1_FULL = {"cad_3d_available": True, "drawings_2d_available": True, "original_material_grade": "316", "material_identification_method": "pmi",
+            "technical_description": "x", "part_size": "Ø45", "application": "pump", "atmosphere": "corrosive", "motion": "static", "ip_status": "active"}
+
+
+def fill(eng, url, rev=1):
+    from .test_w1_passport_workspace import RL2_FULL
+
+    r = eng.patch(f"{url}/revisions/{rev}/", {"content": {"rl1": RL1_FULL, "rl2": RL2_FULL}}, format="json")
+    assert r.status_code == 200, r.content
+
+
 @pytest.fixture
 def ap(world):
     w = world
@@ -77,6 +88,14 @@ def test_aries_prepared_passport_needs_no_approval_and_is_marked_complete(ap):
     r = eng.post(f"{url}/revisions/1/submit/", {}, format="json")
     assert r.status_code == 409 and r.json()["error"]["code"] == "approval_not_needed"
     assert login(ap["w"]["a_admin"]).post(f"{url}/revisions/1/complete/", {}, format="json").status_code == 403  # Aries only
+    # R-L1 and R-L2 must be filled in first; the answer lists what is missing (R-L3 evidence is not required)
+    r = eng.post(f"{url}/revisions/1/complete/", {}, format="json")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "passport_incomplete"
+    missing = r.json()["error"]["details"]["missing"]
+    assert "part_size" in missing["rl1"] and "manufacturing_spec.machine" in missing["rl2"] and "rl3" not in missing
+    eng.patch(f"{url}/revisions/1/", {"content": {"rl1": RL1_FULL}}, format="json")
+    assert set(eng.post(f"{url}/revisions/1/complete/", {}, format="json").json()["error"]["details"]["missing"]) == {"rl2"}
+    fill(eng, url)
     r = eng.post(f"{url}/revisions/1/complete/", {}, format="json")
     assert r.status_code == 200 and r.json()["status"] == "approved" and r.json()["approved_by_email"] == "op.eng@example.test"
     assert eng.get(f"{url}/").json()["publication_state"] == "complete"
@@ -186,7 +205,11 @@ def test_legacy_submitted_passport_is_still_decided_or_completed(ap):
     assert [x["id"] for x in detail["files"]] == [f["id"]] and detail["reports"] == []
     assert mgr.get(f"{base}reports/00000000-0000-0000-0000-000000000000/").status_code == 404
     assert mgr.get(f"{base}files/{f['id']}/", {"variant": "preview"}).status_code == 200
-    # the submitting engineer can now simply mark it complete
+    # the submitting engineer can now simply mark it complete (once R-L1 and R-L2 are filled in)
+    with tenant_context(w["a"]):
+        from apps.passports.models import PassportRevision
+        from .test_w1_passport_workspace import RL2_FULL
+        PassportRevision.objects.filter(passport_id=p["id"], revision_number=1).update(content={"rl1": RL1_FULL, "rl2": RL2_FULL})
     r = ap["eng"].post(f"{ap['url']}/revisions/1/complete/", {}, format="json")
     assert r.status_code == 200 and r.json()["status"] == "approved"
     assert mgr.get("/api/v1/operator/passport-approvals/").json() == []
