@@ -81,6 +81,8 @@ def test_admin_and_manager_approve_from_the_aries_queue(ap, who):
     detail = c.get(detail_url).json()
     assert detail["revision"]["status"] == "submitted" and detail["submitted_by_email"] == "op.eng@example.test"
     assert detail["evidence_files"] == {}  # R-L3 evidence references are resolved to document names (none attached here)
+    assert detail["reports"] == []  # generated reports are listed for the approver (none yet)
+    assert c.get(f"{detail_url}reports/00000000-0000-0000-0000-000000000000/").status_code == 404
     assert c.post(detail_url, {"decision": "return"}, format="json").json()["error"]["code"] == "note_required"
     r = c.post(detail_url, {"decision": "approve"}, format="json")
     assert r.status_code == 200 and r.json() == {"status": "approved", "passport_state": "engineering_approved"}
@@ -162,3 +164,17 @@ def test_approver_opens_the_passport_documents_while_it_waits_for_approval(ap):
     with tenant_context(w["a"]):
         from apps.audit.models import AuditEvent
         assert AuditEvent.objects.filter(action="file.previewed", data__for_approval=True).exists()
+
+
+
+def test_approval_notifications_point_to_the_right_organisation(ap):
+    """Admins/Managers open the queue in the Aries organisation; engineers the passport inside the client company."""
+    from apps.servicerequests.models import Notification
+    from apps.tenancy.context import USER_SETTING, write_setting
+
+    ap["eng"].post(f"{ap['url']}/revisions/1/submit/", {}, format="json")
+    for user, org, link in ((ap["w"]["op_mgr"], "Platform Operator", "/passport-approvals"),
+                            (ap["w"]["op_eng2"], "Client A Energy", f"/passports/{ap['p']['id']}")):
+        write_setting(USER_SETTING, user.pk)
+        n = Notification.objects.filter(recipient=user, title__contains="waiting for approval").get()
+        assert (n.organisation_name, n.link) == (org, link)

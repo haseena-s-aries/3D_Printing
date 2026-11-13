@@ -82,6 +82,49 @@ def _part_files(request, passport: DigitalPassport) -> list:
     return EngineeringFileSerializer(qs, many=True, context={"request": request}).data
 
 
+def _reports(passport: DigitalPassport) -> list:
+    """Generated passport reports (newest first), so the approver can read the report the engineer produced."""
+    from apps.reports.models import PassportReport
+
+    out = []
+    for r in PassportReport.objects.filter(passport=passport).select_related("created_by").order_by("-created_at"):
+        out.append({"id": str(r.pk), "number": r.number, "variant": r.variant, "variant_label": r.get_variant_display(),
+                    "template": r.get_template_display(), "revision_number": r.revision_number, "revision_status": r.revision_status,
+                    "created_at": r.created_at, "created_by_email": r.created_by.email if r.created_by_id else "",
+                    "withdrawn": hasattr(r, "withdrawal")})
+    return out
+
+
+class PassportApprovalReportView(APIView):
+    """One generated report of the passport as PDF (inline), for the approver; logged as a preview in the client company."""
+
+    permission_classes = [HasCapability]
+    capabilities = {"get": "passports.approve"}
+
+    @extend_schema(tags=["passports"], responses={(200, "application/pdf"): bytes})
+    def get(self, request, client_id, passport_id, report_id):
+        from django.http import HttpResponse
+
+        from apps.reports import services as report_services
+        from apps.reports.models import PassportReport, PassportReportEvent
+
+        _require_platform_approver(request)
+        t = _client(client_id)
+        with tenant_context(t):
+            passport, revision = _submitted(passport_id)
+            report = PassportReport.objects.filter(pk=report_id, passport=passport).first()
+            if report is None:
+                raise DomainError("not_found", "Report not found for this passport.", http_status=404)
+            pdf = report_services.read_pdf(report)  # refuses withdrawn reports and missing files
+            PassportReportEvent.objects.create(tenant=t, created_by=request.user, report=report, action=PassportReportEvent.Action.PREVIEWED)
+            record(request, "passport_report.previewed", obj=report, tenant=t,
+                   data={"number": report.number, "variant": report.variant, "for_approval": True})
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'inline; filename="{report.number}.pdf"'
+        resp["Cache-Control"] = "no-store"
+        return resp
+
+
 class PassportApprovalFileView(APIView):
     """Content of one engineering file of the passport's spare part, for the approver: `variant=preview` (PDF or photo,
     inline), `original` (download) or `glb` (the 3D model derivative of a STEP file)."""
@@ -153,7 +196,8 @@ class PassportApprovalDetailView(APIView):
             passport, revision = _submitted(passport_id)
             data = {**_row(t, passport, revision), "passport_state": passport.publication_state,
                     "revision": RevisionSerializer(revision, context={"request": request, "approver": True}).data,
-                    "evidence_files": _evidence_files(revision), "files": _part_files(request, passport)}
+                    "evidence_files": _evidence_files(revision), "files": _part_files(request, passport),
+                    "reports": _reports(passport)}
             record(request, "passport.approval_viewed", obj=revision, tenant=t, data={"passport": passport.passport_number})
         return Response(data)
 

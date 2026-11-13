@@ -157,7 +157,7 @@ export default function PassportDetailPage() {
     }
   }
 
-  if (passport.loading && !passport.data) return <Loading />;
+  if (passport.loading && !passport.data) return <Loading variant="page" label="Loading passport…" />;
   if (passport.error || !passport.data) return <ErrorNotice error={passport.error ?? new Error("Not found")} />;
   const p = passport.data;
   const current = p.current_revision;

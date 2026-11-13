@@ -22,7 +22,7 @@ from apps.files.admin_thumbnails import AdminThumbnailConsentView, AdminThumbnai
 from apps.files.thumbnail_provenance import (ContractAuthorizationEventView, ContractAuthorizationView, ContractListView,
                                              ImageOriginView, OriginClaimsQueueView)
 from apps.parts.admin_overview import AdminInventoryView
-from apps.passports.approval_api import PassportApprovalDetailView, PassportApprovalFileView, PassportApprovalQueueView
+from apps.passports.approval_api import PassportApprovalDetailView, PassportApprovalFileView, PassportApprovalQueueView, PassportApprovalReportView
 from apps.passports.api import PassportFieldOptionsView, PassportViewSet
 from apps.projects.api import ProjectViewSet
 from apps.registrations.api import (DevOutboxView, PasswordResetRequestView, PasswordResetView, RegistrationConfigView,
@@ -124,6 +124,8 @@ urlpatterns = [
          name="passport-approval-detail"),
     path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/files/<uuid:file_id>/", PassportApprovalFileView.as_view(),
          name="passport-approval-file"),
+    path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/reports/<uuid:report_id>/", PassportApprovalReportView.as_view(),
+         name="passport-approval-report"),
     path("notifications/", NotificationListView.as_view(), name="notifications"),
     path("notifications/read-all/", NotificationReadView.as_view(), name="notifications-read-all"),
     path("notifications/<uuid:pk>/read/", NotificationReadView.as_view(), name="notification-read"),

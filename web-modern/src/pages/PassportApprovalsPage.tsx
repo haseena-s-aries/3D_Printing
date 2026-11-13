@@ -19,21 +19,29 @@ const ModelViewer = lazy(() => import("../components/ModelViewer"));
 
 type Row = components["schemas"]["PassportApprovalRow"];
 type Detail = Row & { passport_state: string; revision: components["schemas"]["Revision"];
-  evidence_files: Record<string, { title: string; category: string; kind: string }>; files: EngineeringFile[] };
+  evidence_files: Record<string, { title: string; category: string; kind: string }>; files: EngineeringFile[]; reports: Report[] };
 
 /** Opens / downloads / views the passport's files through the approval endpoint (audited in the client company). */
+type Report = { id: string; number: string; variant: string; variant_label: string; template: string; revision_number: number;
+  revision_status: string; created_at: string; created_by_email: string; withdrawn: boolean };
+type Preview = { url: string; title: string; subtitle: string; image: boolean; download?: () => void };
+
 function useApprovalFiles(d: Detail) {
-  const base = `/operator/passport-approvals/${d.client_id}/${d.passport_id}/files`;
+  const root = `/operator/passport-approvals/${d.client_id}/${d.passport_id}`;
+  const base = `${root}/files`;
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState("");
-  const [preview, setPreview] = useState<{ url: string; file: EngineeringFile } | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [model, setModel] = useState<EngineeringFile | null>(null);
   async function open(f: EngineeringFile, variant: "preview" | "original") {
     setError(null);
     setBusy(f.id + variant);
     try {
       const url = await fetchObjectUrl(`${base}/${f.id}/?variant=${variant}`);
       if (variant === "preview") {
-        setPreview({ url, file: f });  // shown in the page (no pop-up); revoked when closed
+        // shown in the page (no pop-up); revoked when closed
+        setPreview({ url, title: f.title ?? "Document", image: f.kind === "image", download: () => void open(f, "original"),
+          subtitle: `${label(f.category ?? "")} · ${f.latest_version?.original_filename ?? ""}${f.latest_version ? ` · v${f.latest_version.version_number}` : ""}` });
       } else {
         const a = document.createElement("a");
         a.href = url;
@@ -47,30 +55,83 @@ function useApprovalFiles(d: Detail) {
       setBusy("");
     }
   }
+  async function openReport(r: Report) {
+    setError(null);
+    setBusy(r.id);
+    try {
+      const url = await fetchObjectUrl(`${root}/reports/${r.id}/`);
+      setPreview({ url, title: r.number, image: false, subtitle: `${r.variant_label} · ${r.template} · rev ${r.revision_number} (${r.revision_status}) · ${formatDate(r.created_at)}` });
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy("");
+    }
+  }
   const close = () => { if (preview) URL.revokeObjectURL(preview.url); setPreview(null); };
   const glb = (f: EngineeringFile) => () => fetchObjectUrl(`${base}/${f.id}/?variant=glb`);
-  return { open, glb, error, busy, preview, close };
+  return { open, openReport, glb, error, busy, preview, close, model, setModel };
 }
 
-/** The document opened for review, inside the page: PDF in a frame, photographs as an image. */
+/** The document or report opened for review, inside the page: PDF in a frame, photographs as an image. */
 function DocPreview({ files }: { files: ReturnType<typeof useApprovalFiles> }) {
   const p = files.preview;
   if (!p) return null;
   return (
     <div className="quickview-backdrop" onMouseDown={(e) => e.target === e.currentTarget && files.close()}>
-      <div className="quickview report-preview" role="dialog" aria-modal="true" aria-label={`Preview of ${p.file.title}`}>
+      <div className="quickview report-preview" role="dialog" aria-modal="true" aria-label={`Preview of ${p.title}`}>
         <header className="quickview-head">
-          <div><h2>{p.file.title}</h2><p className="muted small">{label(p.file.category ?? "")} · {p.file.latest_version?.original_filename}
-            {p.file.latest_version ? ` · v${p.file.latest_version.version_number}` : ""}</p></div>
+          <div><h2>{p.title}</h2><p className="muted small">{p.subtitle}</p></div>
           <div className="toolbar">
-            <button type="button" className="btn" onClick={() => void files.open(p.file, "original")}><Icon name="download" size="sm" />Download</button>
+            {p.download && <button type="button" className="btn" onClick={p.download}><Icon name="download" size="sm" />Download</button>}
             <button type="button" className="btn btn-ghost" onClick={files.close}>Close</button>
           </div>
         </header>
-        {p.file.kind === "image" ? <img className="assembled-preview doc-image" src={p.url} alt={p.file.title ?? ""} />
-          : <iframe title={`Preview of ${p.file.title}`} src={p.url} className="assembled-preview" />}
+        {p.image ? <img className="assembled-preview doc-image" src={p.url} alt={p.title} />
+          : <iframe title={`Preview of ${p.title}`} src={p.url} className="assembled-preview" />}
       </div>
     </div>
+  );
+}
+
+/** The 3D model of a STEP file in a dialog (the same viewer as on the passport page). */
+function ModelDialog({ d, files }: { d: Detail; files: ReturnType<typeof useApprovalFiles> }) {
+  const f = files.model;
+  if (!f?.latest_version) return null;
+  return (
+    <div className="quickview-backdrop" onMouseDown={(e) => e.target === e.currentTarget && files.setModel(null)}>
+      <div className="quickview report-preview model-dialog" role="dialog" aria-modal="true" aria-label={`3D model ${f.title}`}>
+        <header className="quickview-head">
+          <div><h2>3D model · {f.title}</h2><p className="muted small">{f.latest_version.original_filename} · v{f.latest_version.version_number}</p></div>
+          <button type="button" className="btn btn-ghost" onClick={() => files.setModel(null)}>Close</button>
+        </header>
+        <Suspense fallback={<Loading label="Loading 3D model…" />}>
+          <ModelViewer key={f.id} fileId={f.id} version={f.latest_version} revisionLabel={`${d.passport_number} rev ${d.revision_number}`} loadUrl={files.glb(f)} />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+function Reports({ d, files }: { d: Detail; files: ReturnType<typeof useApprovalFiles> }) {
+  return (
+    <Section title="Generated reports" badge={<Badge>{d.reports.length}</Badge>}>
+      {d.reports.length === 0 ? <p className="muted small">No report has been generated for this passport yet.</p> : (
+        <ul className="doc-list">
+          {d.reports.map((r) => (
+            <li key={r.id}>
+              <Icon name="layers" size="sm" />
+              <span className="doc-name"><strong>{r.number}</strong>
+                <span className="muted small">{r.variant_label} · {r.template} · rev {r.revision_number} ({r.revision_status}) · {r.created_by_email} · {formatDate(r.created_at)}</span></span>
+              {r.withdrawn ? <Badge tone="warning">Withdrawn</Badge> : (
+                <button type="button" className="btn btn-small" disabled={files.busy === r.id} aria-busy={files.busy === r.id} onClick={() => void files.openReport(r)}>
+                  <Icon name="eye" size="sm" />Open</button>
+              )}
+              <span />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 
@@ -90,40 +151,27 @@ function FileActions({ f, files }: { f: EngineeringFile; files: ReturnType<typeo
 }
 
 function Documents({ d, files }: { d: Detail; files: ReturnType<typeof useApprovalFiles> }) {
-  const models = d.files.filter((f) => f.kind === "step");
-  const [model, setModel] = useState<string | null>(models.find((f) => viewerState(f.latest_version).kind === "ready")?.id ?? null);
-  const current = models.find((f) => f.id === model) ?? null;
   return (
-    <>
-      <Section title="Documents and files" badge={<Badge>{d.files.length}</Badge>}>
-        <ErrorNotice error={files.error} />
-        {d.files.length === 0 ? <p className="muted small">No files are attached to this spare part.</p> : (
-          <ul className="doc-list">
-            {d.files.map((f) => (
-              <li key={f.id}>
-                <Icon name={f.kind === "step" ? "cube" : "file"} size="sm" />
-                <span className="doc-name"><strong>{f.title}</strong>
-                  <span className="muted small">{label(f.category ?? "")} · {(f.kind ?? "").toUpperCase()}{f.latest_version ? ` · v${f.latest_version.version_number} · ${formatBytes(f.latest_version.size_bytes)}` : ""}</span></span>
-                {f.kind === "step" && viewerState(f.latest_version).kind === "ready" && (
-                  <button type="button" className="btn btn-small" onClick={() => setModel(f.id)}><Icon name="cube" size="sm" />3D view</button>
-                )}
-                <FileActions f={f} files={files} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-      {current?.latest_version && (
-        <Section title="3D model" badge={<span className="muted small">{current.title} · v{current.latest_version.version_number}</span>}>
-          {viewerState(current.latest_version).kind === "ready" ? (
-            <Suspense fallback={<Loading />}>
-              <ModelViewer key={current.id} fileId={current.id} version={current.latest_version} revisionLabel={`${d.passport_number} rev ${d.revision_number}`}
-                loadUrl={files.glb(current)} />
-            </Suspense>
-          ) : <p className="muted small">{(viewerState(current.latest_version) as { text?: string }).text}</p>}
-        </Section>
+    <Section title="Documents and files" badge={<Badge>{d.files.length}</Badge>}>
+      <ErrorNotice error={files.error} />
+      {d.files.length === 0 ? <p className="muted small">No files are attached to this spare part.</p> : (
+        <ul className="doc-list">
+          {d.files.map((f) => (
+            <li key={f.id}>
+              <Icon name={f.kind === "step" ? "cube" : "file"} size="sm" />
+              <span className="doc-name"><strong>{f.title}</strong>
+                <span className="muted small">{label(f.category ?? "")} · {(f.kind ?? "").toUpperCase()}{f.latest_version ? ` · v${f.latest_version.version_number} · ${formatBytes(f.latest_version.size_bytes)}` : ""}</span></span>
+              {f.kind === "step" ? (
+                viewerState(f.latest_version).kind === "ready"
+                  ? <button type="button" className="btn btn-small" onClick={() => files.setModel(f)}><Icon name="cube" size="sm" />3D view</button>
+                  : <span className="muted small">{(viewerState(f.latest_version) as { text?: string }).text?.split(".")[0]}</span>
+              ) : <span />}
+              <FileActions f={f} files={files} />
+            </li>
+          ))}
+        </ul>
       )}
-    </>
+    </Section>
   );
 }
 type Completeness = Record<string, { done: number; total: number }>;
@@ -243,8 +291,10 @@ function RevisionContent({ d }: { d: Detail }) {
           })}
         </ul>
       </Section>
+      <Reports d={d} files={evidenceFiles} />
       <Documents d={d} files={evidenceFiles} />
       <DocPreview files={evidenceFiles} />
+      <ModelDialog d={d} files={evidenceFiles} />
       {notes && <Section title="Engineering notes"><pre className="approval-notes">{notes}</pre></Section>}
     </>
   );

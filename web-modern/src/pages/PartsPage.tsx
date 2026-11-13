@@ -22,6 +22,7 @@ import { canClone } from "./PartClonePage";
 import RequestDialog from "../components/RequestDialog";
 import { Icon } from "../components/icons";
 import { Card, Empty, ErrorNotice, Loading, PageHeader, Pager, formatDate, label } from "../components/ui";
+import { useToast } from "../components/theme";
 
 const PAGE_SIZE = 25;
 const FILTER_KEYS = ["search", "project", "category", "data_level", "evidence_level", "eligibility", "has_3d", "ordering", "catalog"] as const;
@@ -36,6 +37,7 @@ export default function PartsPage() {
   const isOperator = !!session?.membership.role.startsWith("operator");
   const oq = useDecision();
   const navigate = useNavigate();
+  const toast = useToast();
   const [params, setParams] = useSearchParams();
   const filters = Object.fromEntries(FILTER_KEYS.map((k) => [k, params.get(k) ?? ""])) as Record<(typeof FILTER_KEYS)[number], string>;
   const page = Number(params.get("page") ?? "1") || 1;
@@ -107,6 +109,7 @@ export default function PartsPage() {
             submitLabel="Create spare part"
             onSubmit={async (values) => {
               const part = await api<Part>("/parts/", { body: values });
+              toast(`Spare part ${part.part_number} created.`);
               navigate(`/parts/${part.id}`);
             }}
           />

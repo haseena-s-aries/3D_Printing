@@ -18,6 +18,7 @@ import { CloneLineageCard, ClonesList, ReviewHistory } from "../components/PartL
 import { isOpenReview, Provenance, REVIEW_LABEL, ResubmitForm, ReviewBadge, ReviewPanel, SubmissionForm } from "../components/PartSubmission";
 import { canClone, CloneEditForm } from "./PartClonePage";
 import { BackLink, Badge, Card, DisabledAction, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
+import { useToast } from "../components/theme";
 
 export default function PartDetailPage() {
   const { id } = useParams();
@@ -25,6 +26,7 @@ export default function PartDetailPage() {
   const { can, session } = useAuth();
   const oq = useDecision();
   const navigate = useNavigate();
+  const toast = useToast();
   const part = useApi<Part>(`/parts/${id}/`);
   const projects = useApi<Paginated<Project>>(can("parts.manage") ? "/projects/" : null, { query: { page_size: 200 } });
   const [error, setError] = useState<unknown>(null);
@@ -53,6 +55,7 @@ export default function PartDetailPage() {
     setError(null);
     try {
       const p = await api<Passport>("/passports/", { body: { part: id } });
+      toast(`Passport draft ${p.passport_number} created.`);
       navigate(`/passports/${p.id}`);
     } catch (err) {
       setError(err);
@@ -61,7 +64,7 @@ export default function PartDetailPage() {
     }
   }
 
-  if (part.loading && !part.data) return <Loading />;
+  if (part.loading && !part.data) return <Loading variant="page" label="Loading spare part…" />;
   if (part.error || !part.data) return <ErrorNotice error={part.error ?? new Error("Not found")} />;
   const p = part.data;
   const submission = p.origin === "client";
@@ -107,7 +110,7 @@ export default function PartDetailPage() {
             <Link className="btn btn-primary" to={`/passports/${p.passport_id}`}>Open digital passport</Link>
           ) : can("passports.edit_draft") ? (
             blocked ? <DisabledAction label="Create passport draft" reason={p.review_state === "declined" ? "This submission was declined." : "Accept the client submission first."} />
-              : <button className="btn btn-primary" onClick={createPassport} disabled={busy}>Create passport draft</button>
+              : <button className="btn btn-primary" onClick={createPassport} disabled={busy} aria-busy={busy}>{busy ? "Creating passport…" : "Create passport draft"}</button>
           ) : null
         }</div>}
       />
