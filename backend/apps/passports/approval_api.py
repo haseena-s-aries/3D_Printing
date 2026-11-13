@@ -95,6 +95,61 @@ def _reports(passport: DigitalPassport) -> list:
     return out
 
 
+def stream_report(request, t: Tenant, passport: DigitalPassport, report_id, audit: dict):
+    """One generated report of the passport as inline PDF; logged as a preview in the client company. Call inside its
+    tenant context. Shared by the approval queue and the Aries passport register (apps.passports.operator_api)."""
+    from django.http import HttpResponse
+
+    from apps.reports import services as report_services
+    from apps.reports.models import PassportReport, PassportReportEvent
+
+    report = PassportReport.objects.filter(pk=report_id, passport=passport).first()
+    if report is None:
+        raise DomainError("not_found", "Report not found for this passport.", http_status=404)
+    pdf = report_services.read_pdf(report)  # refuses withdrawn reports and missing files
+    PassportReportEvent.objects.create(tenant=t, created_by=request.user, report=report, action=PassportReportEvent.Action.PREVIEWED)
+    record(request, "passport_report.previewed", obj=report, tenant=t, data={"number": report.number, "variant": report.variant, **audit})
+    resp = HttpResponse(pdf, content_type="application/pdf")
+    resp["Content-Disposition"] = f'inline; filename="{report.number}.pdf"'
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
+def open_part_file(request, t: Tenant, passport: DigitalPassport, file_id, variant: str, audit: dict) -> tuple:
+    """(storage key, file name, content type) of one engineering file of the passport's spare part, audited in the client
+    company: `preview` (PDF or photo), `original` (download) or `glb` (3D model of a STEP file). Call inside its tenant context."""
+    from apps.files.models import Derivative, EngineeringFile
+
+    if variant not in ("preview", "original", "glb"):
+        raise DomainError("invalid_variant", "Choose preview, original or glb.", http_status=400)
+    ef = EngineeringFile.objects.filter(pk=file_id, part=passport.part).first()
+    fv = ef.versions.order_by("-version_number").first() if ef else None
+    if fv is None:
+        raise DomainError("not_found", "File not found for this passport.", http_status=404)
+    if variant == "glb":
+        d = fv.derivatives.filter(kind=Derivative.Kind.GLB).first()
+        if d is None:
+            raise DomainError("derivative_not_available", "No 3D model is available for this file yet.", http_status=404)
+        key, name, ctype, obj = d.storage_key, f"{fv.original_filename.rsplit('.', 1)[0]}.glb", "model/gltf-binary", d
+    else:
+        if variant == "preview" and ef.kind not in (EngineeringFile.Kind.PDF, EngineeringFile.Kind.IMAGE):
+            raise DomainError("preview_not_available", "In-browser preview is available for PDF documents and photographs only.",
+                              http_status=400)
+        key, name, ctype, obj = fv.storage_key, fv.original_filename, fv.content_type or None, fv
+    record(request, "file.previewed" if variant != "original" else "file.downloaded", obj=obj, tenant=t,
+           data={"variant": variant, "passport": passport.passport_number, **audit})
+    return key, name, ctype
+
+
+def file_response(key, name, ctype, attachment: bool):
+    from apps.files.storage import get_storage
+
+    resp = FileResponse(get_storage().open(key), as_attachment=attachment, filename=name, content_type=ctype)
+    resp["X-Content-Type-Options"] = "nosniff"
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
 class PassportApprovalReportView(APIView):
     """One generated report of the passport as PDF (inline), for the approver; logged as a preview in the client company."""
 
@@ -103,26 +158,11 @@ class PassportApprovalReportView(APIView):
 
     @extend_schema(tags=["passports"], responses={(200, "application/pdf"): bytes})
     def get(self, request, client_id, passport_id, report_id):
-        from django.http import HttpResponse
-
-        from apps.reports import services as report_services
-        from apps.reports.models import PassportReport, PassportReportEvent
-
         _require_platform_approver(request)
         t = _client(client_id)
         with tenant_context(t):
             passport, revision = _submitted(passport_id)
-            report = PassportReport.objects.filter(pk=report_id, passport=passport).first()
-            if report is None:
-                raise DomainError("not_found", "Report not found for this passport.", http_status=404)
-            pdf = report_services.read_pdf(report)  # refuses withdrawn reports and missing files
-            PassportReportEvent.objects.create(tenant=t, created_by=request.user, report=report, action=PassportReportEvent.Action.PREVIEWED)
-            record(request, "passport_report.previewed", obj=report, tenant=t,
-                   data={"number": report.number, "variant": report.variant, "for_approval": True})
-        resp = HttpResponse(pdf, content_type="application/pdf")
-        resp["Content-Disposition"] = f'inline; filename="{report.number}.pdf"'
-        resp["Cache-Control"] = "no-store"
-        return resp
+            return stream_report(request, t, passport, report_id, {"for_approval": True})
 
 
 class PassportApprovalFileView(APIView):
@@ -134,37 +174,14 @@ class PassportApprovalFileView(APIView):
 
     @extend_schema(tags=["passports"], responses={(200, "application/octet-stream"): bytes})
     def get(self, request, client_id, passport_id, file_id):
-        from apps.files.models import Derivative, EngineeringFile
-        from apps.files.storage import get_storage
-
         _require_platform_approver(request)
         variant = request.query_params.get("variant", "preview")
-        if variant not in ("preview", "original", "glb"):
-            raise DomainError("invalid_variant", "Choose preview, original or glb.", http_status=400)
         t = _client(client_id)
         with tenant_context(t):
             passport, revision = _submitted(passport_id)
-            ef = EngineeringFile.objects.filter(pk=file_id, part=passport.part).first()
-            fv = ef.versions.order_by("-version_number").first() if ef else None
-            if fv is None:
-                raise DomainError("not_found", "File not found for this passport.", http_status=404)
-            if variant == "glb":
-                d = fv.derivatives.filter(kind=Derivative.Kind.GLB).first()
-                if d is None:
-                    raise DomainError("derivative_not_available", "No 3D model is available for this file yet.", http_status=404)
-                key, name, ctype, obj = d.storage_key, f"{fv.original_filename.rsplit('.', 1)[0]}.glb", "model/gltf-binary", d
-            else:
-                if variant == "preview" and ef.kind not in (EngineeringFile.Kind.PDF, EngineeringFile.Kind.IMAGE):
-                    raise DomainError("preview_not_available", "In-browser preview is available for PDF documents and photographs only.",
-                                      http_status=400)
-                key, name, ctype, obj = fv.storage_key, fv.original_filename, fv.content_type or None, fv
-            record(request, "file.previewed" if variant != "original" else "file.downloaded", obj=obj, tenant=t,
-                   data={"variant": variant, "for_approval": True, "passport": passport.passport_number,
-                         "revision_number": revision.revision_number})
-        resp = FileResponse(get_storage().open(key), as_attachment=variant == "original", filename=name, content_type=ctype)
-        resp["X-Content-Type-Options"] = "nosniff"
-        resp["Cache-Control"] = "no-store"
-        return resp
+            key, name, ctype = open_part_file(request, t, passport, file_id, variant,
+                                              {"for_approval": True, "revision_number": revision.revision_number})
+        return file_response(key, name, ctype, variant == "original")
 
 
 class PassportApprovalQueueView(APIView):

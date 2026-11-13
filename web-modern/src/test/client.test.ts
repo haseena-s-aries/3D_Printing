@@ -60,7 +60,8 @@ describe("navigation by capability", () => {
 
   it("the Platform Operator organisation hides the empty client-inventory screens", () => {
     const all = caps(["clients.view", "parts.view", "projects.view", "passports.view", "requests.handle", "users.view", "audit.view"]);
-    expect(visibleNav(all, true, "operator_admin").map((n) => n.label)).toEqual(["Dashboard", "Clients", "Incoming requests", "Users", "Audit trail"]);
+    expect(visibleNav(all, true, "operator_admin").map((n) => n.label)).toEqual(["Dashboard", "Clients", "Digital passports", "Incoming requests", "Users", "Audit trail"]);
+    expect(visibleNav(all, true, "operator_engineer").map((n) => n.label)).not.toContain("Digital passports");  // engineers use the company's list
   });
 
   it("shows the audit trail to the Aries Admin only, and approvals to the Admin and Manager", () => {

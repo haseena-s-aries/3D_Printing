@@ -3097,6 +3097,157 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/operator/passports/:
+    get:
+      operationId: v1_operator_passports_list
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OperatorPassportRow'
+          description: ''
+  /api/v1/operator/passports/{client_id}/{passport_id}/:
+    get:
+      operationId: v1_operator_passports_retrieve
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1_operator_passports_create
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassportPublishDecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassportPublishDecisionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassportPublishDecisionRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/operator/passports/{client_id}/{passport_id}/files/{file_id}/:
+    get:
+      operationId: v1_operator_passports_files_retrieve
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/operator/passports/{client_id}/{passport_id}/reports/{report_id}/:
+    get:
+      operationId: v1_operator_passports_reports_retrieve
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: passport_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: report_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - passports
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/operator/requests/:
     get:
       operationId: v1_operator_requests_list
@@ -4577,6 +4728,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Passport'
           description: ''
+  /api/v1/passports/{id}/publish/:
+    post:
+      operationId: v1_passports_publish_create
+      description: 'Aries Admin / Manager / Engineer: put a complete passport into
+        the client''s published catalog.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this digital passport.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Passport'
+          description: ''
   /api/v1/passports/{id}/reports/:
     get:
       operationId: v1_passports_reports_list
@@ -5081,6 +5256,40 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/passports/{id}/unpublish/:
+    post:
+      operationId: v1_passports_unpublish_create
+      description: Take the passport out of the client's published catalog again.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this digital passport.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassportUnpublishInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassportUnpublishInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassportUnpublishInputRequest'
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Passport'
           description: ''
   /api/v1/projects/:
     get:
@@ -8680,6 +8889,60 @@ components:
       - name
       - slug
       - status
+    OperatorPassportRow:
+      type: object
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        client_name:
+          type: string
+        passport_id:
+          type: string
+          format: uuid
+        passport_number:
+          type: string
+        title:
+          type: string
+        part_number:
+          type: string
+        part_name:
+          type: string
+        passport_state:
+          type: string
+        passport_state_label:
+          type: string
+        evidence_level:
+          type: string
+        manufacturing_eligibility:
+          type: string
+        revision_number:
+          type: integer
+          nullable: true
+        revision_status:
+          type: string
+        completeness:
+          type: object
+          additionalProperties: {}
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - client_id
+      - client_name
+      - completeness
+      - evidence_level
+      - manufacturing_eligibility
+      - part_name
+      - part_number
+      - passport_id
+      - passport_number
+      - passport_state
+      - passport_state_label
+      - revision_number
+      - revision_status
+      - title
+      - updated_at
     OperatorRequest:
       type: object
       properties:
@@ -9541,6 +9804,24 @@ components:
       - submitted_at
       - submitted_by_email
       - title
+    PassportPublishDecisionActionEnum:
+      enum:
+      - publish
+      - unpublish
+      type: string
+      description: |-
+        * `publish` - publish
+        * `unpublish` - unpublish
+    PassportPublishDecisionRequest:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/PassportPublishDecisionActionEnum'
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - action
     PassportRequest:
       type: object
       properties:
@@ -9562,6 +9843,12 @@ components:
           writeOnly: true
       required:
       - part
+    PassportUnpublishInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
     PasswordResetDone:
       type: object
       properties:

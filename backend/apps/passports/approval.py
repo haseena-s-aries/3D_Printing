@@ -153,8 +153,9 @@ def complete(request, passport: DigitalPassport, revision: PassportRevision) -> 
             old.save(update_fields=["status", "updated_at"])
         revision.status, revision.approved_by, revision.approved_at = RS.APPROVED, request.user, timezone.now()
         revision.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
-        passport.publication_state = PS.COMPLETE
-        passport.save(update_fields=["publication_state", "updated_at"])
+        if passport.publication_state != PS.PUBLISHED:  # a published passport stays published; the new revision is now shown
+            passport.publication_state = PS.COMPLETE
+            passport.save(update_fields=["publication_state", "updated_at"])
         record(request, "passport.revision_completed", obj=revision, tenant=passport.tenant,
                data={"passport": passport.passport_number, "revision_number": revision.revision_number})
     return revision
@@ -200,4 +201,43 @@ def create_for_part(request, part) -> DigitalPassport:
                 raise
     record(request, "passport.created", obj=passport, tenant=part.tenant,
            data={"passport_number": passport.passport_number, "from_client_submission": str(part.pk)})
+    return passport
+
+
+# ---------------------------------------------------------------------------- publication (decision of 13 Nov 2026)
+
+def _client_admins(passport: DigitalPassport):
+    return [m.user for m in Membership.objects.filter(tenant_id=passport.tenant_id, role=Role.CLIENT_ADMIN, is_active=True,
+                                                      user__is_active=True).select_related("user")]
+
+
+def publish(request, passport: DigitalPassport) -> DigitalPassport:
+    """Aries Admin, Manager or Engineer: a complete passport goes into the client's published catalog. Manufacturing
+    eligibility is not changed here (production release rules, OQ-36)."""
+    if passport.publication_state == PS.PUBLISHED:
+        raise DomainError("already_published", "This passport is already published.", http_status=409)
+    if passport.publication_state != PS.COMPLETE:
+        raise DomainError("not_complete", "Only a complete passport can be published. Mark the current revision complete first.",
+                          http_status=409)
+    passport.publication_state = PS.PUBLISHED
+    passport.save(update_fields=["publication_state", "updated_at"])
+    latest = passport.revisions.filter(status=RS.APPROVED).order_by("-revision_number").first()
+    record(request, "passport.published", obj=passport, tenant=passport.tenant,
+           data={"passport": passport.passport_number, "revision_number": latest.revision_number if latest else None})
+    _notify(_client_admins(passport), f"Passport published: {passport.passport_number}",
+            f"{passport.title} is now in your published catalog.", f"/passports/{passport.pk}", passport.tenant.name)
+    return passport
+
+
+def unpublish(request, passport: DigitalPassport, reason: str = "") -> DigitalPassport:
+    """Take a passport out of the client's published catalog again (it stays complete; nothing is deleted)."""
+    if passport.publication_state != PS.PUBLISHED:
+        raise DomainError("not_published", "This passport is not published.", http_status=409)
+    draft_open = passport.revisions.filter(status=RS.DRAFT).exists()
+    passport.publication_state = PS.REVISION_IN_PROGRESS if draft_open else PS.COMPLETE
+    passport.save(update_fields=["publication_state", "updated_at"])
+    record(request, "passport.unpublished", obj=passport, tenant=passport.tenant,
+           data={"passport": passport.passport_number, "reason": (reason or "")[:500]})
+    _notify(_client_admins(passport), f"Passport withdrawn from the catalog: {passport.passport_number}",
+            (reason or "Aries took this passport out of the published catalog.")[:500], f"/passports/{passport.pk}", passport.tenant.name)
     return passport

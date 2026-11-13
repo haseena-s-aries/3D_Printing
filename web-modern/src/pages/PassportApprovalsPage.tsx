@@ -18,7 +18,8 @@ import { viewerState } from "../components/viewerState";
 const ModelViewer = lazy(() => import("../components/ModelViewer"));
 
 type Row = components["schemas"]["PassportApprovalRow"];
-type Detail = Row & { passport_state: string; revision: components["schemas"]["Revision"];
+/** `root` is the API path of the passport (the approval queue by default; the Aries passport register passes its own). */
+export type Detail = Row & { root?: string; passport_state: string; revision: components["schemas"]["Revision"];
   evidence_files: Record<string, { title: string; category: string; kind: string }>; files: EngineeringFile[]; reports: Report[] };
 
 /** Opens / downloads / views the passport's files through the approval endpoint (audited in the client company). */
@@ -27,7 +28,7 @@ type Report = { id: string; number: string; variant: string; variant_label: stri
 type Preview = { url: string; title: string; subtitle: string; image: boolean; download?: () => void };
 
 function useApprovalFiles(d: Detail) {
-  const root = `/operator/passport-approvals/${d.client_id}/${d.passport_id}`;
+  const root = d.root ?? `/operator/passport-approvals/${d.client_id}/${d.passport_id}`;
   const base = `${root}/files`;
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState("");
@@ -217,7 +218,7 @@ function Section({ title, badge, children }: { title: string; badge?: ReactNode;
   );
 }
 
-function Meters({ c }: { c: Completeness }) {
+export function Meters({ c }: { c: Completeness }) {
   return (
     <ul className="approval-meters" aria-label="Data captured">
       {Object.entries(c).map(([k, v]) => {
@@ -236,7 +237,7 @@ function Meters({ c }: { c: Completeness }) {
 
 const fieldLabel = (k: string, prefix = "") => FIELD_LABELS[prefix + k] ?? label(k);
 
-function RevisionContent({ d }: { d: Detail }) {
+export function RevisionContent({ d }: { d: Detail }) {
   const c = (d.revision.content ?? {}) as Obj;
   const rl1 = (c.rl1 ?? {}) as Obj;
   const rl2 = (c.rl2 ?? {}) as Obj;

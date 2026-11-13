@@ -1842,3 +1842,5 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .complete-missing { display: grid; gap: 4px; }
 .complete-missing p { margin: 0; display: block; }
 .complete-missing .btn { justify-self: start; margin-top: 4px; }
+.register-filters { display: grid; gap: 8px; margin-bottom: 12px; }
+.register-filters input, .register-filters select { width: 100%; }
