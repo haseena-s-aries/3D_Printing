@@ -1839,3 +1839,6 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .approval-row-badges:empty { display: none; }
 .approval-history { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .approval-history p { margin: 2px 0 0; }
+.complete-missing { display: grid; gap: 4px; }
+.complete-missing p { margin: 0; display: block; }
+.complete-missing .btn { justify-self: start; margin-top: 4px; }

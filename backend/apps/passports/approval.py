@@ -139,6 +139,14 @@ def complete(request, passport: DigitalPassport, revision: PassportRevision) -> 
     """Aries Engineer: the revision is complete (no approval step for Aries-prepared passports)."""
     if revision.status not in (RS.DRAFT, RS.SUBMITTED):
         raise DomainError("revision_not_open", "Only the current draft can be marked complete.", http_status=409)
+    # R-L1 and R-L2 must be fully filled in (decision of 13 Nov 2026); R-L3 evidence documents may follow in a later revision
+    from .content import completeness
+
+    c = completeness(revision.content)
+    missing = {k: c[k]["missing"] for k in ("rl1", "rl2") if c[k]["missing"]}
+    if missing:
+        raise DomainError("passport_incomplete", "Fill in all R-L1 and R-L2 details before marking the passport complete.",
+                          details={"missing": missing}, http_status=409)
     with transaction.atomic():
         for old in passport.revisions.filter(status=RS.APPROVED).exclude(pk=revision.pk):
             old.status = RS.SUPERSEDED

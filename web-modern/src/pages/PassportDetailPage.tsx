@@ -15,7 +15,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useConversionPolling } from "../components/FilesPanel";
 import DocumentsTab from "../components/passport/DocumentsTab";
 import OverviewTab from "../components/passport/OverviewTab";
-import { ReadinessSections, RL1Form, RL2Form, RL3Form } from "../components/passport/ReadinessForms";
+import { FIELD_LABELS, ReadinessSections, RL1Form, RL2Form, RL3Form } from "../components/passport/ReadinessForms";
 import { Icon, type IconName } from "../components/icons";
 import RevisionsTab from "../components/passport/RevisionsTab";
 import EditRequestDialog from "../components/EditRequestDialog";
@@ -158,6 +158,9 @@ export default function PassportDetailPage() {
   const p = passport.data;
   const current = p.current_revision;
   const editable = !!current?.editable && can("passports.edit_draft");
+  // Mark complete needs every R-L1 and R-L2 detail (decision of 13 Nov 2026); R-L3 evidence documents may follow later
+  const missingToComplete = (["rl1", "rl2"] as const).flatMap((k) =>
+    (current?.completeness?.[k]?.missing ?? []).map((f) => ({ level: k === "rl1" ? "R-L1" : "R-L2", field: FIELD_LABELS[f] ?? label(f.replace("manufacturing_spec.", "")) })));
   // Editors land on the data forms; everyone else on the read-only overview
   const tab: Tab = requestedTab ?? (editable ? "readiness" : "overview");
   const allFiles = files.data?.results ?? [];
@@ -182,7 +185,8 @@ export default function PassportDetailPage() {
             {can("edits.request") && current && <button className="btn" onClick={() => setRequesting(true)}>Request edit</button>}
             {can("passports.edit_draft") && current && current.status === "approved" && <button className="btn" onClick={newRevision}>Start new revision</button>}
             {can("passports.edit_draft") && (current?.status === "draft" || current?.status === "submitted") && (
-              <button className="btn btn-primary" disabled={deciding} aria-busy={deciding}
+              <button className="btn btn-primary" disabled={deciding || missingToComplete.length > 0} aria-busy={deciding}
+                title={missingToComplete.length ? "Fill in all R-L1 and R-L2 details first" : undefined}
                 onClick={() => { if (window.confirm(`Mark rev ${current.revision_number} complete? It is locked afterwards; later changes need a new revision.`)) void decide("complete"); }}>
                 <Icon name="check" size="sm" />Mark complete</button>
             )}
@@ -211,9 +215,22 @@ export default function PassportDetailPage() {
           <p className="hero-gate" role="status"><Icon name="clock" size="sm" />
             Rev {current.revision_number} was submitted for approval before passports prepared by Aries stopped needing approval. An Aries Engineer can mark it complete.</p>
         )}
-        {current?.status === "draft" && (
+        {current?.status === "draft" && !(can("passports.edit_draft") && missingToComplete.length > 0) && (
           <p className="hero-gate" role="status"><Icon name="edit" size="sm" />
-            Rev {current.revision_number} is a draft. Aries completes the data and documents, then marks it complete (no approval step).</p>
+            Rev {current.revision_number} is a draft.{" "}
+            {can("passports.edit_draft") ? "All R-L1 and R-L2 details are filled in: it can be marked complete (R-L3 evidence documents can be added later)."
+              : "Aries completes the data and documents, then marks it complete."}</p>
+        )}
+        {(current?.status === "draft" || current?.status === "submitted") && can("passports.edit_draft") && missingToComplete.length > 0 && (
+          <div className="hero-gate hero-gate-warn complete-missing" role="status">
+            <p><Icon name="alert" size="sm" /><strong>Can't mark complete yet.</strong> Fill in these {missingToComplete.length} details first
+              (Readiness data tab). R-L3 evidence documents are not required.</p>
+            {(["R-L1", "R-L2"] as const).map((lvl) => {
+              const items = missingToComplete.filter((m) => m.level === lvl);
+              return items.length ? <p key={lvl} className="small"><strong>{lvl}:</strong> {items.map((m) => m.field).join(", ")}</p> : null;
+            })}
+            <button type="button" className="btn btn-small" onClick={() => go("readiness")}>Go to Readiness data</button>
+          </div>
         )}
         {current?.status === "approved" && (
           <p className="hero-gate" role="status"><Icon name="check" size="sm" />
