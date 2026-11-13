@@ -63,13 +63,13 @@ describe("navigation by capability", () => {
     expect(visibleNav(all, true, "operator_admin").map((n) => n.label)).toEqual(["Dashboard", "Clients", "Incoming requests", "Users", "Audit trail"]);
   });
 
-  it("shows the audit trail to the Aries Admin only, and passport approvals to the Admin and Manager", () => {
+  it("shows the audit trail to the Aries Admin only, and approvals to the Admin and Manager", () => {
     const all = caps(["clients.view", "users.view", "audit.view", "passports.approve"]);
-    expect(visibleNav(all, true, "operator_admin").map((n) => n.label)).toEqual(expect.arrayContaining(["Audit trail", "Passport approvals"]));
-    expect(visibleNav(all, true, "operator_manager").map((n) => n.label)).toContain("Passport approvals");
+    expect(visibleNav(all, true, "operator_admin").map((n) => n.label)).toEqual(expect.arrayContaining(["Audit trail", "Approvals"]));
+    expect(visibleNav(all, true, "operator_manager").map((n) => n.label)).toContain("Approvals");
     expect(visibleNav(all, true, "operator_manager").map((n) => n.label)).not.toContain("Audit trail");
     expect(visibleNav(all, false, "client_admin").map((n) => n.label)).not.toContain("Audit trail");
-    expect(visibleNav(all, true, "operator_engineer").map((n) => n.label)).not.toContain("Passport approvals");
+    expect(visibleNav(all, true, "operator_engineer").map((n) => n.label)).not.toContain("Approvals");
   });
 
   it("breadcrumbs start with the selected organisation", () => {

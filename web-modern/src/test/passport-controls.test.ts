@@ -80,7 +80,8 @@ describe("R-L1 pre-fill provenance", () => {
 
 describe("client submissions", () => {
   it("labels review states and recognises open reviews", () => {
-    expect(REVIEW_LABEL.pending_review).toBe("Pending Aries review");
+    expect(REVIEW_LABEL.pending_review).toBe("Waiting for approval");
+    expect(REVIEW_LABEL.info_requested).toBe("Sent back for changes");
     expect(isOpenReview({ review_state: "info_requested" })).toBe(true);
     expect(isOpenReview({ review_state: "accepted" })).toBe(false);
   });

@@ -109,7 +109,7 @@ export default function PartDetailPage() {
           p.passport_id ? (
             <Link className="btn btn-primary" to={`/passports/${p.passport_id}`}>Open digital passport</Link>
           ) : can("passports.edit_draft") ? (
-            blocked ? <DisabledAction label="Create passport draft" reason={p.review_state === "declined" ? "This submission was declined." : "Accept the client submission first."} />
+            blocked ? <DisabledAction label="Create passport draft" reason={p.review_state === "declined" ? "This submission was declined." : "Created automatically when the client submission is approved."} />
               : <button className="btn btn-primary" onClick={createPassport} disabled={busy} aria-busy={busy}>{busy ? "Creating passport…" : "Create passport draft"}</button>
           ) : null
         }</div>}
@@ -147,7 +147,7 @@ export default function PartDetailPage() {
           </dl>
           <ReviewHistory part={p} />
           {can("parts.review") && <ReviewPanel part={p} onChange={(next) => part.setData(next)} />}
-          {clientMayEdit && p.review_state === "info_requested" && (
+          {clientMayEdit && p.review_state === "info_requested" && p.submitted_by === session?.user.id && (
             <ResubmitForm part={p} onChange={(next) => part.setData(next)} />
           )}
         </Card>
@@ -156,7 +156,7 @@ export default function PartDetailPage() {
       <div className="grid-2 wide-left">
         <Card
           title="Part master data"
-          actions={mayEdit && <button type="button" className="btn btn-small" onClick={() => { setEditing((v) => !v); setSaved(false); }}>{editing ? "Cancel" : "Edit"}</button>}
+          actions={mayEdit && <button type="button" className="btn btn-small" onClick={() => { setEditing((v) => !v); setSaved(false); }}>{editing ? "Cancel" : "Edit details"}</button>}
         >
           {editing && clientMayEdit && p.submission_kind === "clone" ? (
             <CloneEditForm part={p} onDone={(next) => { part.setData(next); setEditing(false); setSaved(true); }} />
@@ -204,7 +204,7 @@ export default function PartDetailPage() {
               <dt>Documents</dt><dd><DocChips documents={p.documents} has3d={p.has_3d} /></dd>
             </dl>
           ) : blocked ? (
-            <p className="muted">No digital passport. One can be created after Aries Engineering accepts this submission.</p>
+            <p className="muted">No digital passport yet. It is created automatically when Aries approves this submission.</p>
           ) : (
             <p className="muted">No digital passport yet.{can("passports.edit_draft") ? " Create a draft to start capturing passport data." : ""}</p>
           )}

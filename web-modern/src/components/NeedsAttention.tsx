@@ -59,7 +59,7 @@ function useItems(): { items: Item[]; loading: boolean } {
   }
   if (engineerHere && can("parts.review")) {
     items.push({ key: "submissions", count: subs.data ? subs.data.count : null, label: "Client part submissions to review",
-      hint: "Pending Aries review or corrections returned", to: "/parts?catalog=review", icon: "inbox",
+      hint: "Waiting for approval, or sent back for changes", to: "/parts?catalog=review", icon: "inbox",
       rows: (subs.data?.results ?? []).map((p) => ({ id: p.id, to: `/parts/${p.id}`, title: <><strong>{p.part_number}</strong> {p.name}</>,
         meta: <>{p.submitted_by_name || "Client"} · {formatDate(p.submitted_at ?? null)}</> })) });
   }
@@ -114,7 +114,7 @@ function useItems(): { items: Item[]; loading: boolean } {
     items.push({ key: "corrections", count: corrections.data ? corrections.data.count : null, label: "Submissions returned for corrections",
       hint: "Aries requested details", to: "/parts?catalog=review", icon: "edit", tone: "warning",
       rows: (corrections.data?.results ?? []).map((p) => ({ id: p.id, to: `/parts/${p.id}`, title: <><strong>{p.part_number}</strong> {p.name}</>,
-        meta: p.review_note ? p.review_note.slice(0, 80) : "Corrections requested" })) });
+        meta: p.review_note ? p.review_note.slice(0, 80) : "Sent back for changes" })) });
   }
   const loading = items.some((i) => i.count === null);
   return { items, loading };

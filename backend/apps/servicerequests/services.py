@@ -123,13 +123,16 @@ def material_change(request, part, d: dict) -> dict:
     return {**out, "proposed_material": proposed, "material_change_reason": reason, "linked_part": linked}
 
 
-def create_request(request, **fields) -> ClientRequest:
-    """Create with a unique per-tenant reference (retry on the rare concurrent clash)."""
+def create_request(request, *, tenant=None, requested_by=None, **fields) -> ClientRequest:
+    """Create with a unique per-tenant reference (retry on the rare concurrent clash). `tenant` / `requested_by` are given
+    when the request is created on the client's behalf (a clone's manufacturing request sent automatically on approval)."""
+    tenant = tenant or request.tenant
+    requested_by = requested_by or request.user
     for _ in range(5):
         try:
             with transaction.atomic():
-                obj = ClientRequest.objects.create(tenant=request.tenant, created_by=request.user, requested_by=request.user,
-                                                   reference=next_reference(request.tenant, fields["kind"]), **fields)
+                obj = ClientRequest.objects.create(tenant=tenant, created_by=requested_by, requested_by=requested_by,
+                                                   reference=next_reference(tenant, fields["kind"]), **fields)
                 break
         except IntegrityError:
             continue
@@ -140,10 +143,10 @@ def create_request(request, **fields) -> ClientRequest:
         linked = f" Linked cloned part: {obj.linked_part.part_number}." if obj.linked_part_id else " No cloned part linked yet."
         message = (f"Material change proposed: {obj.original_material or 'original not recorded'} → {obj.proposed_material}. "
                    f"Reason: {obj.material_change_reason}.{linked}\n{obj.remarks}").strip()
-    RequestEvent.objects.create(tenant=obj.tenant, created_by=request.user, request=obj, event="submitted",
-                                to_status=obj.status, author=request.user, author_side=RequestEvent.Side.CLIENT,
+    RequestEvent.objects.create(tenant=obj.tenant, created_by=requested_by, request=obj, event="submitted",
+                                to_status=obj.status, author=requested_by, author_side=RequestEvent.Side.CLIENT,
                                 message=message[:2000])
-    record(request, "request.submitted", obj=obj, data={"reference": obj.reference, "kind": obj.kind, "part": obj.part_number,
+    record(request, "request.submitted", obj=obj, tenant=obj.tenant, data={"reference": obj.reference, "kind": obj.kind, "part": obj.part_number,
                                                        "material_option": obj.material_option, "proposed_material": obj.proposed_material,
                                                        "linked_part": obj.linked_part.part_number if obj.linked_part_id else None})
     sync_envelope(obj)

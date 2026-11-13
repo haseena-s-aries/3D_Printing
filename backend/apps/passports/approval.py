@@ -1,4 +1,14 @@
-"""Passport revision approval (business decision of 12 Nov 2026; replaces the OQ-35 seam for submit and approve).
+"""Passport revision lifecycle.
+
+Decision of 13 Nov 2026 (supersedes the passport approval step for Aries work): a passport prepared by Aries (scan
+request, Aries-created part, or completed after Aries approved a client submission) needs no approval. The Aries
+Engineer marks the revision complete (`complete` below): it becomes immutable, the DRAFT watermark goes away and the
+passport shows "Complete". Client submissions (new parts and clones) are approved on the spare part instead
+(apps.parts.submissions); on approval a passport draft is created for Aries to complete (`create_for_part`).
+
+The submit / approve / send-back functions below remain for revisions that were submitted before that decision.
+
+Earlier decision of 12 Nov 2026 (kept for those revisions):
 
 Flow: draft -> submitted -> approved, or submitted -> draft again ("send back", with a note for the author).
 - Submit: an Aries Engineer who may edit the passport (passports.edit_draft, project scope applies).
@@ -121,3 +131,65 @@ def send_back(request, passport: DigitalPassport, revision: PassportRevision, no
         _notify([revision.submitted_by], f"Passport sent back: {_label(passport, revision)}", note,
                 f"/passports/{passport.pk}", passport.tenant.name)
     return revision
+
+
+# ---------------------------------------------------------------------------- decision of 13 Nov 2026
+
+def complete(request, passport: DigitalPassport, revision: PassportRevision) -> PassportRevision:
+    """Aries Engineer: the revision is complete (no approval step for Aries-prepared passports)."""
+    if revision.status not in (RS.DRAFT, RS.SUBMITTED):
+        raise DomainError("revision_not_open", "Only the current draft can be marked complete.", http_status=409)
+    with transaction.atomic():
+        for old in passport.revisions.filter(status=RS.APPROVED).exclude(pk=revision.pk):
+            old.status = RS.SUPERSEDED
+            old.save(update_fields=["status", "updated_at"])
+        revision.status, revision.approved_by, revision.approved_at = RS.APPROVED, request.user, timezone.now()
+        revision.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        passport.publication_state = PS.COMPLETE
+        passport.save(update_fields=["publication_state", "updated_at"])
+        record(request, "passport.revision_completed", obj=revision, tenant=passport.tenant,
+               data={"passport": passport.passport_number, "revision_number": revision.revision_number})
+    return revision
+
+
+def prefill_from_part(part) -> dict:
+    """R-L1 values the approved client submission already holds (Aries completes and verifies the rest)."""
+    rl1 = {}
+    if part.original_material:
+        rl1["original_material_grade"] = part.original_material
+    if part.dimensions:
+        rl1["part_size"] = part.dimensions
+    if part.application:
+        rl1["application"] = part.application
+    if part.proposed_material:
+        rl1["proposed_material"] = part.proposed_material
+        if part.material_change_reason:
+            rl1["proposed_material_reason"] = part.material_change_reason[:500]
+    return {"rl1": rl1} if rl1 else {}
+
+
+def create_for_part(request, part) -> DigitalPassport:
+    """The passport draft of an approved client submission (one per part; returns the existing one if there is one)."""
+    from django.db import IntegrityError
+
+    from .api import next_passport_number, refresh_data_captured
+
+    existing = DigitalPassport.objects.filter(part=part).first()
+    if existing is not None:
+        return existing
+    content = prefill_from_part(part)
+    for attempt in range(3):
+        try:
+            with transaction.atomic():
+                passport = DigitalPassport.objects.create(tenant_id=part.tenant_id, created_by=request.user, part=part, title=part.name,
+                                                          passport_number=next_passport_number(part.tenant))
+                PassportRevision.objects.create(tenant_id=part.tenant_id, created_by=request.user, passport=passport, revision_number=1,
+                                                content=content, change_summary="Created when the client submission was approved")
+                refresh_data_captured(passport, content)
+            break
+        except IntegrityError:
+            if attempt == 2:
+                raise
+    record(request, "passport.created", obj=passport, tenant=part.tenant,
+           data={"passport_number": passport.passport_number, "from_client_submission": str(part.pk)})
+    return passport

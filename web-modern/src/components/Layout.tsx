@@ -36,7 +36,7 @@ const NAV: NavItem[] = [
   { to: "/inventory-import", label: "Inventory import", capability: "inventory.import", clientOrgOnly: true },
   { to: "/projects", label: "Projects", capability: "projects.view", clientOrgOnly: true },
   { to: "/passports", label: "Digital passports", capability: "passports.view", clientOrgOnly: true },
-  { to: "/passport-approvals", label: "Passport approvals", capability: "passports.approve", operatorOnly: true, platformAdminOnly: true },
+  { to: "/approvals", label: "Approvals", capability: "passports.approve", operatorOnly: true, platformAdminOnly: true },
   { to: "/requests", label: "My requests", capability: "requests.view" },
   { to: "/incoming", label: "Incoming requests", capability: "requests.handle" },
   { to: "/edit-requests", label: "Edit requests", capability: "edits.request" },
@@ -61,7 +61,7 @@ const GROUPS: [string, string][] = [["overview", "Overview"], ["inventory", "Inv
 const META: Record<string, [string, IconName]> = {
   "/": ["overview", "dashboard"], "/registrations": ["admin", "inbox"], "/clients": ["admin", "building"],
   "/admin/inventory": ["inventory", "boxes"], "/parts": ["inventory", "boxes"], "/inventory-import": ["inventory", "upload"],
-  "/projects": ["inventory", "folder"], "/passports": ["inventory", "passport"], "/passport-approvals": ["inventory", "review"], "/requests": ["requests", "message"],
+  "/projects": ["inventory", "folder"], "/passports": ["inventory", "passport"], "/approvals": ["inventory", "review"], "/requests": ["requests", "message"],
   "/incoming": ["requests", "incoming"], "/edit-requests": ["requests", "edit"], "/users": ["admin", "users"], "/audit": ["admin", "shield"],
   "/company/data-sharing": ["admin", "lock"], "/origin-claims": ["inventory", "review"], "/thumbnail-contracts": ["admin", "lock"],
 };

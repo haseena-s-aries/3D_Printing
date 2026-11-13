@@ -1397,6 +1397,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/approvals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_approvals_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/approvals/{client_id}/{part_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_approvals_retrieve"];
+        put?: never;
+        post: operations["v1_operator_approvals_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/approvals/{client_id}/{part_id}/files/{file_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A document submitted with the part (preview inline, or the original as a download), while it waits for approval. */
+        get: operations["v1_operator_approvals_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/overview/": {
         parameters: {
             query?: never;
@@ -1955,8 +2004,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Aries review of a client submission: request more information, accept (optionally linking a project and
-         *     marking fields verified), decline, or verify client-supplied values later. Never approves or publishes.
+         * @description Aries decision on a client submission: request_info = send back (opens the next revision), accept = approve
+         *     (creates the passport draft; a clone's manufacturing request is sent automatically), decline, or verify
+         *     client-supplied values later. Publication and manufacturing release are not changed.
          */
         post: operations["v1_parts_review_create"];
         delete?: never;
@@ -2201,6 +2251,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/passports/{id}/revisions/{rev}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Aries Engineer: mark the current draft complete (no approval step for Aries-prepared passports). */
+        post: operations["v1_passports_revisions_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/passports/{id}/revisions/{rev}/return/": {
         parameters: {
             query?: never;
@@ -2227,7 +2294,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description No DELETE by default: business records are retired by status, not removed. */
+        /** @description Retired (decision of 13 Nov 2026): passports prepared by Aries need no approval; use .../complete/. */
         post: operations["v1_passports_revisions_submit_create"];
         delete?: never;
         options?: never;
@@ -4375,6 +4442,7 @@ export interface components {
             status?: components["schemas"]["SparePartStatusEnum"];
             /** @description Fields the submitter marked Unknown / not available. */
             unknown_fields?: components["schemas"]["UnknownFieldsEnum"][];
+            aries_completion_requested?: boolean;
             proposed_material?: string;
             material_change_reason?: string;
             client_remarks?: string;
@@ -4480,12 +4548,13 @@ export interface components {
          * @description * `draft` - Draft
          *     * `submitted` - Submitted
          *     * `engineering_approved` - Engineering approved
+         *     * `complete` - Complete
          *     * `published` - Published
          *     * `revision_in_progress` - Revision in progress
          *     * `archived` - Archived
          * @enum {string}
          */
-        PublicationStateEnum: "draft" | "submitted" | "engineering_approved" | "published" | "revision_in_progress" | "archived";
+        PublicationStateEnum: "draft" | "submitted" | "engineering_approved" | "complete" | "published" | "revision_in_progress" | "archived";
         QualityRequest: {
             applicable_standards?: string;
             dimensional_tolerances?: string;
@@ -5139,6 +5208,8 @@ export interface components {
             readonly field_provenance: {
                 [key: string]: components["schemas"]["ProvenanceEntry"];
             };
+            aries_completion_requested?: boolean;
+            readonly submission_revision: number;
             /** Format: uuid */
             readonly source_part: string | null;
             readonly source_part_number: string;
@@ -5212,6 +5283,7 @@ export interface components {
             status?: components["schemas"]["SparePartStatusEnum"];
             /** @description Fields the submitter marked Unknown / not available. */
             unknown_fields?: components["schemas"]["UnknownFieldsEnum"][];
+            aries_completion_requested?: boolean;
             proposed_material?: string;
             material_change_reason?: string;
             client_remarks?: string;
@@ -5259,6 +5331,37 @@ export interface components {
             in_digitisation: number;
             published: number;
             declined: number;
+        };
+        SubmissionApprovalRow: {
+            /** Format: uuid */
+            client_id: string;
+            client_name: string;
+            /** Format: uuid */
+            part_id: string;
+            part_number: string;
+            name: string;
+            submission_kind: string;
+            kind_label: string;
+            review_state: string;
+            review_state_label: string;
+            revision: number;
+            aries_completion_requested: boolean;
+            unknown_fields: string[];
+            submitted_by_email: string;
+            /** Format: date-time */
+            submitted_at: string;
+            source_part_number: string;
+        };
+        /**
+         * @description * `approve` - approve
+         *     * `send_back` - send_back
+         *     * `decline` - decline
+         * @enum {string}
+         */
+        SubmissionDecisionDecisionEnum: "approve" | "send_back" | "decline";
+        SubmissionDecisionRequest: {
+            decision: components["schemas"]["SubmissionDecisionDecisionEnum"];
+            message?: string;
         };
         /**
          * @description * `record` - Client record
@@ -7945,6 +8048,102 @@ export interface operations {
             };
         };
     };
+    v1_operator_approvals_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionApprovalRow"][];
+                };
+            };
+        };
+    };
+    v1_operator_approvals_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                part_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_approvals_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                part_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionDecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubmissionDecisionRequest"];
+                "multipart/form-data": components["schemas"]["SubmissionDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_approvals_files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                file_id: string;
+                part_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
     v1_operator_overview_list: {
         parameters: {
             query?: never;
@@ -9559,6 +9758,29 @@ export interface operations {
             };
         };
     };
+    v1_passports_revisions_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this digital passport. */
+                id: string;
+                rev: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Revision"];
+                };
+            };
+        };
+    };
     v1_passports_revisions_return_create: {
         parameters: {
             query?: never;
@@ -9601,12 +9823,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Revision"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

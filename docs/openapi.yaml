@@ -2801,6 +2801,125 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/operator/approvals/:
+    get:
+      operationId: v1_operator_approvals_list
+      tags:
+      - parts
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubmissionApprovalRow'
+          description: ''
+  /api/v1/operator/approvals/{client_id}/{part_id}/:
+    get:
+      operationId: v1_operator_approvals_retrieve
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: part_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - parts
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1_operator_approvals_create
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: part_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - parts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionDecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmissionDecisionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmissionDecisionRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/operator/approvals/{client_id}/{part_id}/files/{file_id}/:
+    get:
+      operationId: v1_operator_approvals_files_retrieve
+      description: A document submitted with the part (preview inline, or the original
+        as a download), while it waits for approval.
+      parameters:
+      - in: path
+        name: client_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: part_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - parts
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/operator/overview/:
     get:
       operationId: v1_operator_overview_list
@@ -4144,8 +4263,9 @@ paths:
     post:
       operationId: v1_parts_review_create
       description: |-
-        Aries review of a client submission: request more information, accept (optionally linking a project and
-        marking fields verified), decline, or verify client-supplied values later. Never approves or publishes.
+        Aries decision on a client submission: request_info = send back (opens the next revision), accept = approve
+        (creates the passport draft; a clone's manufacturing request is sent automatically), decline, or verify
+        client-supplied values later. Publication and manufacturing release are not changed.
       parameters:
       - in: path
         name: id
@@ -4859,6 +4979,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Revision'
           description: ''
+  /api/v1/passports/{id}/revisions/{rev}/complete/:
+    post:
+      operationId: v1_passports_revisions_complete_create
+      description: 'Aries Engineer: mark the current draft complete (no approval step
+        for Aries-prepared passports).'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this digital passport.
+        required: true
+      - in: path
+        name: rev
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revision'
+          description: ''
   /api/v1/passports/{id}/revisions/{rev}/return/:
     post:
       operationId: v1_passports_revisions_return_create
@@ -4904,8 +5054,8 @@ paths:
   /api/v1/passports/{id}/revisions/{rev}/submit/:
     post:
       operationId: v1_passports_revisions_submit_create
-      description: 'No DELETE by default: business records are retired by status,
-        not removed.'
+      description: 'Retired (decision of 13 Nov 2026): passports prepared by Aries
+        need no approval; use .../complete/.'
       parameters:
       - in: path
         name: id
@@ -4925,11 +5075,12 @@ paths:
       security:
       - tenantBearer: []
       responses:
-        '200':
+        '409':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Revision'
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/projects/:
     get:
@@ -9714,6 +9865,8 @@ components:
           items:
             $ref: '#/components/schemas/UnknownFieldsEnum'
           description: Fields the submitter marked Unknown / not available.
+        aries_completion_requested:
+          type: boolean
         proposed_material:
           type: string
           maxLength: 120
@@ -9937,6 +10090,7 @@ components:
       - draft
       - submitted
       - engineering_approved
+      - complete
       - published
       - revision_in_progress
       - archived
@@ -9945,6 +10099,7 @@ components:
         * `draft` - Draft
         * `submitted` - Submitted
         * `engineering_approved` - Engineering approved
+        * `complete` - Complete
         * `published` - Published
         * `revision_in_progress` - Revision in progress
         * `archived` - Archived
@@ -11623,6 +11778,11 @@ components:
           readOnly: true
           description: Who entered each value (client or Aries) and whether Aries
             verified it.
+        aries_completion_requested:
+          type: boolean
+        submission_revision:
+          type: integer
+          readOnly: true
         source_part:
           type: string
           format: uuid
@@ -11779,6 +11939,7 @@ components:
       - source_revision_number
       - source_snapshot
       - submission_kind
+      - submission_revision
       - submitted_at
       - submitted_by
       - submitted_by_name
@@ -11844,6 +12005,8 @@ components:
           items:
             $ref: '#/components/schemas/UnknownFieldsEnum'
           description: Fields the submitter marked Unknown / not available.
+        aries_completion_requested:
+          type: boolean
         proposed_material:
           type: string
           maxLength: 120
@@ -11972,6 +12135,80 @@ components:
       - in_digitisation
       - published
       - review
+    SubmissionApprovalRow:
+      type: object
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        client_name:
+          type: string
+        part_id:
+          type: string
+          format: uuid
+        part_number:
+          type: string
+        name:
+          type: string
+        submission_kind:
+          type: string
+        kind_label:
+          type: string
+        review_state:
+          type: string
+        review_state_label:
+          type: string
+        revision:
+          type: integer
+        aries_completion_requested:
+          type: boolean
+        unknown_fields:
+          type: array
+          items:
+            type: string
+        submitted_by_email:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        source_part_number:
+          type: string
+      required:
+      - aries_completion_requested
+      - client_id
+      - client_name
+      - kind_label
+      - name
+      - part_id
+      - part_number
+      - review_state
+      - review_state_label
+      - revision
+      - source_part_number
+      - submission_kind
+      - submitted_at
+      - submitted_by_email
+      - unknown_fields
+    SubmissionDecisionDecisionEnum:
+      enum:
+      - approve
+      - send_back
+      - decline
+      type: string
+      description: |-
+        * `approve` - approve
+        * `send_back` - send_back
+        * `decline` - decline
+    SubmissionDecisionRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/SubmissionDecisionDecisionEnum'
+        message:
+          type: string
+          minLength: 1
+      required:
+      - decision
     SubmissionKindEnum:
       enum:
       - record

@@ -196,7 +196,7 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
                     "update": "passports.edit_draft", "partial_update": "passports.edit_draft",
                     "revisions": "passports.view", "revision_detail": "passports.view",
                     "submit_revision": "passports.edit_draft", "approve_revision": "passports.approve",
-                    "return_revision": "passports.approve",
+                    "return_revision": "passports.approve", "complete_revision": "passports.edit_draft",
                     # CN-005 reports: variant rules are checked in apps.reports.api / services (server-side)
                     "reports": "passports.view", "report_pdf": "passports.view", "report_page": "passports.view", "report_withdraw": "reports.withdraw",
                     "report_preview": "passports.view"}
@@ -320,11 +320,20 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
             raise DomainError("evidence_file_invalid", "Evidence must be a file attached to this passport.",
                               details={"evidence": missing}, http_status=400)
 
-    @extend_schema(request=None, responses={200: RevisionSerializer})
+    @extend_schema(request=None, responses={409: dict})
     @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/submit")
     def submit_revision(self, request, pk=None, rev=None):
+        """Retired (decision of 13 Nov 2026): passports prepared by Aries need no approval; use .../complete/."""
+        self._revision(self.get_object(), rev)
+        raise DomainError("approval_not_needed", "Passports prepared by Aries need no approval. Mark the revision complete instead.",
+                          http_status=409)
+
+    @extend_schema(request=None, responses={200: RevisionSerializer})
+    @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/complete")
+    def complete_revision(self, request, pk=None, rev=None):
+        """Aries Engineer: mark the current draft complete (no approval step for Aries-prepared passports)."""
         passport = self.get_object()
-        revision = approval.submit(request, passport, self._revision(passport, rev))
+        revision = approval.complete(request, passport, self._revision(passport, rev))
         return Response(RevisionSerializer(revision, context={"request": request}).data)
 
     @extend_schema(request=None, responses={200: RevisionSerializer})

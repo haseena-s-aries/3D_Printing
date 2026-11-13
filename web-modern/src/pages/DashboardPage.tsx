@@ -1,4 +1,4 @@
-import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated, Passport } from "@passport/api-types";
+import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated, Part } from "@passport/api-types";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -22,11 +22,11 @@ function StaffWorkCards() {
   const tenantId = session?.tenant.id;
   const requests = useApi<IntakeEnvelope[]>(can("requests.handle") && tenantId ? "/operator/requests/" : null,
     { query: { client_tenant: tenantId, open: "true" } });
-  const passports = useApi<Paginated<Passport>>(can("passports.approve") ? "/passports/" : null, { query: { page_size: 200 } });
+  // client submissions (new parts, clones) this engineer may approve: the "Waiting for approval" stage of the inventory
+  const subs = useApi<Paginated<Part>>(can("parts.review") ? "/parts/" : null, { query: { catalog: "review", page_size: 50 } });
   const rows = requests.data ?? [];
-  const waiting = (passports.data?.results ?? []).filter((p) => p.publication_state === "submitted"
-    && p.current_revision?.submitted_by_email !== session?.user.email);
-  if (!can("requests.handle") && !can("passports.approve")) return null;
+  const waiting = (subs.data?.results ?? []).filter((p) => p.review_state === "pending_review");
+  if (!can("requests.handle") && !can("parts.review")) return null;
   return (
     <div className="grid-2 staff-work">
       {can("requests.handle") && (
@@ -49,15 +49,16 @@ function StaffWorkCards() {
           )}
         </Card>
       )}
-      {can("passports.approve") && (
-        <Card title={`Passports waiting for approval (${waiting.length})`}>
-          {passports.loading && !passports.data ? <Loading /> : waiting.length === 0 ? <Empty icon="passport">Nothing waiting for your approval.</Empty> : (
-            <ul className="list" aria-label="Passports waiting for approval">
+      {can("parts.review") && (
+        <Card title={`Client submissions waiting for approval (${waiting.length})`}>
+          {subs.loading && !subs.data ? <Loading /> : waiting.length === 0 ? <Empty icon="boxes">Nothing waiting for approval.</Empty> : (
+            <ul className="list" aria-label="Client submissions waiting for approval">
               {waiting.slice(0, 8).map((p) => (
                 <li key={p.id} className="row-between">
-                  <span><strong>{p.passport_number}</strong> rev {p.current_revision?.revision_number} · {p.title}<br />
-                    <span className="muted small">{p.part_summary.part_number} · submitted by {p.current_revision?.submitted_by_email}</span></span>
-                  <Link className="btn btn-small btn-primary" to={`/passports/${p.id}`}>Review</Link>
+                  <span><strong>{p.part_number || "No part number yet"}</strong> · {p.name} <Badge tone="info">rev {p.submission_revision ?? 1}</Badge>
+                    {p.aries_completion_requested && <> <Badge tone="warning">Aries to complete</Badge></>}<br />
+                    <span className="muted small">{p.submission_kind === "clone" ? `Clone of ${p.source_part_number}` : "New part"} · {p.submitted_by_name}</span></span>
+                  <Link className="btn btn-small btn-primary" to={`/parts/${p.id}`}>Review</Link>
                 </li>
               ))}
             </ul>
@@ -325,8 +326,10 @@ function OperatorHome() {
   const messages = open.filter((r) => r.awaiting_reply && r.status !== "submitted")
     .sort((a, b) => (b.last_client_activity_at ?? "").localeCompare(a.last_client_activity_at ?? ""));
   const platformAdmin = session?.membership.role === "operator_admin" || session?.membership.role === "operator_manager";
-  const approvals = useApi<{ client_id: string; client_name: string; passport_id: string; passport_number: string; title: string; revision_number: number;
-    submitted_by_email: string; submitted_at: string }[]>(platformAdmin && can("passports.approve") ? "/operator/passport-approvals/" : null);
+  const approvalRows = useApi<{ client_id: string; client_name: string; part_id: string; part_number: string; name: string; revision: number;
+    kind_label: string; review_state: string; aries_completion_requested: boolean; submitted_by_email: string; submitted_at: string }[]>(
+    platformAdmin && can("passports.approve") ? "/operator/approvals/" : null);
+  const approvals = { data: approvalRows.data ? approvalRows.data.filter((r) => r.review_state === "pending_review") : null };
   const rows = overview.data ?? [];
   const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
   // 70+ organisations, most of them test registrations with no activity: open on the active ones, everything one click away
@@ -357,7 +360,7 @@ function OperatorHome() {
         <Stat label="Awaiting acknowledgement" value={queue.data ? waiting : "…"} to="/incoming?status=submitted" icon="clock" />
         {can("requests.handle") && <Stat label="Client messages awaiting reply" value={queue.data ? messages.length : "…"} to="/incoming?awaiting=true" icon="message" />}
         {platformAdmin && can("passports.approve") && (
-          <Stat label="Passports awaiting approval" value={approvals.data ? approvals.data.length : "…"} to="/passport-approvals" icon="passport" />
+          <Stat label="Client submissions awaiting approval" value={approvals.data ? approvals.data.length : "…"} to="/approvals" icon="boxes" />
         )}
       </div>
       {messages.length > 0 && (
@@ -374,13 +377,14 @@ function OperatorHome() {
         </Card>
       )}
       {(approvals.data?.length ?? 0) > 0 && (
-        <Card title="Passports awaiting approval">
-          <ul className="list" aria-label="Passports awaiting approval">
+        <Card title="Client submissions awaiting approval">
+          <ul className="list" aria-label="Client submissions awaiting approval">
             {approvals.data!.slice(0, 6).map((r) => (
-              <li key={`${r.client_id}-${r.passport_id}`} className="row-between">
-                <span><strong>{r.passport_number}</strong> rev {r.revision_number} · {r.title}{" "}
-                  <span className="muted small">{r.client_name} · {r.submitted_by_email} · {formatDate(r.submitted_at)}</span></span>
-                <Link className="btn btn-small btn-primary" to="/passport-approvals">Review</Link>
+              <li key={r.part_id} className="row-between">
+                <span><strong>{r.part_number || "No part number yet"}</strong> · {r.name} <Badge tone="info">rev {r.revision}</Badge>
+                  {r.aries_completion_requested && <> <Badge tone="warning">Aries to complete</Badge></>}{" "}
+                  <span className="muted small">{r.client_name} · {r.kind_label} · {r.submitted_by_email} · {formatDate(r.submitted_at)}</span></span>
+                <Link className="btn btn-small btn-primary" to="/approvals">Review</Link>
               </li>
             ))}
           </ul>
