@@ -213,3 +213,63 @@ def test_legacy_submitted_passport_is_still_decided_or_completed(ap):
     r = ap["eng"].post(f"{ap['url']}/revisions/1/complete/", {}, format="json")
     assert r.status_code == 200 and r.json()["status"] == "approved"
     assert mgr.get("/api/v1/operator/passport-approvals/").json() == []
+
+
+# ------------------------------------------------------------------ register for Admin / Manager, publish (13 Nov 2026)
+
+def _completed(ap):
+    fill(ap["eng"], ap["url"])
+    assert ap["eng"].post(f"{ap['url']}/revisions/1/complete/", {}, format="json").status_code == 200
+
+
+@pytest.mark.parametrize("who", ["op_admin", "op_mgr"])
+def test_admin_and_manager_view_any_companys_passport_read_only(ap, who):
+    from .test_files import PDF_BYTES, upload
+
+    w, p = ap["w"], ap["p"]
+    part_id = ap["eng"].get(f"{ap['url']}/").json()["part"]
+    f = upload(ap["eng"], part_id, "mtc.pdf", PDF_BYTES, passport=p["id"], category="certificate").json()
+    _completed(ap)
+    c = login(w[who])
+    rows = c.get("/api/v1/operator/passports/").json()
+    row = next(r for r in rows if r["passport_id"] == p["id"])
+    assert row["client_name"] == "Client A Energy" and row["passport_state"] == "complete" and row["revision_number"] == 1
+    assert c.get("/api/v1/operator/passports/", {"state": "published"}).json() == []
+    base = f"/api/v1/operator/passports/{w['a'].pk}/{p['id']}/"
+    d = c.get(base).json()
+    assert d["revision"]["content"]["rl1"]["part_size"] and [x["id"] for x in d["files"]] == [f["id"]]
+    assert d["revisions"][0]["status"] == "approved" and d["revisions"][0]["completed_by_email"] == "op.eng@example.test"
+    assert c.get(f"{base}files/{f['id']}/", {"variant": "preview"}).status_code == 200
+    with tenant_context(w["a"]):
+        from apps.audit.models import AuditEvent
+        assert AuditEvent.objects.filter(action="passport.viewed_by_aries").exists()
+
+
+def test_register_is_for_admin_and_manager_only(ap):
+    w = ap["w"]
+    assert login(w["op_eng"], w["operator"]).get("/api/v1/operator/passports/").status_code == 403
+    assert login(w["a_admin"]).get("/api/v1/operator/passports/").status_code == 403
+
+
+def test_publish_and_unpublish_by_admin_manager_or_engineer(ap):
+    from .test_client_part_submissions import titles
+
+    w, p, eng, url = ap["w"], ap["p"], ap["eng"], ap["url"]
+    base = f"/api/v1/operator/passports/{w['a'].pk}/{p['id']}/"
+    mgr = login(w["op_mgr"])
+    assert mgr.post(base, {"action": "publish"}, format="json").json()["error"]["code"] == "not_complete"  # draft
+    _completed(ap)
+    assert mgr.post(base, {"action": "publish"}, format="json").json() == {"passport_state": "published"}
+    assert any("Passport published" in t for t in titles(w["a_admin"]))
+    assert login(w["a_admin"]).get("/api/v1/parts/?catalog=published").json()["count"] == 1  # now in the client's catalog
+    # a new revision does not take it out of the catalog; completing it keeps it published
+    eng.post(f"{url}/revisions/", {"change_summary": "rev 2"}, format="json")
+    assert eng.get(f"{url}/").json()["publication_state"] == "published"
+    eng.post(f"{url}/revisions/2/complete/", {}, format="json")
+    assert eng.get(f"{url}/").json()["publication_state"] == "published"
+    # engineers publish / unpublish inside the company; clients cannot
+    assert login(w["a_admin"]).post(f"{url}/unpublish/", {}, format="json").status_code == 403
+    r = eng.post(f"{url}/unpublish/", {"reason": "Material certificate expired."}, format="json")
+    assert r.status_code == 200 and r.json()["publication_state"] == "complete"
+    assert eng.post(f"{url}/publish/", {}, format="json").json()["publication_state"] == "published"
+    assert login(w["op_admin"]).post(base, {"action": "unpublish"}, format="json").json() == {"passport_state": "complete"}

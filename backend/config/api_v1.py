@@ -22,6 +22,8 @@ from apps.files.admin_thumbnails import AdminThumbnailConsentView, AdminThumbnai
 from apps.files.thumbnail_provenance import (ContractAuthorizationEventView, ContractAuthorizationView, ContractListView,
                                              ImageOriginView, OriginClaimsQueueView)
 from apps.parts.admin_overview import AdminInventoryView
+from apps.passports.operator_api import (OperatorPassportDetailView, OperatorPassportFileView, OperatorPassportListView,
+                                         OperatorPassportReportView)
 from apps.parts.approval_api import SubmissionApprovalDetailView, SubmissionApprovalFileView, SubmissionApprovalQueueView
 from apps.passports.approval_api import PassportApprovalDetailView, PassportApprovalFileView, PassportApprovalQueueView, PassportApprovalReportView
 from apps.passports.api import PassportFieldOptionsView, PassportViewSet
@@ -121,6 +123,12 @@ urlpatterns = [
     path("downloads/<str:token>/", DownloadView.as_view(), name="download"),
     path("operator/overview/", OperatorOverviewView.as_view(), name="operator-overview"),
     path("operator/passport-approvals/", PassportApprovalQueueView.as_view(), name="passport-approvals"),
+    path("operator/passports/", OperatorPassportListView.as_view(), name="operator-passports"),
+    path("operator/passports/<uuid:client_id>/<uuid:passport_id>/", OperatorPassportDetailView.as_view(), name="operator-passport-detail"),
+    path("operator/passports/<uuid:client_id>/<uuid:passport_id>/files/<uuid:file_id>/", OperatorPassportFileView.as_view(),
+         name="operator-passport-file"),
+    path("operator/passports/<uuid:client_id>/<uuid:passport_id>/reports/<uuid:report_id>/", OperatorPassportReportView.as_view(),
+         name="operator-passport-report"),
     path("operator/approvals/", SubmissionApprovalQueueView.as_view(), name="submission-approvals"),
     path("operator/approvals/<uuid:client_id>/<uuid:part_id>/", SubmissionApprovalDetailView.as_view(), name="submission-approval-detail"),
     path("operator/approvals/<uuid:client_id>/<uuid:part_id>/files/<uuid:file_id>/", SubmissionApprovalFileView.as_view(),

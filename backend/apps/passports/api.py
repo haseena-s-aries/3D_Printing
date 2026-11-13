@@ -197,6 +197,7 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
                     "revisions": "passports.view", "revision_detail": "passports.view",
                     "submit_revision": "passports.edit_draft", "approve_revision": "passports.approve",
                     "return_revision": "passports.approve", "complete_revision": "passports.edit_draft",
+                    "publish": "passports.publish", "unpublish": "passports.publish",
                     # CN-005 reports: variant rules are checked in apps.reports.api / services (server-side)
                     "reports": "passports.view", "report_pdf": "passports.view", "report_page": "passports.view", "report_withdraw": "reports.withdraw",
                     "report_preview": "passports.view"}
@@ -270,7 +271,8 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
         rev = PassportRevision.objects.create(
             tenant=request.tenant, created_by=request.user, passport=passport, revision_number=number,
             content=dict(latest.content) if latest else {}, change_summary=str(request.data.get("change_summary", ""))[:500])
-        if passport.revisions.filter(status=PassportRevision.Status.APPROVED).exists():
+        if passport.revisions.filter(status=PassportRevision.Status.APPROVED).exists() and \
+                passport.publication_state != DigitalPassport.PublicationState.PUBLISHED:  # a published passport stays published
             passport.publication_state = DigitalPassport.PublicationState.REVISION_IN_PROGRESS
             passport.save(update_fields=["publication_state", "updated_at"])
         record(request, "passport.revision_created", obj=rev, data={"revision_number": number})
@@ -327,6 +329,21 @@ class PassportViewSet(ReportActionsMixin, TenantModelViewSet):
         self._revision(self.get_object(), rev)
         raise DomainError("approval_not_needed", "Passports prepared by Aries need no approval. Mark the revision complete instead.",
                           http_status=409)
+
+    @extend_schema(request=None, responses={200: PassportSerializer})
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """Aries Admin / Manager / Engineer: put a complete passport into the client's published catalog."""
+        passport = approval.publish(request, self.get_object())
+        return Response(PassportSerializer(passport, context={"request": request}).data)
+
+    @extend_schema(request=inline_serializer("PassportUnpublishInput", {"reason": serializers.CharField(required=False)}),
+                   responses={200: PassportSerializer})
+    @action(detail=True, methods=["post"])
+    def unpublish(self, request, pk=None):
+        """Take the passport out of the client's published catalog again."""
+        passport = approval.unpublish(request, self.get_object(), str(request.data.get("reason", "") or ""))
+        return Response(PassportSerializer(passport, context={"request": request}).data)
 
     @extend_schema(request=None, responses={200: RevisionSerializer})
     @action(detail=True, methods=["post"], url_path=r"revisions/(?P<rev>\d+)/complete")

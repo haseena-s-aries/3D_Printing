@@ -21,6 +21,7 @@ import RevisionsTab from "../components/passport/RevisionsTab";
 import EditRequestDialog from "../components/EditRequestDialog";
 import { EditRequestList } from "./EditRequestsPage";
 import { BackLink, Badge, Breakable, Card, Empty, ErrorNotice, Loading, label } from "../components/ui";
+import { useToast } from "../components/theme";
 import { viewerState } from "../components/viewerState";
 
 const ModelViewer = lazy(() => import("../components/ModelViewer"));
@@ -110,6 +111,7 @@ function ModelTab({ files, selected, onSelect, revisionLabel }: { files: Enginee
 export default function PassportDetailPage() {
   const { id } = useParams();
   const { can } = useAuth();
+  const toast = useToast();
   const oq = useDecision();
   const [deciding, setDeciding] = useState(false);
   const [params, setParams] = useSearchParams();
@@ -136,6 +138,19 @@ export default function PassportDetailPage() {
     setDeciding(true);
     try {
       await api(`/passports/${id}/revisions/${passport.data.current_revision.revision_number}/${path}/`, { body });
+      await Promise.all([passport.reload(), revisions.reload()]);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setDeciding(false);
+    }
+  }
+  async function publishAction(action: "publish" | "unpublish", reason = "") {
+    setError(null);
+    setDeciding(true);
+    try {
+      await api(`/passports/${id}/${action}/`, { body: action === "unpublish" ? { reason } : {} });
+      toast(action === "publish" ? "Published to the client's catalog." : "Taken out of the client's catalog.");
       await Promise.all([passport.reload(), revisions.reload()]);
     } catch (err) {
       setError(err);
@@ -184,6 +199,16 @@ export default function PassportDetailPage() {
           <div className="hero-actions">
             {can("edits.request") && current && <button className="btn" onClick={() => setRequesting(true)}>Request edit</button>}
             {can("passports.edit_draft") && current && current.status === "approved" && <button className="btn" onClick={newRevision}>Start new revision</button>}
+            {can("passports.publish") && p.publication_state === "complete" && (
+              <button className="btn btn-primary" disabled={deciding} aria-busy={deciding}
+                onClick={() => { if (window.confirm(`Publish ${p.passport_number} to the client's catalog?`)) void publishAction("publish"); }}>
+                <Icon name="check" size="sm" />Publish to client</button>
+            )}
+            {can("passports.publish") && p.publication_state === "published" && (
+              <button className="btn" disabled={deciding} aria-busy={deciding}
+                onClick={() => { const r = window.prompt("Why is it taken out of the client's catalog? (shown to the client)"); if (r !== null) void publishAction("unpublish", r); }}>
+                Unpublish</button>
+            )}
             {can("passports.edit_draft") && (current?.status === "draft" || current?.status === "submitted") && (
               <button className="btn btn-primary" disabled={deciding || missingToComplete.length > 0} aria-busy={deciding}
                 title={missingToComplete.length ? "Fill in all R-L1 and R-L2 details first" : undefined}

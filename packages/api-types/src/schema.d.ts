@@ -1537,6 +1537,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/passports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passports_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/passports/{client_id}/{passport_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passports_retrieve"];
+        put?: never;
+        post: operations["v1_operator_passports_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/passports/{client_id}/{passport_id}/files/{file_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passports_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/passports/{client_id}/{passport_id}/reports/{report_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_operator_passports_reports_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/": {
         parameters: {
             query?: never;
@@ -2106,6 +2170,23 @@ export interface paths {
         patch: operations["v1_passports_partial_update"];
         trace?: never;
     };
+    "/api/v1/passports/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Aries Admin / Manager / Engineer: put a complete passport into the client's published catalog. */
+        post: operations["v1_passports_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/passports/{id}/reports/": {
         parameters: {
             query?: never;
@@ -2296,6 +2377,23 @@ export interface paths {
         put?: never;
         /** @description Retired (decision of 13 Nov 2026): passports prepared by Aries need no approval; use .../complete/. */
         post: operations["v1_passports_revisions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passports/{id}/unpublish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Take the passport out of the client's published catalog again. */
+        post: operations["v1_passports_unpublish_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3877,6 +3975,28 @@ export interface components {
                 [key: string]: number;
             };
         };
+        OperatorPassportRow: {
+            /** Format: uuid */
+            client_id: string;
+            client_name: string;
+            /** Format: uuid */
+            passport_id: string;
+            passport_number: string;
+            title: string;
+            part_number: string;
+            part_name: string;
+            passport_state: string;
+            passport_state_label: string;
+            evidence_level: string;
+            manufacturing_eligibility: string;
+            revision_number: number | null;
+            revision_status: string;
+            completeness: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            updated_at: string;
+        };
         OperatorRequest: {
             /** Format: uuid */
             readonly id: string;
@@ -4296,6 +4416,16 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description * `publish` - publish
+         *     * `unpublish` - unpublish
+         * @enum {string}
+         */
+        PassportPublishDecisionActionEnum: "publish" | "unpublish";
+        PassportPublishDecisionRequest: {
+            action: components["schemas"]["PassportPublishDecisionActionEnum"];
+            reason?: string;
+        };
         PassportRequest: {
             /** Format: uuid */
             part: string;
@@ -4304,6 +4434,9 @@ export interface components {
             /** @description Defaults to the spare-part name. */
             title?: string;
             initial_content?: components["schemas"]["RevisionContentRequest"];
+        };
+        PassportUnpublishInputRequest: {
+            reason?: string;
         };
         PasswordResetDone: {
             status: string;
@@ -8282,6 +8415,125 @@ export interface operations {
             };
         };
     };
+    v1_operator_passports_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorPassportRow"][];
+                };
+            };
+        };
+    };
+    v1_operator_passports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_passports_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PassportPublishDecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PassportPublishDecisionRequest"];
+                "multipart/form-data": components["schemas"]["PassportPublishDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_passports_files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                file_id: string;
+                passport_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    v1_operator_passports_reports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                passport_id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     v1_operator_requests_list: {
         parameters: {
             query?: {
@@ -9453,6 +9705,28 @@ export interface operations {
             };
         };
     };
+    v1_passports_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this digital passport. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Passport"];
+                };
+            };
+        };
+    };
     v1_passports_reports_list: {
         parameters: {
             query?: never;
@@ -9831,6 +10105,34 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_passports_unpublish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this digital passport. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PassportUnpublishInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PassportUnpublishInputRequest"];
+                "multipart/form-data": components["schemas"]["PassportUnpublishInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Passport"];
                 };
             };
         };
