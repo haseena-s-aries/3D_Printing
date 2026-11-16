@@ -1853,3 +1853,14 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .order-step.is-done .order-dot { background: var(--ok); color: #fff; }
 .order-step.is-current { color: var(--ink); border-color: var(--accent-line); background: var(--accent-soft); font-weight: 620; }
 .order-step.is-current .order-dot { background: var(--accent); color: var(--accent-ink); }
+
+/* Passport forms: automatic save status */
+.autosave-status { position: fixed; right: 24px; bottom: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: min(560px, calc(100vw - 32px));
+  padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: 0 6px 24px rgba(4, 18, 37, 0.18);
+  font-size: 0.875rem; color: var(--ink-2); z-index: 30; }
+@media (max-width: 640px) { .autosave-status { left: 16px; right: 16px; bottom: 12px; border-radius: 12px; } }
+.autosave-status.is-saved { color: var(--ok-ink); border-color: var(--ok-line); background: var(--ok-bg); }
+.autosave-status.is-invalid, .autosave-status.is-error { color: var(--warn-ink, var(--ink)); border-color: var(--warn-line, var(--line-strong)); background: var(--warn-bg, var(--bg)); }
+.autosave-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: autosave-pulse 1s ease-in-out infinite; }
+@keyframes autosave-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .autosave-dot { animation: none; } }

@@ -54,8 +54,8 @@ test.describe.serial("Phase 1 web portal", () => {
     await page.getByLabel("H", { exact: true }).fill("40.5");
     await page.getByLabel("Static or rotating").selectOption("rotating");
     await page.getByLabel("Original material grade").fill("Stainless Steel");
-    await page.getByRole("button", { name: "Save R-L1" }).click();
-    await expect(page.getByText("R-L1 saved.")).toBeVisible();
+    // saved automatically (no Save button)
+    await expect(page.getByText(/All changes saved/)).toBeVisible();
     // Gated actions are disabled, not working placeholders
     await expect(page.getByRole("button", { name: "Submit for approval" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
@@ -109,7 +109,7 @@ test.describe.serial("Phase 1 web portal", () => {
     await expect(page.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
     await page.goto(state.passportUrl);
     await expect(page.getByRole("heading", { name: new RegExp(state.passportNumber) })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save R-L1" })).toHaveCount(0);
+    await expect(page.getByText(/saved automatically|All changes saved/)).toHaveCount(0);
     await page.getByRole("tab", { name: "Documents" }).click();
     await expect(page.getByRole("button", { name: "View 3D" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Download original" })).toHaveCount(0);

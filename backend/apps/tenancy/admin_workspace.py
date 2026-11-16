@@ -14,9 +14,11 @@ How it works without weakening tenant isolation:
   decisions; passport approval (OQ-35) and manufacturing release (OQ-36) stay closed for everyone; self-approval checks
   in the services still apply.
 - Confidential file content (CAD originals, 3D derivatives and viewer, photos and thumbnails, PDF documents and drawings,
-  passport reports that embed model views and attached documents, request attachments) stays closed to the Aries Admin
-  in a company until a documented authorization decision for that company is configured in ADMIN_FILE_ACCESS_DECISIONS
-  ("slug=decision reference, ..."). File metadata (titles, versions, sizes) is visible.
+  passport reports, request attachments) is open to the Aries Admin in every company (decision of 16 Nov 2026: the Aries
+  Admin and Manager assign the engineers and QA, approve parts, publish passports and release orders, so they read the
+  same content; every opening stays in the company's audit trail). Earlier the content was closed until a per-company
+  decision was configured in ADMIN_FILE_ACCESS_DECISIONS ("slug=decision reference, ..."); a reference configured there is
+  still shown for that company.
 """
 from django.conf import settings
 from django.db import transaction
@@ -54,9 +56,13 @@ def file_decisions() -> dict:
     return out
 
 
+OPEN_DECISION = "the platform decision of 16 Nov 2026 (open to Aries Admin and Manager, every opening audited)"
+
+
 def file_decision(tenant) -> str:
-    """The documented decision reference that opens confidential file content of this company to the Aries Admin ("" = none)."""
-    return file_decisions().get(getattr(tenant, "slug", ""), "")
+    """The decision that opens confidential file content of this company to the Aries Admin: the company's own documented
+    reference when one is configured, otherwise the platform decision of 16 Nov 2026 (open in every company)."""
+    return file_decisions().get(getattr(tenant, "slug", ""), "") or OPEN_DECISION
 
 
 def file_content_blocked(membership) -> bool:

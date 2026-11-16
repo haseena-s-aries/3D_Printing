@@ -150,7 +150,8 @@ def test_request_shows_full_part_details_even_without_a_passport(world, order):
     d = login(world["op_admin"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/").json()
     assert d["has_passport"] is False and d["part"]["manufacturer"] == "OEM Ltd" and d["part"]["dimensions"] == "Ø20 x 5 mm"
     assert d["files"] == [] and d["reports"] == []
-    assert login(world["op_eng"], world["a"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404
+    # the Aries Admin is no longer refused file content (decision of 16 Nov 2026): a missing report is simply not found
+    assert login(world["op_admin"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404
 
 
 def test_project_scoped_engineer_lists_a_request_whose_project_comes_from_its_part(world, order):
@@ -190,3 +191,26 @@ def test_request_is_listed_when_its_part_moves_into_the_engineers_project_later(
         SparePart.objects.filter(part_number="MF-1").update(project=project)  # moved after the request was made
         ProjectAssignment.objects.create(tenant=w["a"], user=w["op_eng"], project=project, is_active=True)
     assert order["ref"]["reference"] in [r["reference"] for r in eng.get("/api/v1/operator/requests/").json()]
+
+
+def test_engineer_and_qa_see_only_the_client_selected_in_the_top_bar(world, order):
+    w = world
+    for user, role in ((w["op_eng"], Role.OPERATOR_ENGINEER), (w["op_qa"], Role.OPERATOR_QA)):
+        Membership.objects.get_or_create(user=user, tenant=w["b"], defaults={"role": role})
+    bp = login(w["op_eng"], w["b"]).post("/api/v1/parts/", {"part_number": "B-1", "name": "B bracket"}, format="json").json()
+    b_part = login(w["b_admin"]).post("/api/v1/requests/", {"request_type": "manufacturing", "part": bp["id"],
+                                                           "quantity": 1, "required_date": TOMORROW, "delivery_location": "B yard",
+                                                           "services": ["Additive manufacturing"], "priority": "routine"}, format="json")
+    assert b_part.status_code == 201, b_part.content
+    with tenant_context(w["operator"]):
+        from apps.servicerequests.models import RequestEnvelope
+        b_ref = str(RequestEnvelope.objects.get(client_tenant_id=w["b"].pk).pk)
+    a_ref = str(order["env"].pk)
+    for user in (w["op_eng"], w["op_qa"]):
+        in_a = {r["id"] for r in login(user, w["a"]).get("/api/v1/operator/requests/").json()}
+        assert a_ref in in_a and b_ref not in in_a
+        in_b = {r["id"] for r in login(user, w["b"]).get("/api/v1/operator/requests/").json()}
+        assert b_ref in in_b and a_ref not in in_b
+        everywhere = {r["id"] for r in login(user, w["operator"]).get("/api/v1/operator/requests/").json()}
+        assert a_ref in everywhere  # the Aries organisation still lists every assigned client
+    assert a_ref in {r["id"] for r in login(w["op_admin"]).get("/api/v1/operator/requests/").json()}

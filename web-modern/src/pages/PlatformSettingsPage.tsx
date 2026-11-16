@@ -37,7 +37,7 @@ export default function PlatformSettingsPage() {
             <dl className="facts">
               <dt>Confidential file content for Aries Admin</dt>
               <dd>{s.data.access.file_access_decisions.length ? s.data.access.file_access_decisions.map((d) => `${d.company}: ${d.decision}`).join("; ")
-                : "Closed in every company (no documented decision)"}</dd>
+                : "Open in every company (platform decision of 16 Nov 2026); every opening is in the company's audit trail"}</dd>
               <dt>Client-objection authority</dt><dd>{s.data.access.objection_authority || <span className="muted">Not defined</span>}</dd>
               <dt>Designated objection reviewers</dt><dd>{list(s.data.access.objection_reviewers)}</dd>
               <dt>Download link lifetime</dt><dd>{s.data.links.download_link_seconds} s</dd>

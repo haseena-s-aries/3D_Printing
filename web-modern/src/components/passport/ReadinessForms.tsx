@@ -8,7 +8,7 @@
  * docs/passport-field-control-mapping.md.
  */
 import type { AcceptanceRow, EngineeringFile, LevelCompleteness, ManufacturingSpec, Part, ProcessParameter, Revision, RL1, RL2, RL3 } from "@passport/api-types";
-import { cloneElement, createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactElement, type ReactNode } from "react";
+import { cloneElement, createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactElement, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 
 import { api } from "../../api/client";
@@ -131,44 +131,107 @@ function Missing({ c }: { c: LevelCompleteness | undefined }) {
   );
 }
 
-function useSave(passportId: string, revision: Revision, onSaved: (r: Revision) => void) {
+type AutoState = "idle" | "pending" | "saving" | "saved" | "invalid" | "error";
+
+/** Saves a readiness level automatically about a second after the last change (decision of 16 Nov 2026: no Save
+ *  button). One save at a time; changes made while a save runs are saved right after it. Nothing is sent while the form
+ *  has an invalid field (a "not applicable" field without its reason). Unsaved changes are sent when the form closes. */
+function useAutosave(level: "rl1" | "rl2" | "rl3", value: unknown, passportId: string, revision: Revision, editable: boolean,
+  onSaved: (r: Revision) => void) {
+  const form = useRef<HTMLFormElement>(null);
+  const json = JSON.stringify(value);
+  const latest = useRef(json);
+  latest.current = json;
+  const sent = useRef(json); // what the server has (the initial values count as saved; pre-filled values go with the first change)
+  const saving = useRef(false);
+  const timer = useRef<number | undefined>(undefined);
+  const [state, setState] = useState<AutoState>("idle");
   const [error, setError] = useState<unknown>(null);
-  const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
-  async function save(content: Record<string, unknown>) {
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const url = `/passports/${passportId}/revisions/${revision.revision_number}/`;
+  const ctx = useContext(SectionsCtx);
+
+  useEffect(() => { sent.current = latest.current; setState("idle"); }, [revision.id]); // another revision: start clean
+
+  const run = async () => {
+    window.clearTimeout(timer.current);
+    if (!editable || latest.current === sent.current) return;
+    if (form.current && !form.current.checkValidity()) { setState("invalid"); return; }
+    if (saving.current) return; // picked up when the running save ends
+    saving.current = true;
+    const body = latest.current;
+    setState("saving");
     setError(null);
-    setSaved(false);
-    setBusy(true);
     try {
-      const r = await api<Revision>(`/passports/${passportId}/revisions/${revision.revision_number}/`, { method: "PATCH", body: { content } });
-      setSaved(true);
+      const r = await api<Revision>(url, { method: "PATCH", body: { content: { [level]: JSON.parse(body) } } });
+      sent.current = body;
+      setSavedAt(new Date());
+      setState(latest.current === body ? "saved" : "pending");
       onSaved(r);
     } catch (err) {
       setError(err);
+      setState("error");
     } finally {
-      setBusy(false);
+      saving.current = false;
+      if (latest.current !== sent.current) timer.current = window.setTimeout(() => void run(), 600);
     }
-  }
-  return { error, saved, busy, save };
-}
+  };
 
-function Footer({ editable, busy, revision, label }: { editable: boolean; busy: boolean; revision: Revision; label: string }) {
-  const ctx = useContext(SectionsCtx);
-  // a required "not applicable" reason inside a collapsed section must be reachable when the browser reports it
-  const revealInvalid = (e: MouseEvent<HTMLButtonElement>) => {
-    const invalid = [...(e.currentTarget.form?.querySelectorAll<HTMLElement>("input:invalid, select:invalid, textarea:invalid") ?? [])];
+  useEffect(() => {
+    if (!editable) return;
+    if (json === sent.current) { // back to what is saved (e.g. a "not applicable" box unticked again)
+      window.clearTimeout(timer.current);
+      if (!saving.current) setState((st) => (st === "pending" || st === "invalid" ? (savedAt ? "saved" : "idle") : st));
+      return;
+    }
+    setState("pending");
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => void run(), 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [json, editable]);
+
+  useEffect(() => {
+    // leaving the page or the tab with unsaved changes: warn on reload/close, send them when the form closes
+    const warn = (e: BeforeUnloadEvent) => { if (latest.current !== sent.current) e.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      window.clearTimeout(timer.current);
+      if (editable && latest.current !== sent.current && !saving.current && (!form.current || form.current.checkValidity())) {
+        void api<Revision>(url, { method: "PATCH", body: { content: { [level]: JSON.parse(latest.current) } } }).then(onSaved).catch(() => undefined);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, editable]);
+
+  /** Open the collapsed sections that hold an invalid field, so the person sees what blocks the save. */
+  const reveal = () => {
+    const invalid = [...(form.current?.querySelectorAll<HTMLElement>("input:invalid, select:invalid, textarea:invalid") ?? [])];
     const titles = new Set(invalid.map((el) => el.closest<HTMLElement>("[data-section]")?.dataset.section).filter((t): t is string => !!t));
     if (ctx && titles.size) flushSync(() => titles.forEach((t) => ctx.set(t, true)));
+    invalid[0]?.focus();
   };
-  return editable ? (
-    <div className="form-actions sticky-actions">
-      <span className="muted small">You can save an incomplete draft at any time.</span>
-      <button className="btn btn-primary" disabled={busy} onClick={revealInvalid}>
-        {label}
-      </button>
+  const submit = (e: FormEvent) => { e.preventDefault(); void run(); }; // Enter in a field saves at once
+  return { form, state, error, savedAt, reveal, submit };
+}
+
+function AutoStatus({ a, editable, revision }: { a: ReturnType<typeof useAutosave>; editable: boolean; revision: Revision }) {
+  if (!editable) {
+    return <p className="muted small span-2">{revision.editable ? "Your role can view this draft but not edit it." : "This revision is not a draft and cannot be edited."}</p>;
+  }
+  const time = a.savedAt ? a.savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  return (
+    <div className={`autosave-status span-2 is-${a.state}`} role="status" aria-live="polite">
+      {a.state === "saving" && <><span className="autosave-dot" />Saving…</>}
+      {a.state === "pending" && <><span className="autosave-dot" />Changes will be saved automatically…</>}
+      {a.state === "saved" && <><Icon name="check" size="sm" />All changes saved{time ? ` · ${time}` : ""}</>}
+      {a.state === "idle" && <span className="muted">Changes are saved automatically as you type.</span>}
+      {a.state === "invalid" && (
+        <>Not saved yet: give a reason for every field marked <strong>Not applicable</strong>.{" "}
+          <button type="button" className="link-btn" onClick={a.reveal}>Show the field</button></>
+      )}
+      {a.state === "error" && <>Could not save. Your changes are kept here; they are sent again with your next change.</>}
     </div>
-  ) : (
-    <p className="muted small span-2">{revision.editable ? "Your role can view this draft but not edit it." : "This revision is not a draft and cannot be edited."}</p>
   );
 }
 
@@ -270,13 +333,14 @@ export function RL1Form({ passportId, revision, part, editable, onSaved }: { pas
   };
   const [rl1, setRl1] = useState<RL1>(() => initial().values);
   const [prefilled, setPrefilled] = useState<string[]>(() => initial().filled);
-  const { error, saved, busy, save } = useSave(passportId, revision, onSaved);
+  const auto = useAutosave("rl1", rl1, passportId, revision, editable, onSaved);
   useEffect(() => {
     const i = initial();
     setRl1(i.values);
     setPrefilled(i.filled);
+    // not on every save: the form keeps what is being typed while the saved revision comes back
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revision.id, revision.updated_at, part?.id]);
+  }, [revision.id, part?.id]);
 
   const na = rl1.not_applicable ?? {};
   const sources = rl1.value_sources ?? {};
@@ -297,7 +361,7 @@ export function RL1Form({ passportId, revision, part, editable, onSaved }: { pas
   /** A field that can be marked "not applicable" with a reason (BR-006). */
   const field = (k: keyof RL1, control: ReactElement<{ id?: string }>, hint?: ReactNode, canNa = true) => {
     const marked = k in na;
-    const prefillHint = prefilled.includes(k) ? "Pre-filled from the spare-part record; save to keep." : undefined;
+    const prefillHint = prefilled.includes(k) ? "Pre-filled from the spare-part record; saved with your first change." : undefined;
     return (
       <div className="na-field" key={k}>
         {marked ? (
@@ -343,17 +407,11 @@ export function RL1Form({ passportId, revision, part, editable, onSaved }: { pas
     </select>
   );
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    void save({ rl1 });
-  }
-
   return (
-    <form className="form-grid passport-form" onSubmit={submit} aria-label="Readiness level 1 data">
-      <ErrorNotice error={error} />
-      {saved && <div className="notice notice-success" role="status">R-L1 saved.</div>}
+    <form ref={auto.form} className="form-grid passport-form" onSubmit={auto.submit} aria-label="Readiness level 1 data">
+      <ErrorNotice error={auto.error} />
       <EditableCtx.Provider value={editable}>
-      <div className="form-sections span-2" key={`${revision.id}-${revision.updated_at}`} role="group" aria-label="R-L1 — identification and operating context">
+      <div className="form-sections span-2" key={revision.id} role="group" aria-label="R-L1 — identification and operating context">
         <Missing c={revision.completeness?.rl1} />
         <Section title="Design data available">
           {field("cad_3d_available", bool("cad_3d_available"))}
@@ -373,7 +431,7 @@ export function RL1Form({ passportId, revision, part, editable, onSaved }: { pas
         </Section>
         <Section title="Geometry and use">
           {field("part_size", <SizeInput value={str("part_size")} onChange={(v) => set("part_size", v)} units={opts.units("length")} />,
-            prefilled.includes("part_size") ? "Pre-filled from the spare-part record; save to keep." : "Overall envelope. Other formats are kept as entered.")}
+            prefilled.includes("part_size") ? "Pre-filled from the spare-part record; saved with your first change." : "Overall envelope. Other formats are kept as entered.")}
           {field("application", <ComboText value={str("application")} onChange={(v) => set("application", v)} options={opts.list("applications")} />)}
           <div className="span-2">
             {field("technical_description", <textarea rows={3} value={str("technical_description")} onChange={(e) => set("technical_description", e.target.value)} />,
@@ -392,7 +450,7 @@ export function RL1Form({ passportId, revision, part, editable, onSaved }: { pas
         </Section>
       </div>
       </EditableCtx.Provider>
-      <Footer editable={editable} busy={busy} revision={revision} label="Save R-L1 draft" />
+      <AutoStatus a={auto} editable={editable} revision={revision} />
     </form>
   );
 }
@@ -406,8 +464,9 @@ export function RL2Form({ passportId, revision, editable, onSaved, files = [] }:
 }) {
   const opts = useFieldOptions();
   const [rl2, setRl2] = useState<RL2>(revision.content?.rl2 ?? {});
-  const { error, saved, busy, save } = useSave(passportId, revision, onSaved);
-  useEffect(() => setRl2(revision.content?.rl2 ?? {}), [revision.id, revision.updated_at]);
+  const auto = useAutosave("rl2", rl2, passportId, revision, editable, onSaved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setRl2(revision.content?.rl2 ?? {}), [revision.id]);
   const set = (k: keyof RL2, v: unknown) => setRl2({ ...rl2, [k]: v });
   const spec: ManufacturingSpec = rl2.manufacturing_spec ?? {};
   const setSpec = (k: keyof ManufacturingSpec, v: unknown) => setRl2({ ...rl2, manufacturing_spec: { ...spec, [k]: v } });
@@ -430,11 +489,10 @@ export function RL2Form({ passportId, revision, editable, onSaved, files = [] }:
   const docList = "rl2-doc-titles";
 
   return (
-    <form className="form-grid passport-form" onSubmit={(e) => { e.preventDefault(); void save({ rl2 }); }} aria-label="Readiness level 2 data">
-      <ErrorNotice error={error} />
-      {saved && <div className="notice notice-success" role="status">R-L2 saved.</div>}
+    <form ref={auto.form} className="form-grid passport-form" onSubmit={auto.submit} aria-label="Readiness level 2 data">
+      <ErrorNotice error={auto.error} />
       <EditableCtx.Provider value={editable}>
-      <div className="form-sections span-2" key={`${revision.id}-${revision.updated_at}`} role="group" aria-label="R-L2 — manufacturing solution and acceptance">
+      <div className="form-sections span-2" key={revision.id} role="group" aria-label="R-L2 — manufacturing solution and acceptance">
         <Missing c={revision.completeness?.rl2} />
         <Section title="Manufacturing solution">
           <PField label={FIELD_LABELS.manufacturing_process} hint="Optional controlled selection; describe the full solution below.">
@@ -548,7 +606,7 @@ export function RL2Form({ passportId, revision, editable, onSaved, files = [] }:
         </Section>
       </div>
       </EditableCtx.Provider>
-      <Footer editable={editable} busy={busy} revision={revision} label="Save R-L2 draft" />
+      <AutoStatus a={auto} editable={editable} revision={revision} />
     </form>
   );
 }
@@ -557,15 +615,15 @@ export function RL3Form({ passportId, revision, files, editable, onSaved, onOpen
   passportId: string; revision: Revision; files: EngineeringFile[]; editable: boolean; onSaved: (r: Revision) => void; onOpenFile: (f: EngineeringFile) => void;
 }) {
   const [rl3, setRl3] = useState<RL3>(revision.content?.rl3 ?? {});
-  const { error, saved, busy, save } = useSave(passportId, revision, onSaved);
-  useEffect(() => setRl3(revision.content?.rl3 ?? {}), [revision.id, revision.updated_at]);
+  const auto = useAutosave("rl3", rl3, passportId, revision, editable, onSaved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setRl3(revision.content?.rl3 ?? {}), [revision.id]);
   const evidence = rl3.evidence ?? {};
   const byId = new Map(files.map((f) => [f.id, f]));
 
   return (
-    <form className="form-grid passport-form" onSubmit={(e) => { e.preventDefault(); void save({ rl3 }); }} aria-label="Readiness level 3 evidence">
-      <ErrorNotice error={error} />
-      {saved && <div className="notice notice-success" role="status">R-L3 evidence saved.</div>}
+    <form ref={auto.form} className="form-grid passport-form" onSubmit={auto.submit} aria-label="Readiness level 3 evidence">
+      <ErrorNotice error={auto.error} />
       <fieldset disabled={!editable} className="fieldset">
         <legend>R-L3 — document evidence</legend>
         <p className="muted small">
@@ -602,9 +660,8 @@ export function RL3Form({ passportId, revision, files, editable, onSaved, onOpen
       </fieldset>
       <div className="form-actions">
         <DisabledAction label="Confirm R-L3 (QA)" reason="QA verification rules pending (OQ-35)." />
-        {editable && <button className="btn btn-primary" disabled={busy} aria-busy={busy}>Save R-L3 evidence</button>}
       </div>
-      {!editable && <p className="muted small span-2">{revision.editable ? "Your role can view this draft but not edit it." : "This revision is not a draft and cannot be edited."}</p>}
+      <AutoStatus a={auto} editable={editable} revision={revision} />
     </form>
   );
 }
