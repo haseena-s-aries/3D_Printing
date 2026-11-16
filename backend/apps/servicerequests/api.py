@@ -553,12 +553,17 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
 
     # ---- the passport of the ordered part (read-only), so the engineering check, QA check and inspection can be done
     # from the request itself (decision of 16 Nov 2026). Shows the revision the client ordered; audited in the company.
-    def _order_passport(self, env):
-        obj = self._load(env)  # inside the client's tenant context: also applies the project rule
+    def _order_part(self, env):
+        """(request, spare part, passport or None) of the order; inside the client's tenant context (project rule applies)."""
+        obj = self._load(env)
         passport = DigitalPassport.objects.select_related("part", "tenant").filter(pk=obj.passport_id).first() if obj.passport_id else None
+        part_id = obj.part_id or (passport.part_id if passport else None) or obj.created_part_id
+        part = SparePart.objects.select_related("project", "submitted_by").filter(pk=part_id).first() if part_id else None
+        if part is None:
+            raise DomainError("not_found", "This request has no spare part.", http_status=404)
         if passport is None:
-            raise DomainError("not_found", "This request has no digital passport.", http_status=404)
-        return obj, passport
+            passport = DigitalPassport.objects.select_related("part", "tenant").filter(part=part).first()
+        return obj, part, passport
 
     def _blocked(self, request, env):
         from apps.tenancy import admin_workspace
@@ -566,26 +571,46 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
         if admin_workspace.file_content_blocked_for(request.user, env.client_tenant):
             raise DomainError(*admin_workspace.BLOCKED, http_status=403)
 
+    @staticmethod
+    def _part_details(part: SparePart) -> dict:
+        return {"id": str(part.pk), "part_number": part.part_number, "name": part.name, "description": part.description,
+                "category": part.get_category_display(), "criticality": part.get_criticality_display(),
+                "original_material": part.original_material, "dimensions": part.dimensions, "application": part.application,
+                "equipment_reference": part.equipment_reference, "manufacturer": part.manufacturer,
+                "project": part.project.name if part.project_id else "", "origin": part.get_origin_display(),
+                "submission_kind": part.get_submission_kind_display() if part.submission_kind else "",
+                "submitted_by": part.submitted_by.email if part.submitted_by_id else "", "submitted_at": part.submitted_at,
+                "source_part_number": part.source_part_number, "source_passport_number": part.source_passport_number,
+                "proposed_material": part.proposed_material, "material_change_reason": part.material_change_reason,
+                "client_remarks": part.client_remarks, "created_at": part.created_at, "updated_at": part.updated_at}
+
     @extend_schema(responses={200: dict})
     @action(detail=True, methods=["get"], url_path="passport")
     def passport(self, request, pk=None):
+        """The ordered part (read-only) so engineering, QA and inspection are done from the request itself (decision of
+        16 Nov 2026): the spare part's details, its files and, when it has one, the passport revision the client ordered
+        (R-L1 / R-L2 / R-L3), reports and 3D model. Audited in the client company."""
         from apps.passports.api import RevisionSerializer
-        from apps.passports.approval_api import _evidence_files, _part_files, _reports
+        from apps.passports.approval_api import _evidence_files, _reports, files_of_part
         from apps.passports.operator_api import _row
 
         env = self._envelope(request, pk)
         with tenant_context(env.client_tenant_id):
-            obj, p = self._order_passport(env)
-            current = p.revisions.order_by("-revision_number").first()
+            obj, part, p = self._order_part(env)
+            base = {"part": self._part_details(part), "files": files_of_part(request, part), "has_passport": p is not None,
+                    "client_id": str(env.client_tenant_id), "client_name": env.client_name}
+            current = p.revisions.order_by("-revision_number").first() if p else None
+            if current is None:
+                record(request, "spare_part.viewed_by_aries", obj=part, tenant=env.client_tenant,
+                       data={"part": part.part_number, "request": obj.reference})
+                return Response({**base, "has_passport": False, "reports": [], "evidence_files": {}})
             ordered = p.revisions.select_related("approved_by").filter(revision_number=obj.passport_revision_number).first() if obj.passport_revision_number else None
             r = ordered or current
-            if r is None:
-                raise DomainError("not_found", "This passport has no revision yet.", http_status=404)
-            data = {**_row(env.client_tenant, p, r), "passport_state": p.publication_state,
-                    "ordered_revision_number": obj.passport_revision_number, "current_revision_number": current.revision_number if current else None,
+            data = {**_row(env.client_tenant, p, r), **base, "passport_state": p.publication_state,
+                    "ordered_revision_number": obj.passport_revision_number, "current_revision_number": current.revision_number,
                     "submitted_by_email": r.approved_by.email if r.approved_by_id else "", "submitted_at": r.approved_at,
                     "revision": RevisionSerializer(r, context={"request": request, "approver": True}).data,
-                    "evidence_files": _evidence_files(r), "files": _part_files(request, p), "reports": _reports(p)}
+                    "evidence_files": _evidence_files(r), "reports": _reports(p)}
             record(request, "passport.viewed_by_aries", obj=p, tenant=env.client_tenant,
                    data={"passport": p.passport_number, "request": obj.reference, "revision_number": r.revision_number})
         return Response(data)
@@ -593,14 +618,15 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
     @extend_schema(responses={(200, "application/octet-stream"): bytes})
     @action(detail=True, methods=["get"], url_path=r"passport/files/(?P<file_id>[0-9a-f-]+)")
     def passport_file(self, request, pk=None, file_id=None):
-        from apps.passports.approval_api import file_response, open_part_file
+        from apps.passports.approval_api import file_response, open_file_of_part
 
         env = self._envelope(request, pk)
         self._blocked(request, env)
         variant = request.query_params.get("variant", "preview")
         with tenant_context(env.client_tenant_id):
-            obj, p = self._order_passport(env)
-            key, name, ctype = open_part_file(request, env.client_tenant, p, file_id, variant, {"request": obj.reference})
+            obj, part, p = self._order_part(env)
+            audit = {"request": obj.reference, **({"passport": p.passport_number} if p else {})}
+            key, name, ctype = open_file_of_part(request, env.client_tenant, part, file_id, variant, audit)
         return file_response(key, name, ctype, variant == "original")
 
     @extend_schema(responses={(200, "application/pdf"): bytes})
@@ -611,7 +637,9 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
         env = self._envelope(request, pk)
         self._blocked(request, env)
         with tenant_context(env.client_tenant_id):
-            obj, p = self._order_passport(env)
+            obj, part, p = self._order_part(env)
+            if p is None:
+                raise DomainError("not_found", "This part has no digital passport.", http_status=404)
             return stream_report(request, env.client_tenant, p, report_id, {"request": obj.reference})
 
     @extend_schema(responses={(200, "application/octet-stream"): bytes})

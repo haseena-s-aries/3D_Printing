@@ -131,3 +131,23 @@ def test_order_shows_the_ordered_passport_revision_to_aries_staff(world, order):
     assert login(world["a_admin"]).get(url).status_code == 403  # Aries staff only
     with tenant_context(world["a"]):
         assert AuditEvent.objects.filter(action="passport.viewed_by_aries", data__request=order["ref"]["reference"]).exists()
+
+
+def test_request_shows_full_part_details_even_without_a_passport(world, order):
+    env = order["env"]
+    body = login(world["op_qa"]).get(f"/api/v1/operator/requests/{env.pk}/passport/").json()
+    assert body["has_passport"] is True and body["part"]["part_number"] == "MF-1" and body["part"]["name"] == "Valve seat"
+    # an enquiry on a part that has no passport yet still shows the part and its files
+    eng = login(world["op_eng"], world["a"])
+    part = eng.post("/api/v1/parts/", {"part_number": "NP-9", "name": "Gland", "manufacturer": "OEM Ltd", "dimensions": "Ø20 x 5 mm"},
+                    format="json").json()
+    req = login(world["a_admin"]).post("/api/v1/requests/", {"request_type": "manufacturing", "part": part["id"], "quantity": 1,
+                                                             "required_date": TOMORROW, "delivery_location": "Site A",
+                                                             "services": ["Additive manufacturing"], "priority": "routine"},
+                                       format="json").json()
+    assert req["kind"] == "enquiry"
+    e2 = envelope_for(world, req["reference"])
+    d = login(world["op_admin"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/").json()
+    assert d["has_passport"] is False and d["part"]["manufacturer"] == "OEM Ltd" and d["part"]["dimensions"] == "Ø20 x 5 mm"
+    assert d["files"] == [] and d["reports"] == []
+    assert login(world["op_eng"], world["a"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404

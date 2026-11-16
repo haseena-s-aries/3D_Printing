@@ -75,10 +75,14 @@ def _evidence_files(revision: PassportRevision) -> dict:
 
 
 def _part_files(request, passport: DigitalPassport) -> list:
+    return files_of_part(request, passport.part)
+
+
+def files_of_part(request, part) -> list:
     from apps.files.api import EngineeringFileSerializer
     from apps.files.models import EngineeringFile
 
-    qs = EngineeringFile.objects.filter(part=passport.part).order_by("category", "title")
+    qs = EngineeringFile.objects.filter(part=part).order_by("category", "title")
     return EngineeringFileSerializer(qs, many=True, context={"request": request}).data
 
 
@@ -118,11 +122,16 @@ def stream_report(request, t: Tenant, passport: DigitalPassport, report_id, audi
 def open_part_file(request, t: Tenant, passport: DigitalPassport, file_id, variant: str, audit: dict) -> tuple:
     """(storage key, file name, content type) of one engineering file of the passport's spare part, audited in the client
     company: `preview` (PDF or photo), `original` (download) or `glb` (3D model of a STEP file). Call inside its tenant context."""
+    return open_file_of_part(request, t, passport.part, file_id, variant, {"passport": passport.passport_number, **audit})
+
+
+def open_file_of_part(request, t: Tenant, part, file_id, variant: str, audit: dict) -> tuple:
+    """As open_part_file, for a spare part that may not have a passport yet."""
     from apps.files.models import Derivative, EngineeringFile
 
     if variant not in ("preview", "original", "glb"):
         raise DomainError("invalid_variant", "Choose preview, original or glb.", http_status=400)
-    ef = EngineeringFile.objects.filter(pk=file_id, part=passport.part).first()
+    ef = EngineeringFile.objects.filter(pk=file_id, part=part).first()
     fv = ef.versions.order_by("-version_number").first() if ef else None
     if fv is None:
         raise DomainError("not_found", "File not found for this passport.", http_status=404)
@@ -137,7 +146,7 @@ def open_part_file(request, t: Tenant, passport: DigitalPassport, file_id, varia
                               http_status=400)
         key, name, ctype, obj = fv.storage_key, fv.original_filename, fv.content_type or None, fv
     record(request, "file.previewed" if variant != "original" else "file.downloaded", obj=obj, tenant=t,
-           data={"variant": variant, "passport": passport.passport_number, **audit})
+           data={"variant": variant, "part": part.part_number, **audit})
     return key, name, ctype
 
 
