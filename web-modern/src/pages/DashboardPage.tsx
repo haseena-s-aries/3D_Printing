@@ -1,4 +1,4 @@
-import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated, Part } from "@passport/api-types";
+import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated } from "@passport/api-types";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -14,60 +14,6 @@ import { EntryRoutes } from "../components/EntryRoutes";
 import { KpiWave, MarineBanner } from "../components/MarineHero";
 import { KindBadge, StatusBadge } from "../components/requests";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
-
-/** Aries staff working inside a client company: the company's open client requests (same project rules as Incoming
- *  requests) and the passports waiting for approval that this person may decide. */
-function StaffWorkCards() {
-  const { session, can } = useAuth();
-  const tenantId = session?.tenant.id;
-  const requests = useApi<IntakeEnvelope[]>(can("requests.handle") && tenantId ? "/operator/requests/" : null,
-    { query: { client_tenant: tenantId, open: "true" } });
-  // client submissions (new parts, clones) this engineer may approve: the "Waiting for approval" stage of the inventory
-  const subs = useApi<Paginated<Part>>(can("parts.review") ? "/parts/" : null, { query: { catalog: "review", page_size: 50 } });
-  const rows = requests.data ?? [];
-  const waiting = (subs.data?.results ?? []).filter((p) => p.review_state === "pending_review");
-  if (!can("requests.handle") && !can("parts.review")) return null;
-  return (
-    <div className="grid-2 staff-work">
-      {can("requests.handle") && (
-        <Card title={`Client requests (${rows.length} open)`} actions={<Link className="btn btn-small" to={`/incoming?client=${tenantId}`}>Open all</Link>}>
-          <ErrorNotice error={requests.error} />
-          {requests.loading && !requests.data ? <Loading /> : rows.length === 0 ? <Empty icon="message">No open requests from {session?.tenant.name}.</Empty> : (
-            <ul className="list" aria-label="Open client requests">
-              {rows.slice(0, 8).map((r) => (
-                <li key={r.id} className="row-between">
-                  <span>
-                    {r.assigned ? <Link to={`/incoming/${r.id}`}><strong>{r.intake_number || r.reference}</strong></Link> : <strong>{r.intake_number || r.reference}</strong>}{" "}
-                    <KindBadge kind={r.kind} /> <StatusBadge status={r.status} />
-                    {r.awaiting_reply && r.status !== "submitted" && <> <Badge tone="warning">New client message</Badge></>}
-                    <br /><span className="muted small">{r.part_number ? `${r.part_number} · ` : ""}{r.part_name} · {formatDate(r.submitted_at)}</span>
-                  </span>
-                  {r.assigned && <Link className="btn btn-small btn-primary" to={`/incoming/${r.id}`}>{r.status === "submitted" ? "Acknowledge" : "Open"}</Link>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
-      {can("parts.review") && (
-        <Card title={`Client submissions waiting for approval (${waiting.length})`}>
-          {subs.loading && !subs.data ? <Loading /> : waiting.length === 0 ? <Empty icon="boxes">Nothing waiting for approval.</Empty> : (
-            <ul className="list" aria-label="Client submissions waiting for approval">
-              {waiting.slice(0, 8).map((p) => (
-                <li key={p.id} className="row-between">
-                  <span><strong>{p.part_number || "No part number yet"}</strong> · {p.name} <Badge tone="info">rev {p.submission_revision ?? 1}</Badge>
-                    {p.aries_completion_requested && <> <Badge tone="warning">Aries to complete</Badge></>}<br />
-                    <span className="muted small">{p.submission_kind === "clone" ? `Clone of ${p.source_part_number}` : "New part"} · {p.submitted_by_name}</span></span>
-                  <Link className="btn btn-small btn-primary" to={`/parts/${p.id}`}>Review</Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
-    </div>
-  );
-}
 
 function Stat({ label, value, to, icon, hint }: { label: string; value: number | string; to?: string; icon?: IconName; hint?: string }) {
   const body = (
@@ -205,7 +151,6 @@ function OrganisationDashboard() {
       </MarineBanner>
       {!isOperator && <EntryRoutes />}
       <NeedsAttention compact />
-      {!isOperator && session?.membership.role.startsWith("operator_") && <StaffWorkCards />}
       <ClientIntelligenceCard />
       <ErrorNotice error={summary.error} />
       {summary.loading && !s ? (

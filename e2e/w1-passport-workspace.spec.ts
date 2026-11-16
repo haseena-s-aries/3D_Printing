@@ -136,8 +136,8 @@ test.describe.serial("W1 passport workspace", () => {
     await page.getByLabel("Technical description").fill("Holder locating the impeller on the shaft.");
     await page.locator(".na-field", { has: page.getByLabel("RPM (rotating parts)") }).getByLabel("Not applicable").check();
     await page.getByLabel("RPM (rotating parts) — reason not applicable").fill("Speed governed by the pump OEM; not recorded on site");
-    await page.getByRole("button", { name: "Save R-L1" }).click();
-    await expect(page.getByText("R-L1 saved.")).toBeVisible();
+    // saved automatically (no Save button)
+    await expect(page.getByText(/All changes saved/)).toBeVisible();
     await expect(pill(page, "R-L1")).toHaveText("R-L1 11/11");
 
     // R-L2 (BR-007, BR-026, BR-041)
@@ -169,8 +169,8 @@ test.describe.serial("W1 passport workspace", () => {
     await page.getByLabel("Parameter 1", { exact: true }).fill("Laser power");
     await page.getByLabel("Value 1").fill("195");
     await page.getByLabel("Parameter unit 1").fill("W");
-    await page.getByRole("button", { name: "Save R-L2" }).click();
-    await expect(page.getByText("R-L2 saved.")).toBeVisible();
+    // saved automatically (no Save button)
+    await expect(page.getByText(/All changes saved/)).toBeVisible();
     await expect(pill(page, "R-L2")).toHaveText("R-L2 25/25");
     await expect(pill(page, "R-L1")).toHaveText("R-L1 11/11"); // R-L1 kept: levels are merged, not replaced
 
@@ -233,8 +233,7 @@ test.describe.serial("W1 passport workspace", () => {
     await page.getByRole("tab", { name: "Readiness data" }).click();
     await page.getByRole("tab", { name: /R-L3/ }).click();
     for (const [label, name] of EVIDENCE) await page.getByLabel(label).selectOption({ label: `${name} (PDF, v1)` });
-    await page.getByRole("button", { name: "Save R-L3 evidence" }).click();
-    await expect(page.getByText("R-L3 evidence saved.")).toBeVisible();
+    await expect(page.getByText(/All changes saved/)).toBeVisible(); // saved automatically
     await expect(pill(page, "R-L3")).toHaveText("R-L3 5/5");
     await expect(page.getByRole("button", { name: "Confirm R-L3 (QA)" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
@@ -259,7 +258,7 @@ test.describe.serial("W1 passport workspace", () => {
     test(`${role.who}: views 3D and PDF in the passport; download rights follow the role`, async ({ page }) => {
       await signIn(page, role.email);
       await page.goto(state.passportUrl);
-      await expect(page.getByRole("button", { name: "Save R-L1" })).toHaveCount(0);
+      await expect(page.getByText(/saved automatically|All changes saved/)).toHaveCount(0);
       await expect(page.getByText("Drafts can be prepared now.")).toHaveCount(0); // UX-9
       await page.getByRole("tab", { name: "Interactive 3D model" }).click();
       await expect(page.getByTestId("viewer-stats")).toContainText("40.50", { timeout: 60_000 });

@@ -487,8 +487,12 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
         with tenant_context(op):
             qs = RequestEnvelope.objects.all()
             if not _is_operator_admin(request.user, op):
-                # engineers, QA and support see only the clients they are actively assigned to
+                # engineers, QA and support see only the clients they are actively assigned to; while they work inside one
+                # client company (chosen in the top bar) only that company's requests (decision of 16 Nov 2026)
                 qs = qs.filter(client_tenant_id__in=assigned)
+                current = getattr(request, "membership", None)
+                if current is not None and current.tenant.kind == Tenant.Kind.CLIENT:
+                    qs = qs.filter(client_tenant_id=current.tenant_id)
             for field in ("kind", "status", "client_tenant", "priority"):
                 if p.get(field):
                     qs = qs.filter(**{field: p[field]})
