@@ -6,7 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, fetchObjectUrl, upload } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
-import { KindBadge, OPEN_STATUSES, StatusBadge, Timeline } from "../components/requests";
+import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader, formatBytes, formatDate } from "../components/ui";
 
 export async function downloadAttachment(path: string, filename: string) {
@@ -154,6 +154,12 @@ export default function RequestDetailPage() {
       <PageHeader title={`${r.reference}`} subtitle={<><KindBadge kind={r.kind} /> <StatusBadge status={r.status} /></>} />
       {r.kind === "enquiry" && (
         <Notice>This is an enquiry. Our team will reply here; an enquiry does not start manufacturing.</Notice>
+      )}
+      {r.kind === "manufacturing_request" && (
+        <Card title="Order progress">
+          <OrderProgress status={r.status} />
+          <p className="muted small">Every order is checked by Aries engineering and QA and released before production, and inspected before delivery.</p>
+        </Card>
       )}
       {r.status === "information_requested" && <Notice kind="warning">Our team needs more information. Please reply below.</Notice>}
       <div className="grid-2">

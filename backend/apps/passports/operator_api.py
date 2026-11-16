@@ -118,21 +118,25 @@ class OperatorPassportDetailView(APIView):
         return Response(data)
 
     @extend_schema(tags=["passports"], request=inline_serializer("PassportPublishDecision", {
-        "action": serializers.ChoiceField(choices=["publish", "unpublish"]), "reason": serializers.CharField(required=False)}),
+        "action": serializers.ChoiceField(choices=["publish", "unpublish", "suspend_ordering", "allow_ordering"]),
+        "reason": serializers.CharField(required=False)}),
         responses={200: dict})
     def post(self, request, client_id, passport_id):
         _require_platform_admin(request)
         action = str(request.data.get("action", ""))
-        if action not in ("publish", "unpublish"):
-            raise DomainError("invalid_action", "Choose publish or unpublish.", http_status=400)
+        if action not in ("publish", "unpublish", "suspend_ordering", "allow_ordering"):
+            raise DomainError("invalid_action", "Choose publish, unpublish, suspend_ordering or allow_ordering.", http_status=400)
         t = _client(client_id)
         with tenant_context(t):
             p = _passport(passport_id)
+            reason = str(request.data.get("reason", "") or "")
             if action == "publish":
                 approval.publish(request, p)
+            elif action == "unpublish":
+                approval.unpublish(request, p, reason)
             else:
-                approval.unpublish(request, p, str(request.data.get("reason", "") or ""))
-            data = {"passport_state": p.publication_state}
+                approval.set_ordering(request, p, action == "allow_ordering", reason)
+            data = {"passport_state": p.publication_state, "manufacturing_eligibility": p.manufacturing_eligibility}
         return Response(data)
 
 
