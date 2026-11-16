@@ -106,9 +106,24 @@ export function portalLabel(tenantKind: string, role: string): string {
   return role.startsWith("operator_") ? "Aries portal · client workspace" : "Client portal";
 }
 
+/** Where to land after changing organisation: the same tab when the new organisation has it for this person (its list,
+ *  not a record of the previous organisation, which does not exist there), otherwise the dashboard. */
+export function landingAfterSwitch(pathname: string, search: string, s: { capabilities: string[]; tenant: { kind: string }; membership: { role: string } }): string {
+  const nav = visibleNav((c) => s.capabilities.includes(c), s.tenant.kind === "operator", s.membership.role)
+    .filter((n) => n.to !== "/" && (pathname === n.to || pathname.startsWith(`${n.to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  if (!nav) return "/";
+  if (pathname !== nav.to) return nav.to; // a record page: back to its list
+  const q = new URLSearchParams(search);
+  q.delete("client"); // a filter on the previous company
+  const rest = q.toString();
+  return rest ? `${nav.to}?${rest}` : nav.to;
+}
+
 function OrganisationSwitcher() {
   const { session, switchTenant } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const memberships = useApi<MembershipSummary[]>(session ? "/auth/memberships/" : null, { query: { m: session?.membership.id, counts: "0" } });
   const [error, setError] = useState<unknown>(null);
   if (!session || !memberships.data || memberships.data.length < 2) return null;
@@ -121,8 +136,8 @@ function OrganisationSwitcher() {
         onChange={async (e) => {
           setError(null);
           try {
-            await switchTenant(e.target.value);
-            navigate("/", { replace: true }); // the current page may not exist in the other organisation
+            const next = await switchTenant(e.target.value);
+            navigate(landingAfterSwitch(location.pathname, location.search, next), { replace: true }); // stay on the same tab
           } catch (err) {
             setError(err);
           }
