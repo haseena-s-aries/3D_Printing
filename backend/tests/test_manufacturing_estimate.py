@@ -50,7 +50,6 @@ def ai(settings, monkeypatch):
     settings.PART_INTELLIGENCE_ENABLED = True
     settings.AI_PROVIDER = "gemini"
     settings.GEMINI_API_KEY = "test-key"
-    settings.AI_ALLOWED_COMPANIES = ["client-a"]
     settings.AI_CALLS_PER_MINUTE, settings.AI_CALLS_PER_DAY, settings.AI_DAILY_BUDGET_USD = 50, 100, 5.0
     fake = FakeAdapter()
     monkeypatch.setattr(service, "_adapter", lambda: fake)
@@ -152,3 +151,9 @@ def test_rates_are_edited_by_admin_or_manager_and_used_by_new_estimates(world, o
     e = login(world["op_eng"], world["a"]).post(url(order), {"action": "run"}, format="json").json()["latest"]
     assert e["result"]["currency"] == "INR" and e["rates"]["machine_rates"]["metal_am"] == 5000
     assert "INR" in ai.calls[-1]["prompt"]  # prices are asked in the Aries currency
+
+
+def test_every_client_company_may_use_gemini_once_it_is_configured(world, ai, settings):
+    assert service.ai_status(world["a"])["enabled"] and service.ai_status(world["b"])["enabled"]  # no per-company list
+    settings.AI_PROVIDER = ""
+    assert not service.ai_status(world["b"])["enabled"]  # off until the provider and key are set

@@ -2,7 +2,7 @@
 
 External AI gate (all must hold, checked on every call, server-side):
 - PART_INTELLIGENCE_ENABLED, AI_PROVIDER = "gemini" and GEMINI_API_KEY set (backend environment);
-- the company's slug is in AI_ALLOWED_COMPANIES (real client companies stay off it until data-processing approval);
+- every company may use it once it is configured (decision of 16 Nov 2026; earlier a per-company list, AI_ALLOWED_COMPANIES);
 - the part is an imported inventory record (CN-007 Phase 1), i.e. it has an import record.
 Only whitelisted fields are sent (`ai_inputs`): the material description, the cleaned manufacturer name and the
 rule-based findings. Never plant, location, equipment tag, ABC indicator, manufacturer reference, remarks, files,
@@ -22,7 +22,6 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import connection, transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from apps.audit.service import record
@@ -71,9 +70,6 @@ def ai_status(tenant) -> dict:
         reason = "External AI is switched off (no provider configured). The rule-based analysis works without it."
     elif not s.GEMINI_API_KEY:
         reason = "External AI is not configured (no API key in the backend environment)."
-    elif tenant is None or tenant.slug not in s.AI_ALLOWED_COMPANIES:
-        reason = ("External AI is not permitted for this company. It stays off for client companies until data-processing "
-                  "approval and suitable API terms are confirmed.")
     return {"enabled": not reason, "reason": reason, "provider": s.AI_PROVIDER or "", "models": dict(s.GEMINI_MODELS),
             "limits": {"calls_per_minute": s.AI_CALLS_PER_MINUTE, "calls_per_day": s.AI_CALLS_PER_DAY,
                        "daily_budget_usd": s.AI_DAILY_BUDGET_USD, "timeout_seconds": s.AI_TIMEOUT_SECONDS,
@@ -143,8 +139,8 @@ def _usage_rows(tenants, since) -> list[dict]:
 
 
 def _limited_tenants(request) -> list:
-    """Companies whose calls count towards the shared limits: those permitted to use external AI, plus this one."""
-    return list(Tenant.objects.filter(Q(slug__in=settings.AI_ALLOWED_COMPANIES) | Q(pk=request.tenant.pk)))
+    """Companies whose calls count towards the shared limits: every company (all may use external AI)."""
+    return list(Tenant.objects.all())
 
 
 def _reserve(request, model: str, part, tenant=None) -> AIUsageLog:

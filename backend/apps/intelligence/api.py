@@ -120,7 +120,7 @@ class AdminIntelligenceUsageView(APIView):
     @extend_schema(responses=dict)
     def get(self, request):
         return Response({"ai": {k: v for k, v in service.ai_status(None).items() if k != "reason"},
-                         "allowed_companies": len(settings.AI_ALLOWED_COMPANIES),
+                         "allowed_companies": "all",
                          "usage": service.usage_summary(tenant=None)})
 
 

@@ -134,7 +134,7 @@ export default function AiManagementPage() {
                       <td><strong>{c.company}</strong></td>
                       <td><Badge tone={c.workspace_enabled ? "info" : "neutral"}>{c.workspace_enabled ? "On" : "Off"}</Badge></td>
                       <td>{c.sharing_permitted ? "Yes" : <span className="muted">No — needs a reviewed decision</span>}</td>
-                      <td>{c.external_ai_permitted ? "Yes (synthetic pilot)" : <span className="muted">No</span>}</td>
+                      <td>{c.external_ai_permitted ? "Yes" : <span className="muted">No</span>}</td>
                       <td>{c.disclosure.shared}</td>
                       <td className="actions">
                         <button type="button" className={`btn btn-small ${c.workspace_enabled ? "" : "btn-primary"}`} disabled={!!busy || (!c.workspace_enabled && !c.sharing_permitted)}

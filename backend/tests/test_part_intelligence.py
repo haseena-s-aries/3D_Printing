@@ -46,7 +46,6 @@ def pi(settings, world, monkeypatch):
     settings.PART_INTELLIGENCE_ENABLED = True
     settings.AI_PROVIDER = "gemini"
     settings.GEMINI_API_KEY = SECRET
-    settings.AI_ALLOWED_COMPANIES = ["client-a"]
     settings.AI_CALLS_PER_MINUTE, settings.AI_CALLS_PER_DAY, settings.AI_DAILY_BUDGET_USD = 50, 100, 1.0
     monkeypatch.setattr(service.time, "sleep", lambda s: None)
     eng = login(world["op_eng"], world["a"])
@@ -94,10 +93,7 @@ def test_ai_is_optional_and_gated_server_side(pi, settings, world):
     assert view["ai"]["enabled"] is False and view["analysis"]["classification"]["family"] == "Wear ring"
     r = eng.post(url(ring, "assess/"), {"tier": "lite"}, format="json")
     assert r.status_code == 403 and r.json()["error"]["code"] == "ai_not_permitted"
-    settings.AI_PROVIDER = "gemini"
-    settings.AI_ALLOWED_COMPANIES = ["some-other-company"]  # a company not cleared for external AI
-    assert eng.post(url(ring, "assess/"), {}, format="json").json()["error"]["code"] == "ai_not_permitted"
-    settings.AI_ALLOWED_COMPANIES = ["client-a"]
+    settings.AI_PROVIDER = "gemini"  # every company may use it once configured (decision of 16 Nov 2026)
     manual = pi["parts"]["990100000099"]  # created by hand, not an imported inventory record
     assert eng.post(url(manual, "assess/"), {}, format="json").json()["error"]["code"] == "ai_not_permitted_for_part"
     for user in ("a_admin", "a_eng", "a_user"):  # clients never see suggestions or request them

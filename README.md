@@ -220,7 +220,7 @@ first `--reuse-db` run migrates it). Never point tests at a shared or production
   (`backend/tests/fixtures/sleeve_d45_h40_5_synthetic.stp`).
 - Do not weaken tenant isolation, approval controls or the role permissions. Changes to `apps/tenancy`, security
   policies or migrations need a reviewer.
-- External AI (Gemini) stays disabled unless the company and use are explicitly approved (`AI_ALLOWED_COMPANIES`).
+- External AI (Gemini) is off until `AI_PROVIDER=gemini` and `GEMINI_API_KEY` are set; then every company may use it (decision of 16 Nov 2026), within the rate limits and daily budget.
 
 ## Git branching and contributions
 

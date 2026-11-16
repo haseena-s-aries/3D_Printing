@@ -14,7 +14,7 @@ Who does what
   search could not give falls back to the rate table, shown as such.
 - The engineer corrects any figure (a new version); the Aries Admin or Manager records the chosen route.
 
-External AI follows the existing gate (AI_PROVIDER, GEMINI_API_KEY, AI_ALLOWED_COMPANIES), limits, daily budget and
+External AI follows the existing gate (AI_PROVIDER, GEMINI_API_KEY; every company), limits, daily budget and
 usage log (apps.intelligence.service). Without it an engineer fills in a manual estimate; the calculation is the same.
 Sent to Gemini: the part's name and description, material, size, application, manufacturer and the passport's
 manufacturing fields (process, standards, tolerances, heat treatment, NDT), the quantity and the days until the required

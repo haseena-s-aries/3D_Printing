@@ -209,9 +209,7 @@ def test_ai_unavailable_or_failing_keeps_the_rule_results(fz, settings):
     manual = fz["parts"]["990100000099"]  # not an imported record: rules yes, external AI no
     assert run(eng, manual).status_code == 201
     assert run(eng, manual, "lite").json()["error"]["code"] == "ai_not_permitted_for_part"
-    settings.AI_ALLOWED_COMPANIES = ["another-company"]
-    assert run(eng, ring, "lite").json()["error"]["code"] == "ai_not_permitted"
-    settings.AI_ALLOWED_COMPANIES, settings.AI_CALLS_PER_MINUTE = ["client-a"], 0
+    settings.AI_CALLS_PER_MINUTE = 0
     r = run(eng, fz["parts"]["990100000101"], "lite")
     assert r.status_code == 429 and r.json()["error"]["code"] == "ai_rate_limited"
 

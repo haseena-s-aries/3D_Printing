@@ -232,8 +232,7 @@ IMPORT_MAX_ROWS = int(env("IMPORT_MAX_ROWS", "20000"))
 
 # CN-007 Phase 2 part intelligence. The deterministic analysis (rules in Python) needs only PART_INTELLIGENCE_ENABLED.
 # External AI (Gemini) is optional and additionally needs AI_PROVIDER=gemini, GEMINI_API_KEY (backend environment only,
-# never sent to the web app or logged) and the company's slug in AI_ALLOWED_COMPANIES. Real client companies stay off
-# that list until data-processing approval and suitable API terms are confirmed.
+# never sent to the web app or logged). Every company may use it (decision of 16 Nov 2026: no per-company list).
 PART_INTELLIGENCE_ENABLED = env_bool("PART_INTELLIGENCE_ENABLED", False)
 AI_PROVIDER = env("AI_PROVIDER", "")  # "" = external AI off; "gemini"
 GEMINI_API_KEY = env("GEMINI_API_KEY", "")
@@ -244,7 +243,6 @@ GEMINI_MODELS = {  # tier -> model id; "lite" is the default, "flash" and "pro" 
 }
 # Optional build envelope (x,y,z in mm) for the rule "dimension exceeds the build envelope"; unset = not checked.
 AM_BUILD_ENVELOPE_MM = [float(x) for x in env("AM_BUILD_ENVELOPE_MM", "").split(",") if x.strip()] or None
-AI_ALLOWED_COMPANIES = [s.strip() for s in env("AI_ALLOWED_COMPANIES", "").split(",") if s.strip()]
 AI_TIMEOUT_SECONDS = int(env("AI_TIMEOUT_SECONDS", "45"))
 AI_MAX_RETRIES = int(env("AI_MAX_RETRIES", "2"))  # retries after the first attempt, transient errors only
 # True total deadline of one AI request (all attempts, retries and back-off); a single attempt gets at most AI_TIMEOUT_SECONDS.
