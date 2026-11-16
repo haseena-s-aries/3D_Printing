@@ -284,6 +284,9 @@ def sync_envelope(obj: ClientRequest) -> None:
     client_name = Tenant.objects.filter(pk=obj.tenant_id).values_list("name", flat=True).first() or ""
     last = RequestEvent.objects.filter(request=obj).order_by("-created_at").first()
     client_spoke = last is not None and last.author_side == RequestEvent.Side.CLIENT
+    # read here, in the client's context: inside the operator's context row-level security hides the client's parts, so
+    # the part's project was lost and project-scoped Aries staff could not see the request in their lists
+    project_ref = request_project_id(obj)
     with tenant_context(op):
         env, _ = RequestEnvelope.objects.update_or_create(request_id=obj.pk, defaults=dict(
             awaiting_reply=client_spoke and obj.status in OPEN, last_client_activity=last.event[:30] if client_spoke else "",
@@ -291,7 +294,7 @@ def sync_envelope(obj: ClientRequest) -> None:
             tenant=op, client_tenant_id=obj.tenant_id, client_name=client_name, reference=obj.reference, kind=obj.kind,
             status=obj.status, priority=obj.priority, part_number=obj.part_number or "", part_name=(obj.part_name or obj.part_description)[:200],
             quantity=obj.quantity, required_date=obj.required_date or obj.preferred_date, submitted_at=obj.created_at,
-            project_ref=request_project_id(obj), assigned_to_id=obj.assigned_to_id))
+            project_ref=project_ref, assigned_to_id=obj.assigned_to_id))
         if not env.intake_number:
             assign_intake_number(env)
 
