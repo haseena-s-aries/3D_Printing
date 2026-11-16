@@ -106,7 +106,7 @@ function ModelDialog({ d, files }: { d: Detail; files: ReturnType<typeof useAppr
           <button type="button" className="btn btn-ghost" onClick={() => files.setModel(null)}>Close</button>
         </header>
         <Suspense fallback={<Loading label="Loading 3D model…" />}>
-          <ModelViewer key={f.id} fileId={f.id} version={f.latest_version} revisionLabel={`${d.passport_number} rev ${d.revision_number}`} loadUrl={files.glb(f)} />
+          <ModelViewer key={f.id} fileId={f.id} version={f.latest_version} revisionLabel={d.revision_number ? `${d.passport_number} rev ${d.revision_number}` : d.passport_number} loadUrl={files.glb(f)} />
         </Suspense>
       </div>
     </div>
@@ -192,7 +192,7 @@ function text(v: unknown): string {
 }
 
 /** Label/value tiles in a responsive grid; empty values are shown as "Not recorded" in a muted tone. */
-function FieldGrid({ rows }: { rows: [string, unknown][] }) {
+export function FieldGrid({ rows }: { rows: [string, unknown][] }) {
   if (!rows.length) return <p className="muted small">Nothing recorded.</p>;
   return (
     <dl className="field-grid">
@@ -209,7 +209,7 @@ function FieldGrid({ rows }: { rows: [string, unknown][] }) {
   );
 }
 
-function Section({ title, badge, children }: { title: string; badge?: ReactNode; children: ReactNode }) {
+export function Section({ title, badge, children }: { title: string; badge?: ReactNode; children: ReactNode }) {
   return (
     <section className="approval-section">
       <header><h3>{title}</h3>{badge}</header>
@@ -409,6 +409,18 @@ export default function PassportApprovalsPage() {
           )}
         </section>
       </div>
+    </>
+  );
+}
+
+/** The spare part's files only (a part without a passport yet): documents in the page, downloads and the 3D model. */
+export function PartFiles({ d }: { d: Detail }) {
+  const files = useApprovalFiles(d);
+  return (
+    <>
+      <Documents d={d} files={files} />
+      <DocPreview files={files} />
+      <ModelDialog d={d} files={files} />
     </>
   );
 }

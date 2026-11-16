@@ -17,36 +17,61 @@ import { JobSheetPanel } from "../components/JobSheetPanel";
 import ScanHandoverPanel from "../components/ScanHandoverPanel";
 import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader } from "../components/ui";
-import { Meters, RevisionContent, type Detail } from "./PassportApprovalsPage";
+import { FieldGrid, Meters, PartFiles, RevisionContent, Section, type Detail } from "./PassportApprovalsPage";
 import { AttachmentList, RequestFacts } from "./RequestDetailPage";
 
-type OrderPassport = Detail & { ordered_revision_number: number | null; current_revision_number: number | null };
+type PartDetails = Record<string, string | null> & { part_number: string; name: string };
+type OrderPart = Detail & { part: PartDetails; has_passport: boolean; ordered_revision_number: number | null; current_revision_number: number | null };
 
-/** The passport of the ordered part, read-only, so the engineering check, QA check and inspection are done from the
- *  request: the revision the client ordered, R-L1 / R-L2 / R-L3, documents, reports and the 3D model (audited). */
-function OrderPassportCard({ id, kind }: { id: string; kind: string }) {
-  const [open, setOpen] = useState(kind === "manufacturing_request");
+const PART_FIELDS: [string, string][] = [
+  ["part_number", "Part number"], ["name", "Name"], ["description", "Description"], ["category", "Category"], ["criticality", "Criticality"],
+  ["original_material", "Original material"], ["dimensions", "Dimensions"], ["application", "Application"],
+  ["equipment_reference", "Equipment"], ["manufacturer", "Manufacturer / OEM"], ["project", "Project"], ["origin", "Created by"],
+  ["submission_kind", "Client submission"], ["submitted_by", "Submitted by"], ["source_part_number", "Clone of part"],
+  ["source_passport_number", "Clone of passport"], ["proposed_material", "Proposed material"], ["material_change_reason", "Reason for material change"],
+  ["client_remarks", "Client remarks"],
+];
+// shown only when filled (clone and submission details); the others always, as "Not recorded" when empty
+const OPTIONAL = new Set(["submission_kind", "submitted_by", "source_part_number", "source_passport_number", "proposed_material",
+  "material_change_reason", "client_remarks", "project"]);
+
+/** The ordered part, read-only, so the engineering check, QA check and inspection are done from the request: the spare
+ *  part's details, the passport revision the client ordered (R-L1 / R-L2 / R-L3), documents, reports and the 3D model.
+ *  Every opening is audited in the client company. */
+function OrderPartCard({ id }: { id: string }) {
+  const [open, setOpen] = useState(true);
   const root = `/operator/requests/${id}/passport`;
-  const d = useApi<OrderPassport>(open ? `${root}/` : null);
+  const d = useApi<OrderPart>(open ? `${root}/` : null);
   const p = d.data;
+  const partRows: [string, unknown][] = p ? PART_FIELDS.filter(([k]) => !OPTIONAL.has(k) || p.part[k]).map(([k, l]) => [l, p.part[k]]) : [];
   return (
     <div className="card order-passport">
       <div className="card-head">
-        <h2>Passport for this order{p ? ` · ${p.passport_number} rev ${p.revision.revision_number}` : ""}</h2>
-        <button type="button" className="btn btn-small" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Show passport details"}</button>
+        <h2>Part, passport and documents{p?.has_passport ? ` · ${p.passport_number} rev ${p.revision.revision_number}` : ""}</h2>
+        <button type="button" className="btn btn-small" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Show details"}</button>
       </div>
       {open && (
         <>
           <ErrorNotice error={d.error} />
-          {d.loading && !p ? <Loading label="Loading passport…" /> : p && (
-            <>
-              <p className="muted small">{p.part_number} · {p.part_name} · read only. Check these details, documents and the 3D model before taking your step.</p>
-              {p.ordered_revision_number && p.current_revision_number && p.current_revision_number !== p.ordered_revision_number && (
-                <Notice kind="warning">The client ordered revision {p.ordered_revision_number}. The passport is now at revision {p.current_revision_number}; this shows the ordered revision.</Notice>
+          {d.loading && !p ? <Loading label="Loading part and passport…" /> : p && (
+            <div className="approval-content">
+              <p className="muted small">Read only. Check the part, its passport, documents and 3D model before taking your step.</p>
+              <Section title="Spare part"><FieldGrid rows={partRows} /></Section>
+              {p.has_passport ? (
+                <>
+                  {p.ordered_revision_number && p.current_revision_number && p.current_revision_number !== p.ordered_revision_number && (
+                    <Notice kind="warning">The client ordered revision {p.ordered_revision_number}. The passport is now at revision {p.current_revision_number}; this shows the ordered revision.</Notice>
+                  )}
+                  <Meters c={(p.revision.completeness ?? {}) as Record<string, { done: number; total: number }>} />
+                  <RevisionContent d={{ ...p, root }} />
+                </>
+              ) : (
+                <>
+                  <Notice>This part has no digital passport yet, so there are no R-L1 / R-L2 / R-L3 details or reports.</Notice>
+                  <PartFiles d={{ ...p, root, passport_number: p.part.part_number } as Detail} />
+                </>
               )}
-              <Meters c={(p.revision.completeness ?? {}) as Record<string, { done: number; total: number }>} />
-              <div className="approval-content"><RevisionContent d={{ ...p, root }} /></div>
-            </>
+            </div>
           )}
         </>
       )}
@@ -168,7 +193,7 @@ export default function IncomingRequestDetailPage() {
               <p className="small">
                 {r.part_summary.passport_number ? `Passport ${r.part_summary.passport_number}` : "No passport"} · {String(r.part_summary.dimensions || "")}{" "}
                 {sameOrg && r.part_summary.passport_id ? <Link to={`/passports/${r.part_summary.passport_id}`}>Open passport</Link>
-                  : r.part_summary.passport_id ? <span className="muted">Details below, under "Passport for this order".</span> : null}
+                  : r.part_summary.passport_id ? <span className="muted">Details below, under "Part, passport and documents".</span> : null}
               </p>
             </div>
           )}
@@ -198,7 +223,7 @@ export default function IncomingRequestDetailPage() {
           {r.project_code && <p className="small">Project <strong>{r.project_code}</strong>{r.created_part ? " · draft part created" : ""} in {r.client_name}.</p>}
         </Card>
       </div>
-      {r.kind !== "digitisation" && r.part_summary?.passport_id && <OrderPassportCard id={id!} kind={r.kind} />}
+      {r.kind !== "digitisation" && r.part_summary && <OrderPartCard id={id!} />}
       <ScanHandoverPanel envelopeId={id!} request={r} sameOrg={sameOrg} onChange={(next) => req.setData(next)} />
       <JobSheetPanel envelopeId={id!} status={r.status} kind={r.kind} />
       <div className="grid-2">
