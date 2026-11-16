@@ -259,7 +259,7 @@ def test_publish_and_unpublish_by_admin_manager_or_engineer(ap):
     mgr = login(w["op_mgr"])
     assert mgr.post(base, {"action": "publish"}, format="json").json()["error"]["code"] == "not_complete"  # draft
     _completed(ap)
-    assert mgr.post(base, {"action": "publish"}, format="json").json() == {"passport_state": "published"}
+    assert mgr.post(base, {"action": "publish"}, format="json").json() == {"passport_state": "published", "manufacturing_eligibility": "eligible_subject_to_authorisation"}
     assert any("Passport published" in t for t in titles(w["a_admin"]))
     assert login(w["a_admin"]).get("/api/v1/parts/?catalog=published").json()["count"] == 1  # now in the client's catalog
     # a new revision does not take it out of the catalog; completing it keeps it published
@@ -272,4 +272,4 @@ def test_publish_and_unpublish_by_admin_manager_or_engineer(ap):
     r = eng.post(f"{url}/unpublish/", {"reason": "Material certificate expired."}, format="json")
     assert r.status_code == 200 and r.json()["publication_state"] == "complete"
     assert eng.post(f"{url}/publish/", {}, format="json").json()["publication_state"] == "published"
-    assert login(w["op_admin"]).post(base, {"action": "unpublish"}, format="json").json() == {"passport_state": "complete"}
+    assert login(w["op_admin"]).post(base, {"action": "unpublish"}, format="json").json() == {"passport_state": "complete", "manufacturing_eligibility": "not_eligible"}

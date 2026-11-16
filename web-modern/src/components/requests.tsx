@@ -13,6 +13,11 @@ export const STATUS: Record<string, [string, Tone]> = {
   answered: ["Answered", "success"],
   scheduled: ["Scheduled", "info"],
   in_progress: ["In progress", "info"],
+  engineering_checked: ["Engineering checked", "info"],
+  qa_approved: ["QA approved", "info"],
+  released: ["Released for production", "info"],
+  in_production: ["In production", "info"],
+  inspected: ["Inspected · ready to deliver", "info"],
   completed: ["Completed", "success"],
   closed: ["Closed", "neutral"],
   declined: ["Declined", "danger"],
@@ -26,7 +31,8 @@ export const KIND: Record<string, string> = {
   assessment: "AI assessment request",
 };
 
-export const OPEN_STATUSES = ["submitted", "acknowledged", "information_requested", "information_provided", "answered", "scheduled", "in_progress"];
+export const OPEN_STATUSES = ["submitted", "acknowledged", "information_requested", "information_provided", "answered", "scheduled", "in_progress",
+  "engineering_checked", "qa_approved", "released", "in_production", "inspected"];
 
 export function StatusBadge({ status }: { status: string }) {
   const [text, tone] = STATUS[status] ?? [status, "neutral"];
@@ -80,7 +86,35 @@ const EVENT_TEXT: Record<string, string> = {
   deliverable_recorded: "Deliverable recorded",
   handed_over: "Handed over to the digital passport",
   job_preparation: "Manufacturing documentation in preparation",
+  engineering_checked: "Engineering check passed",
+  qa_approved: "QA approved",
+  released: "Released for production",
+  in_production: "Production started",
+  inspection_failed: "Inspection found issues · part is being reworked",
+  inspected: "Inspection passed",
 };
+
+/** Manufacturing order flow (decision of 13 Nov 2026). `completed` means delivered for a manufacturing request. */
+export const ORDER_STEPS: [string, string][] = [
+  ["submitted", "Submitted"], ["acknowledged", "Acknowledged"], ["engineering_checked", "Engineering check"], ["qa_approved", "QA check"],
+  ["released", "Released"], ["in_production", "In production"], ["inspected", "Inspected"], ["completed", "Delivered"],
+];
+
+/** Where an order is in the flow: finished steps ticked, the next one highlighted. While information is requested or
+ * provided it sits after "Acknowledged". */
+export function OrderProgress({ status }: { status: string }) {
+  if (["closed", "withdrawn", "declined"].includes(status)) return null;
+  const found = ORDER_STEPS.findIndex(([s]) => s === status);
+  const last = found >= 0 ? found : 1;  // the last step finished; the next one is under way
+  return (
+    <ol className="order-steps" aria-label="Order progress">
+      {ORDER_STEPS.map(([s, text], i) => {
+        const state = i <= last ? "done" : i === last + 1 ? "current" : "todo";
+        return <li key={s} className={`order-step is-${state}`} aria-current={state === "current" ? "step" : undefined}><span className="order-dot">{state === "done" ? "✓" : i + 1}</span>{text}</li>;
+      })}
+    </ol>
+  );
+}
 
 export function Timeline({ events }: { events: RequestEvent[] }) {
   return (

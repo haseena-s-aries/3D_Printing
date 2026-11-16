@@ -60,16 +60,17 @@ def test_draft_part_request_is_an_enquiry_with_reference_and_revision(world, cat
     assert second["reference"].endswith("00002")
 
 
-def test_published_eligible_part_becomes_a_manufacturing_request_but_has_no_production_actions(world, catalog):
-    with tenant_context(world["a"]):  # stored states set directly: there is no approval API (OQ-35/OQ-36)
+def test_published_eligible_part_becomes_a_manufacturing_request_with_ordered_steps(world, catalog):
+    with tenant_context(world["a"]):
         DigitalPassport.objects.filter(pk=catalog["passport"]["id"]).update(publication_state="published", manufacturing_eligibility="eligible")
     body = manufacturing(login(world["a_admin"]), catalog["part"]["id"]).json()
     assert body["kind"] == "manufacturing_request"
     op = login(world["op_eng"], world["a"])
     env = envelope_for(world, body["reference"])
     assert op.post(f"/api/v1/operator/requests/{env.pk}/act/", {"action": "acknowledge"}, format="json").status_code == 200
-    for forbidden in ("release", "approve", "start_production"):
-        assert op.post(f"/api/v1/operator/requests/{env.pk}/act/", {"action": forbidden}, format="json").status_code == 400
+    assert op.post(f"/api/v1/operator/requests/{env.pk}/act/", {"action": "approve"}, format="json").status_code == 400  # unknown
+    for out_of_order in ("release", "start_production", "deliver"):  # steps exist but must follow the order
+        assert op.post(f"/api/v1/operator/requests/{env.pk}/act/", {"action": out_of_order}, format="json").status_code == 409
 
 
 def test_operator_workflow_and_client_tracking(world, catalog):

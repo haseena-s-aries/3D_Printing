@@ -31,6 +31,7 @@ from apps.tenancy.models import Membership, Role, Tenant
 from .models import DigitalPassport, PassportRevision
 
 RS, PS = PassportRevision.Status, DigitalPassport.PublicationState
+EL = DigitalPassport.Eligibility
 
 
 def _operator_tenant():
@@ -212,15 +213,18 @@ def _client_admins(passport: DigitalPassport):
 
 
 def publish(request, passport: DigitalPassport) -> DigitalPassport:
-    """Aries Admin, Manager or Engineer: a complete passport goes into the client's published catalog. Manufacturing
-    eligibility is not changed here (production release rules, OQ-36)."""
+    """Aries Admin, Manager or Engineer: a complete passport goes into the client's published catalog and the part can be
+    ordered (eligible subject to authorisation: each order still passes engineering, QA and release; decision of
+    13 Nov 2026). A suspended part stays suspended."""
     if passport.publication_state == PS.PUBLISHED:
         raise DomainError("already_published", "This passport is already published.", http_status=409)
     if passport.publication_state != PS.COMPLETE:
         raise DomainError("not_complete", "Only a complete passport can be published. Mark the current revision complete first.",
                           http_status=409)
     passport.publication_state = PS.PUBLISHED
-    passport.save(update_fields=["publication_state", "updated_at"])
+    if passport.manufacturing_eligibility == EL.NOT_ELIGIBLE:
+        passport.manufacturing_eligibility = EL.SUBJECT_TO_AUTHORISATION
+    passport.save(update_fields=["publication_state", "manufacturing_eligibility", "updated_at"])
     latest = passport.revisions.filter(status=RS.APPROVED).order_by("-revision_number").first()
     record(request, "passport.published", obj=passport, tenant=passport.tenant,
            data={"passport": passport.passport_number, "revision_number": latest.revision_number if latest else None})
@@ -235,9 +239,28 @@ def unpublish(request, passport: DigitalPassport, reason: str = "") -> DigitalPa
         raise DomainError("not_published", "This passport is not published.", http_status=409)
     draft_open = passport.revisions.filter(status=RS.DRAFT).exists()
     passport.publication_state = PS.REVISION_IN_PROGRESS if draft_open else PS.COMPLETE
-    passport.save(update_fields=["publication_state", "updated_at"])
+    passport.manufacturing_eligibility = EL.NOT_ELIGIBLE  # an unpublished part cannot be ordered
+    passport.save(update_fields=["publication_state", "manufacturing_eligibility", "updated_at"])
     record(request, "passport.unpublished", obj=passport, tenant=passport.tenant,
            data={"passport": passport.passport_number, "reason": (reason or "")[:500]})
     _notify(_client_admins(passport), f"Passport withdrawn from the catalog: {passport.passport_number}",
             (reason or "Aries took this passport out of the published catalog.")[:500], f"/passports/{passport.pk}", passport.tenant.name)
+    return passport
+
+
+def set_ordering(request, passport: DigitalPassport, allow: bool, reason: str = "") -> DigitalPassport:
+    """Aries Admin or Manager: suspend ordering of a published part, or allow it again (decision of 13 Nov 2026)."""
+    if passport.publication_state != PS.PUBLISHED:
+        raise DomainError("not_published", "Only a published passport can be ordered.", http_status=409)
+    new = EL.SUBJECT_TO_AUTHORISATION if allow else EL.SUSPENDED
+    if passport.manufacturing_eligibility == new:
+        return passport
+    old = passport.manufacturing_eligibility
+    passport.manufacturing_eligibility = new
+    passport.save(update_fields=["manufacturing_eligibility", "updated_at"])
+    record(request, "passport.ordering_allowed" if allow else "passport.ordering_suspended", obj=passport, tenant=passport.tenant,
+           data={"passport": passport.passport_number, "from": old, "to": new, "reason": (reason or "")[:500]})
+    _notify(_client_admins(passport), f"Ordering {'allowed' if allow else 'suspended'}: {passport.passport_number}",
+            (reason or (f"{passport.title} can be ordered again." if allow else f"{passport.title} cannot be ordered for now."))[:500],
+            f"/passports/{passport.pk}", passport.tenant.name)
     return passport

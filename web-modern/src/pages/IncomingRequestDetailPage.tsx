@@ -1,7 +1,8 @@
 /**
  * Operator: one client request. Actions follow the server's workflow: acknowledge, request information, reply and
- * close (enquiries), schedule / start / complete / decline and create the project (3D scanning). There is no
- * review, release or production action: manufacturing authorisation is not part of this workflow.
+ * close (enquiries), schedule / start / complete / decline and create the project (3D scanning), and for manufacturing
+ * requests the order flow: engineering check -> QA check -> release -> production -> inspection -> delivered. Each step
+ * is shown only to the role that may take it (`my_steps` from the server, which enforces the same rule).
  */
 import type { OperatorRequest } from "@passport/api-types";
 import { useEffect, useState } from "react";
@@ -13,16 +14,42 @@ import { useAuth } from "../auth/AuthContext";
 import { Eligibility } from "../components/catalog";
 import { JobSheetPanel } from "../components/JobSheetPanel";
 import ScanHandoverPanel from "../components/ScanHandoverPanel";
-import { KindBadge, OPEN_STATUSES, StatusBadge, Timeline } from "../components/requests";
+import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader } from "../components/ui";
 import { AttachmentList, RequestFacts } from "./RequestDetailPage";
 
 type Action = { action: string; label: string; done: string; needsMessage?: boolean; primary?: boolean };
 
-function actionsFor(kind: string, status: string): Action[] {
+/** Manufacturing order steps: [action, from statuses, roles, label, done text, message required]. */
+const ORDER: [string, string[], string[], string, string, boolean][] = [
+  ["engineering_check", ["acknowledged", "information_provided"], ["engineer"], "Engineering check passed", "Engineering check recorded", false],
+  ["qa_approve", ["engineering_checked"], ["qa"], "QA approve", "QA approval recorded", false],
+  ["release", ["qa_approved"], ["admin"], "Release for production", "Released for production", false],
+  ["start_production", ["released"], ["engineer", "admin"], "Start production", "Production started", false],
+  ["inspection_passed", ["in_production"], ["qa"], "Inspection passed", "Inspection passed", false],
+  ["inspection_failed", ["in_production"], ["qa"], "Inspection failed · rework", "Inspection failure recorded", true],
+  ["deliver", ["inspected"], ["engineer", "admin"], "Mark delivered", "Marked as delivered", false],
+];
+const WAITING: Record<string, string> = {
+  acknowledged: "an Aries Engineer to do the engineering check", information_provided: "an Aries Engineer to do the engineering check",
+  engineering_checked: "Aries QA to do the QA check (not the engineer who checked it)", qa_approved: "an Aries Admin or Manager to release it",
+  released: "an Aries Engineer, Admin or Manager to start production", in_production: "Aries QA to inspect the part",
+  inspected: "an Aries Engineer, Admin or Manager to mark it delivered",
+};
+
+function actionsFor(kind: string, status: string, steps: string[]): Action[] {
   const working = ["acknowledged", "information_provided"].includes(status);
   const out: Action[] = [];
   if (status === "submitted") out.push({ action: "acknowledge", label: "Acknowledge", done: "Request acknowledged", primary: true });
+  if (kind === "manufacturing_request") {
+    ORDER.filter(([, from, roles]) => from.includes(status) && roles.some((x) => steps.includes(x)))
+      .forEach(([action, , , label, done, needsMessage]) => out.push({ action, label, done, needsMessage, primary: action !== "inspection_failed" }));
+    if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "message", label: "Send message", done: "Message sent", needsMessage: true });
+    if (working || ["engineering_checked", "qa_approved"].includes(status)) out.push({ action: "request_information", label: "Request information", done: "Information requested", needsMessage: true });
+    if (working || status === "answered") out.push({ action: "respond", label: "Send reply", done: "Reply sent", needsMessage: true });
+    if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "close", label: "Close with reason", done: "Request closed", needsMessage: true });
+    return out;
+  }
   if (kind !== "digitisation") {
     if (working || status === "answered") out.push({ action: "request_information", label: "Request information", done: "Information requested", needsMessage: true });
     if (working || status === "answered") out.push({ action: "respond", label: "Send reply", done: "Reply sent", needsMessage: true, primary: true });
@@ -81,7 +108,8 @@ export default function IncomingRequestDetailPage() {
     }
   }
 
-  const actions = actionsFor(r.kind, r.status);
+  const steps = (r as OperatorRequest & { my_steps?: string[] }).my_steps ?? [];
+  const actions = actionsFor(r.kind, r.status, steps);
   return (
     <>
       <BackLink to="/incoming">Incoming requests</BackLink>
@@ -91,7 +119,10 @@ export default function IncomingRequestDetailPage() {
         <Notice>Enquiry: the part is not published and eligible for manufacturing. Reply and close it; it cannot become a production order here.</Notice>
       )}
       {r.kind === "manufacturing_request" && (
-        <Notice kind="warning">Engineering review, QA confirmation and production release are not available in this release. Acknowledge and reply only.</Notice>
+        <Card title="Order progress">
+          <OrderProgress status={r.status} />
+          {WAITING[r.status] && <p className="muted small">Waiting for {WAITING[r.status]}.</p>}
+        </Card>
       )}
       <div className="grid-2">
         <Card title="Request">

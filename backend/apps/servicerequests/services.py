@@ -2,8 +2,10 @@
 
 Every state change goes through `transition()`, which validates it against TRANSITIONS, appends a RequestEvent,
 writes an audit event in the client's tenant, refreshes the operator envelope and notifies the other side.
-Manufacturing requests (published AND eligible parts) can be acknowledged and answered, but review, release and
-production steps do not exist here: they are governed by OQ-36 (policy seam, refused).
+Manufacturing requests (published AND eligible parts; decision of 13 Nov 2026) follow the order flow:
+acknowledge -> engineering check (Aries Engineer) -> QA check (Aries QA, or an engineer with the QA permission; never the
+person who did the engineering check) -> release for production (Aries Admin or Manager) -> in production -> QA inspection
+(passed, or failed -> rework) -> delivered. Each step is role-checked here, audited and notified to the client.
 """
 from __future__ import annotations
 
@@ -22,7 +24,8 @@ from .models import ClientRequest, Notification, RequestEnvelope, RequestEvent
 
 K, S = ClientRequest.Kind, ClientRequest.Status
 ELIGIBLE = {DigitalPassport.Eligibility.ELIGIBLE, DigitalPassport.Eligibility.SUBJECT_TO_AUTHORISATION}
-OPEN = {S.SUBMITTED, S.ACKNOWLEDGED, S.INFORMATION_REQUESTED, S.INFORMATION_PROVIDED, S.ANSWERED, S.SCHEDULED, S.IN_PROGRESS}
+OPEN = {S.SUBMITTED, S.ACKNOWLEDGED, S.INFORMATION_REQUESTED, S.INFORMATION_PROVIDED, S.ANSWERED, S.SCHEDULED, S.IN_PROGRESS,
+        S.ENGINEERING_CHECKED, S.QA_APPROVED, S.RELEASED, S.IN_PRODUCTION, S.INSPECTED}
 CLIENT_SUBMIT_ROLES = {Role.CLIENT_ADMIN, Role.CLIENT_ENGINEER, Role.PROCUREMENT}
 
 # operator action -> (allowed kinds, allowed from-states, to-state, message required)
@@ -30,14 +33,28 @@ _ACK_FROM = {S.SUBMITTED}
 _WORKING = {S.ACKNOWLEDGED, S.INFORMATION_PROVIDED}
 OPERATOR_ACTIONS = {
     "acknowledge": ({K.ENQUIRY, K.MANUFACTURING, K.DIGITISATION, K.ASSESSMENT}, _ACK_FROM, S.ACKNOWLEDGED, False),
-    "request_information": ({K.ENQUIRY, K.MANUFACTURING, K.DIGITISATION, K.ASSESSMENT}, _WORKING | {S.ANSWERED, S.SCHEDULED, S.IN_PROGRESS}, S.INFORMATION_REQUESTED, True),
+    "request_information": ({K.ENQUIRY, K.MANUFACTURING, K.DIGITISATION, K.ASSESSMENT},
+                            _WORKING | {S.ANSWERED, S.SCHEDULED, S.IN_PROGRESS, S.ENGINEERING_CHECKED, S.QA_APPROVED}, S.INFORMATION_REQUESTED, True),
     "respond": ({K.ENQUIRY, K.MANUFACTURING, K.ASSESSMENT}, _WORKING | {S.ANSWERED}, S.ANSWERED, True),
     "close": ({K.ENQUIRY, K.MANUFACTURING, K.ASSESSMENT}, OPEN - {S.SUBMITTED}, S.CLOSED, True),
     "schedule": ({K.DIGITISATION}, _WORKING, S.SCHEDULED, False),
     "start": ({K.DIGITISATION}, _WORKING | {S.SCHEDULED}, S.IN_PROGRESS, False),
     "complete": ({K.DIGITISATION}, {S.IN_PROGRESS}, S.COMPLETED, False),
     "decline": ({K.DIGITISATION}, OPEN - {S.SUBMITTED}, S.DECLINED, True),
+    # manufacturing order flow
+    "engineering_check": ({K.MANUFACTURING}, _WORKING, S.ENGINEERING_CHECKED, False),
+    "qa_approve": ({K.MANUFACTURING}, {S.ENGINEERING_CHECKED}, S.QA_APPROVED, False),
+    "release": ({K.MANUFACTURING}, {S.QA_APPROVED}, S.RELEASED, False),
+    "start_production": ({K.MANUFACTURING}, {S.RELEASED}, S.IN_PRODUCTION, False),
+    "inspection_passed": ({K.MANUFACTURING}, {S.IN_PRODUCTION}, S.INSPECTED, False),
+    "inspection_failed": ({K.MANUFACTURING}, {S.IN_PRODUCTION}, S.IN_PRODUCTION, True),  # rework; status stays
+    "deliver": ({K.MANUFACTURING}, {S.INSPECTED}, S.COMPLETED, False),
 }
+# Who may take each manufacturing step: engineer = Aries Engineer (with engineering work), qa = Aries QA or an engineer
+# with the QA permission, admin = Aries Admin or Aries Manager. Other actions: any Aries staff who can open the request.
+ACTION_ROLES = {"engineering_check": {"engineer"}, "qa_approve": {"qa"}, "release": {"admin"}, "start_production": {"engineer", "admin"},
+                "inspection_passed": {"qa"}, "inspection_failed": {"qa"}, "deliver": {"engineer", "admin"}}
+ROLE_NAMES = {"engineer": "an Aries Engineer", "qa": "Aries QA", "admin": "an Aries Admin or Manager"}
 CLIENT_WITHDRAW_FROM = {S.SUBMITTED, S.ACKNOWLEDGED, S.INFORMATION_REQUESTED, S.INFORMATION_PROVIDED}
 
 EVENT_TITLES = {
@@ -53,6 +70,12 @@ EVENT_TITLES = {
     "declined": "{ref} declined",
     "withdrawn": "{ref} withdrawn by the client",
     "client_message": "{ref}: new message from the client",
+    "engineering_checked": "{ref}: engineering check passed",
+    "qa_approved": "{ref}: QA approved",
+    "released": "{ref}: released for production",
+    "in_production": "{ref}: in production",
+    "inspection_failed": "{ref}: inspection found issues, part is being reworked",
+    "inspected": "{ref}: inspection passed",
     "operator_message": "{ref}: new message from Aries",
     "project_created": "{ref}: project and draft part created",
     "handed_over": "{ref}: scanning work handed over to the digital passport",
@@ -173,6 +196,24 @@ def transition(request, obj: ClientRequest, *, to_status: str, event: str, side:
     return obj
 
 
+def staff_roles(request) -> set[str]:
+    """The manufacturing-flow roles of an Aries staff member (their membership in the Aries organisation)."""
+    from apps.tenancy.permissions import four_roles
+
+    roles: set[str] = set()
+    m = (Membership.objects.filter(user=request.user, is_active=True, role__in=OPERATOR_ROLES, tenant__kind=Tenant.Kind.OPERATOR)
+         .order_by("created_at").first())
+    if m is None:
+        return roles
+    if m.role in (Role.OPERATOR_ADMIN, Role.OPERATOR_MANAGER):
+        roles.add("admin")
+    if m.role == Role.OPERATOR_ENGINEER and (not four_roles() or m.engineering_authoring):
+        roles.add("engineer")
+    if m.role == Role.OPERATOR_QA or (m.role == Role.OPERATOR_ENGINEER and four_roles() and m.qa_permitted):
+        roles.add("qa")
+    return roles
+
+
 def operator_action(request, obj: ClientRequest, action: str, message: str = "") -> ClientRequest:
     if action not in OPERATOR_ACTIONS:
         raise DomainError("unknown_action", "This action is not available.", http_status=400)
@@ -180,9 +221,17 @@ def operator_action(request, obj: ClientRequest, action: str, message: str = "")
     if obj.kind not in kinds or obj.status not in from_states:
         raise DomainError("transition_not_allowed", f"'{action.replace('_', ' ')}' is not possible while the request is "
                           f"{ClientRequest.Status(obj.status).label.lower()}.", http_status=409)
+    needed = ACTION_ROLES.get(action)
+    if needed and not (needed & staff_roles(request)):
+        raise DomainError("role_not_allowed", f"Only {' or '.join(ROLE_NAMES[r] for r in sorted(needed))} can do this step.", http_status=403)
+    if action == "qa_approve":  # separation of duties: QA is never the person who did the engineering check
+        checked = obj.events.filter(event=S.ENGINEERING_CHECKED).order_by("-created_at").first()
+        if checked is not None and checked.author_id == request.user.pk:
+            raise DomainError("separation_of_duties", "You did the engineering check; another person must do the QA check.", http_status=403)
     if needs_message and not message.strip():
         raise DomainError("message_required", "Please enter a message for the client.", http_status=400)
-    return transition(request, obj, to_status=to_state, event=to_state, side=RequestEvent.Side.OPERATOR, message=message.strip())
+    event = "inspection_failed" if action == "inspection_failed" else to_state
+    return transition(request, obj, to_status=to_state, event=event, side=RequestEvent.Side.OPERATOR, message=message.strip())
 
 
 def client_message(request, obj: ClientRequest, message: str) -> ClientRequest:

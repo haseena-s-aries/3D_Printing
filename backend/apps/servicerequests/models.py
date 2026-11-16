@@ -9,7 +9,7 @@ Tenant ownership and row-level security:
 - Notification has no tenant column; a per-user RLS policy (app.user_id) lets each user read only their own rows.
 
 Business gates: a request for a part that is not published AND manufacturing-eligible is always an ENQUIRY.
-Manufacturing requests can be acknowledged but never reviewed, released or produced here (OQ-36 stays closed).
+Manufacturing requests follow the order flow in services.py: engineering check, QA check, release, production, inspection, delivery.
 """
 from django.conf import settings
 from django.db import models
@@ -34,6 +34,13 @@ class ClientRequest(TenantOwnedModel):
         ANSWERED = "answered", "Answered"
         SCHEDULED = "scheduled", "Scheduled"
         IN_PROGRESS = "in_progress", "In progress"
+        # Manufacturing order flow (decision of 13 Nov 2026): Aries Engineer check -> QA check -> release by an Aries Admin
+        # or Manager -> production -> QA inspection -> delivered (COMPLETED).
+        ENGINEERING_CHECKED = "engineering_checked", "Engineering checked"
+        QA_APPROVED = "qa_approved", "QA approved"
+        RELEASED = "released", "Released for production"
+        IN_PRODUCTION = "in_production", "In production"
+        INSPECTED = "inspected", "Inspected"
         COMPLETED = "completed", "Completed"
         CLOSED = "closed", "Closed"
         DECLINED = "declined", "Declined"

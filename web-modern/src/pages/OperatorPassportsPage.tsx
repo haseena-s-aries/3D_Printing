@@ -45,19 +45,22 @@ export default function OperatorPassportsPage() {
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [all.data]);
 
-  async function publish(action: "publish" | "unpublish") {
+  async function publish(action: "publish" | "unpublish" | "suspend_ordering" | "allow_ordering") {
     if (!open) return;
     let reason = "";
-    if (action === "unpublish") {
-      const r = window.prompt("Why is it taken out of the client's catalog? (shown to the client)");
+    if (action === "unpublish" || action === "suspend_ordering") {
+      const r = window.prompt(action === "unpublish" ? "Why is it taken out of the client's catalog? (shown to the client)"
+        : "Why can it not be ordered for now? (shown to the client)");
       if (r === null) return;
       reason = r;
-    } else if (!window.confirm(`Publish ${open.passport_number} to ${open.client_name}'s catalog?`)) return;
+    } else if (action === "publish" && !window.confirm(`Publish ${open.passport_number} to ${open.client_name}'s catalog? The client can then order it.`)) return;
     setBusy(true);
     setError(null);
     try {
       await api(`${root}/`, { body: { action, reason } });
-      setDone(`${open.passport_number} ${action === "publish" ? "published to the client's catalog" : "taken out of the client's catalog"}.`);
+      const what = { publish: "published to the client's catalog; the client can now order it", unpublish: "taken out of the client's catalog",
+        suspend_ordering: "can no longer be ordered (suspended)", allow_ordering: "can be ordered again" }[action];
+      setDone(`${open.passport_number} ${what}.`);
       await Promise.all([detail.reload(), list.reload()]);
     } catch (err) {
       setError(err);
@@ -122,6 +125,12 @@ export default function OperatorPassportsPage() {
                     )}
                     {d.can_publish && d.passport_state === "published" && (
                       <button type="button" className="btn" disabled={busy} aria-busy={busy} onClick={() => void publish("unpublish")}>Unpublish</button>
+                    )}
+                    {d.can_publish && d.passport_state === "published" && d.manufacturing_eligibility !== "suspended" && (
+                      <button type="button" className="btn" disabled={busy} onClick={() => void publish("suspend_ordering")}>Suspend ordering</button>
+                    )}
+                    {d.can_publish && d.passport_state === "published" && d.manufacturing_eligibility === "suspended" && (
+                      <button type="button" className="btn" disabled={busy} onClick={() => void publish("allow_ordering")}>Allow ordering</button>
                     )}
                   </span>
                 </div>

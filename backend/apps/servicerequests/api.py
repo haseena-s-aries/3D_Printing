@@ -515,6 +515,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
         with tenant_context(env.client_tenant_id):
             obj = self._load(env)
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
+            data["my_steps"] = sorted(svc.staff_roles(request))
             record(request, "request.viewed_by_operator", obj=obj, tenant=env.client_tenant, data={"reference": obj.reference})
         return Response(data)
 
@@ -546,6 +547,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                 obj = svc.operator_action(request, obj, s.validated_data["action"], s.validated_data["message"])
             obj = self._load(env)  # fresh history (the earlier prefetch predates this action)
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
+            data["my_steps"] = sorted(svc.staff_roles(request))
         return Response(data)
 
     @extend_schema(responses={(200, "application/octet-stream"): bytes})
