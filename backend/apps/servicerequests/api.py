@@ -500,12 +500,17 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                 qs = qs.filter(assigned_to=request.user)
             rows = list(qs[:500])
         if not _is_operator_admin(request.user, op):
-            scope = {}
-            for r in rows:  # project-limited engineers list only what they can open (CN-002 D4); project-less requests included
+            scope, live = {}, {}
+            for r in rows:  # project-limited staff list exactly what they can open (CN-002 D4), with the detail's rule
                 if r.client_tenant_id not in scope:
                     with tenant_context(r.client_tenant_id):  # the access rows live in the client's row-level-security context
-                        scope[r.client_tenant_id] = allowed_project_ids_for(r.client_tenant_id, request.user.pk)
-            rows = [r for r in rows if scope[r.client_tenant_id] is None or r.project_ref in scope[r.client_tenant_id]]
+                        allowed = allowed_project_ids_for(r.client_tenant_id, request.user.pk)
+                        scope[r.client_tenant_id] = allowed
+                        if allowed is not None:  # the request's project now (its part may have moved into a project since)
+                            ids = [x.request_id for x in rows if x.client_tenant_id == r.client_tenant_id]
+                            for cr in ClientRequest.objects.filter(pk__in=ids):
+                                live[cr.pk] = svc.request_project_id(cr)
+            rows = [r for r in rows if scope[r.client_tenant_id] is None or live.get(r.request_id, r.project_ref) in scope[r.client_tenant_id]]
         if _is_operator_admin(request.user, op):
             assigned = {str(r.client_tenant_id) for r in rows}  # Admins and Managers can open every request
         return Response(EnvelopeSerializer(rows, many=True, context={"assigned": assigned}).data)

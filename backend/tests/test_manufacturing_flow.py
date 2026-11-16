@@ -151,3 +151,42 @@ def test_request_shows_full_part_details_even_without_a_passport(world, order):
     assert d["has_passport"] is False and d["part"]["manufacturer"] == "OEM Ltd" and d["part"]["dimensions"] == "Ø20 x 5 mm"
     assert d["files"] == [] and d["reports"] == []
     assert login(world["op_eng"], world["a"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404
+
+
+def test_project_scoped_engineer_lists_a_request_whose_project_comes_from_its_part(world, order):
+    """The project was read in the operator's context (client parts hidden by RLS), so the intake row had no project and
+    project-scoped staff saw the request only through a notification. It must be listed on the dashboard and intake."""
+    from apps.parts.models import SparePart
+    from apps.projects.models import EngineerAccess, Project, ProjectAssignment
+
+    w = world
+    with tenant_context(w["a"]):
+        project = Project.objects.create(tenant=w["a"], code="SHIP-1", name="Ship one")
+        SparePart.objects.filter(part_number="MF-1").update(project=project)
+        EngineerAccess.objects.update_or_create(tenant=w["a"], user=w["op_eng"], defaults={"scope": "projects"})
+        ProjectAssignment.objects.create(tenant=w["a"], user=w["op_eng"], project=project, is_active=True)
+    body = {"request_type": "manufacturing", "part": order["ref"]["part"], "quantity": 1,
+            "required_date": TOMORROW, "delivery_location": "Site A", "services": ["Additive manufacturing"], "priority": "routine"}
+    ref = login(w["a_admin"]).post("/api/v1/requests/", body, format="json").json()
+    env = envelope_for(w, ref["reference"])
+    assert str(env.project_ref) == str(project.pk)
+    eng = login(w["op_eng"], w["a"])
+    listed = [r["reference"] for r in eng.get("/api/v1/operator/requests/", {"open": "true"}).json()]
+    assert ref["reference"] in listed
+    assert eng.get(f"/api/v1/operator/requests/{env.pk}/").status_code == 200
+
+
+def test_request_is_listed_when_its_part_moves_into_the_engineers_project_later(world, order):
+    from apps.parts.models import SparePart
+    from apps.projects.models import EngineerAccess, Project, ProjectAssignment
+
+    w = world
+    with tenant_context(w["a"]):
+        EngineerAccess.objects.update_or_create(tenant=w["a"], user=w["op_eng"], defaults={"scope": "projects"})
+    eng = login(w["op_eng"], w["a"])
+    assert order["ref"]["reference"] not in [r["reference"] for r in eng.get("/api/v1/operator/requests/").json()]  # no project yet
+    with tenant_context(w["a"]):
+        project = Project.objects.create(tenant=w["a"], code="SHIP-2", name="Ship two")
+        SparePart.objects.filter(part_number="MF-1").update(project=project)  # moved after the request was made
+        ProjectAssignment.objects.create(tenant=w["a"], user=w["op_eng"], project=project, is_active=True)
+    assert order["ref"]["reference"] in [r["reference"] for r in eng.get("/api/v1/operator/requests/").json()]
