@@ -147,8 +147,11 @@ def _limited_tenants(request) -> list:
     return list(Tenant.objects.filter(Q(slug__in=settings.AI_ALLOWED_COMPANIES) | Q(pk=request.tenant.pk)))
 
 
-def _reserve(request, model: str, part) -> AIUsageLog:
-    """Check the shared limits and record the attempt atomically (an advisory lock serialises concurrent callers)."""
+def _reserve(request, model: str, part, tenant=None) -> AIUsageLog:
+    """Check the shared limits and record the attempt atomically (an advisory lock serialises concurrent callers).
+    `tenant`: the company the call is made for when it is not the caller's own (Aries staff working from the Aries
+    organisation inside a client company's context)."""
+    tenant = tenant or request.tenant
     now = timezone.now()
     with transaction.atomic():
         with connection.cursor() as c:
@@ -166,10 +169,10 @@ def _reserve(request, model: str, part) -> AIUsageLog:
             refusal = ("ai_daily_limit", "The daily number of AI requests has been reached.")
         elif sum((r["cost_usd"] for r in today if r["created_at"] >= day), Decimal(0)) >= Decimal(str(settings.AI_DAILY_BUDGET_USD)):
             refusal = ("ai_budget_exhausted", "Today's AI cost budget has been used up.")
-    log = AIUsageLog.objects.create(tenant=request.tenant, created_by=request.user, user=request.user, part_id=part.pk, provider="gemini", model=model,
+    log = AIUsageLog.objects.create(tenant=tenant, created_by=request.user, user=request.user, part_id=part.pk, provider="gemini", model=model,
                                         outcome=U.REFUSED if refusal else U.STARTED, error_code=refusal[0] if refusal else "")
     if refusal:
-        record(request, "part_intelligence.ai_refused", obj=part, data={"reason": refusal[0], "model": model})
+        record(request, "part_intelligence.ai_refused", obj=part, tenant=tenant, data={"reason": refusal[0], "model": model})
         raise Refused(refusal[0], refusal[1], http_status=429)
     return log
 

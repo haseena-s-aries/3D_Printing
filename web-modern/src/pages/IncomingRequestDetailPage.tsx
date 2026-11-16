@@ -14,6 +14,7 @@ import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { Eligibility } from "../components/catalog";
 import { JobSheetPanel } from "../components/JobSheetPanel";
+import { CostEstimateCard } from "../components/CostEstimate";
 import ScanHandoverPanel from "../components/ScanHandoverPanel";
 import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader } from "../components/ui";
@@ -224,6 +225,7 @@ export default function IncomingRequestDetailPage() {
         </Card>
       </div>
       {r.kind !== "digitisation" && r.part_summary && <OrderPartCard id={id!} />}
+      {r.kind !== "digitisation" && r.part_summary && <CostEstimateCard envelopeId={id!} />}
       <ScanHandoverPanel envelopeId={id!} request={r} sameOrg={sameOrg} onChange={(next) => req.setData(next)} />
       <JobSheetPanel envelopeId={id!} status={r.status} kind={r.kind} />
       <div className="grid-2">

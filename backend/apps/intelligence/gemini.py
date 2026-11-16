@@ -135,12 +135,20 @@ class GeminiAdapter:
             http_options=types.HttpOptions(timeout=settings.AI_TIMEOUT_SECONDS * 1000,
                                            retry_options=types.HttpRetryOptions(attempts=1)))
 
-    def generate(self, *, model: str, tier: str, prompt: str, schema: dict | None = None, system: str | None = None) -> CallResult:
+    def generate(self, *, model: str, tier: str, prompt: str, schema: dict | None = None, system: str | None = None,
+                 search: bool = False) -> CallResult:
+        """`search=True`: Google Search grounding (current prices from public websites). A response schema cannot be
+        combined with the search tool, so the JSON is requested in the prompt and the cited websites are returned in
+        `extra["sources"]`."""
         from google.genai import errors
 
         t = self._types
-        cfg = dict(system_instruction=system or SYSTEM, temperature=0.1, response_mime_type="application/json",
-                   response_json_schema=schema or SUGGESTION_SCHEMA, max_output_tokens=4096)
+        if search:
+            cfg = dict(system_instruction=system or SYSTEM, temperature=0.1, max_output_tokens=4096,
+                       tools=[t.Tool(google_search=t.GoogleSearch())])
+        else:
+            cfg = dict(system_instruction=system or SYSTEM, temperature=0.1, response_mime_type="application/json",
+                       response_json_schema=schema or SUGGESTION_SCHEMA, max_output_tokens=4096)
         if THINKING.get(tier):
             cfg["thinking_config"] = t.ThinkingConfig(thinking_level=THINKING[tier])
         started = time.monotonic()
@@ -170,12 +178,20 @@ class GeminiAdapter:
             finish = str(r.candidates[0].finish_reason or "")
         except (IndexError, TypeError, AttributeError):
             pass
+        sources = []
+        try:  # the websites the answer is grounded on (search calls only)
+            for ch in (r.candidates[0].grounding_metadata.grounding_chunks or []):
+                if getattr(ch, "web", None) and ch.web.uri:
+                    sources.append({"title": (ch.web.title or "")[:200], "url": ch.web.uri})
+        except (IndexError, TypeError, AttributeError):
+            pass
         return CallResult(text=r.text or "", model_version=r.model_version or model,
                           prompt_tokens=(u.prompt_token_count or 0) if u else 0,
                           output_tokens=(u.candidates_token_count or 0) if u else 0,
                           thinking_tokens=(u.thoughts_token_count or 0) if u else 0,
                           latency_ms=int((time.monotonic() - started) * 1000),
-                          extra={"finish_reason": finish, "traffic_type": str(getattr(u, "traffic_type", "") or "") if u else ""})
+                          extra={"finish_reason": finish, "traffic_type": str(getattr(u, "traffic_type", "") or "") if u else "",
+                                 "sources": sources[:12]})
 
 
 def validate(text: str, model_cls=None) -> dict:

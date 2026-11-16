@@ -443,6 +443,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
     permission_classes = [HasCapability]
     capabilities = {"list": "requests.handle", "retrieve": "requests.handle", "act": "requests.handle", "attachment": "requests.handle",
                     "passport": "requests.handle", "passport_file": "requests.handle", "passport_report": "requests.handle",
+                    "estimate": "requests.handle",
                     # CN-004 draft job sheets: Aries Engineers prepare; QA has read access; gates stay closed
                     "jobsheet": "jobsheets.view", "jobsheet_revision": "jobsheets.view", "jobsheet_cancel": "jobsheets.prepare",
                     "jobsheet_gate": "jobsheets.prepare"}
@@ -558,6 +559,54 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             obj = self._load(env)  # fresh history (the earlier prefetch predates this action)
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
+        return Response(data)
+
+    # ---- manufacturing cost estimate (decision of 16 Nov 2026): OEM / conventional / 3D printing compared on cost,
+    # manpower and days, for Aries to choose a route. Internal to Aries (never in the client's view of the request).
+    @extend_schema(responses={200: dict})
+    @action(detail=True, methods=["get", "post"], url_path="estimate")
+    def estimate(self, request, pk=None):
+        from apps.intelligence import estimate as est
+        from apps.intelligence.models import ManufacturingEstimate
+        from apps.intelligence.service import ai_status
+
+        env = self._envelope(request, pk)
+        roles = svc.staff_roles(request)
+        with tenant_context(env.client_tenant_id):
+            obj, part, passport = self._order_part(env)
+            if request.method == "POST":
+                action_ = str(request.data.get("action", ""))
+                note = str(request.data.get("note", "") or "")
+                if action_ in ("run", "manual", "adjust") and not roles & {"engineer", "admin"}:
+                    raise DomainError("role_not_allowed", "Only an Aries Engineer, Admin or Manager can prepare an estimate.", http_status=403)
+                if action_ in ("run", "manual"):
+                    rev = None
+                    if passport is not None:
+                        rev = (passport.revisions.filter(revision_number=obj.passport_revision_number).first() if obj.passport_revision_number
+                               else None) or passport.revisions.order_by("-revision_number").first()
+                    est.run(request, obj, part, rev, use_ai=action_ == "run", tier=str(request.data.get("tier", "lite") or "lite"))
+                elif action_ == "adjust":
+                    base = ManufacturingEstimate.objects.filter(request=obj).order_by("-version").first()
+                    if base is None:
+                        raise DomainError("no_estimate", "There is no estimate to correct yet.", http_status=409)
+                    est.adjust(request, obj, base, request.data.get("work") or {}, request.data.get("prices") or {}, note)
+                elif action_ == "choose":
+                    if "admin" not in roles:
+                        raise DomainError("role_not_allowed", "Only an Aries Admin or Manager chooses the route.", http_status=403)
+                    e = ManufacturingEstimate.objects.filter(request=obj).order_by("-version").first()
+                    if e is None:
+                        raise DomainError("no_estimate", "Prepare an estimate first.", http_status=409)
+                    est.choose(request, e, str(request.data.get("route", "")), note)
+                else:
+                    raise DomainError("invalid_action", "Choose run, manual, adjust or choose.", http_status=400)
+            versions = list(ManufacturingEstimate.objects.filter(request=obj).select_related("created_by", "chosen_by").order_by("-version")[:20])
+            data = {"latest": est.serialise(versions[0]) if versions else None,
+                    "versions": [{"version": v.version, "mode": v.get_mode_display(),
+                                  "created_at": v.created_at, "created_by": v.created_by.email if v.created_by_id else "",
+                                  "cheapest": v.result.get("cheapest", ""), "chosen_route": v.chosen_route} for v in versions],
+                    "ai": {"enabled": ai_status(obj.tenant)["enabled"], "reason": ai_status(obj.tenant)["reason"]},
+                    "can_prepare": bool(roles & {"engineer", "admin"}), "can_choose": "admin" in roles,
+                    "roles": est.ROLES, "machines": est.MACHINES, "routes": est.ROUTE_LABEL}
         return Response(data)
 
     # ---- the passport of the ordered part (read-only), so the engineering check, QA check and inspection can be done
@@ -762,3 +811,27 @@ class OperatorOverviewView(APIView):
                                     "client_users": members.exclude(role__in=OPERATOR_ROLES).count(),
                                     "assigned_staff": members.filter(role__in=OPERATOR_ROLES).count()}})
         return Response(rows)
+
+
+class EstimateRatesView(APIView):
+    """Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
+    Aries Admin or Manager changes them."""
+    permission_classes = [HasCapability]
+    capabilities = {"get": "requests.handle", "put": "requests.handle"}
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        from apps.intelligence import estimate as est
+
+        _operator_staff(request)
+        return Response({"rates": est.get_rates(), "defaults": est.DEFAULT_RATES, "roles": est.ROLES, "machines": est.MACHINES,
+                         "can_edit": "admin" in svc.staff_roles(request)})
+
+    @extend_schema(request=dict, responses={200: dict})
+    def put(self, request):
+        from apps.intelligence import estimate as est
+
+        _operator_staff(request)
+        if "admin" not in svc.staff_roles(request):
+            raise DomainError("role_not_allowed", "Only an Aries Admin or Manager changes the estimate rates.", http_status=403)
+        return Response({"rates": est.save_rates(request, request.data.get("rates") or {})})
