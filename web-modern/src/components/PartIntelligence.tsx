@@ -371,14 +371,14 @@ export function IntelligenceOverview() {
 }
 
 export function AdminIntelligenceUsage() {
-  const u = useApi<{ ai: AiStatus; allowed_companies: number; usage: Usage }>("/admin/intelligence-usage/");
+  const u = useApi<{ ai: AiStatus; allowed_companies: string; usage: Usage }>("/admin/intelligence-usage/");
   if (u.loading && !u.data) return <Loading />;
   if (u.error || !u.data) return <ErrorNotice error={u.error} />;
   const d = u.data;
   return (
     <Card title="External AI usage (part intelligence)">
       <p className="muted small">Provider: {d.ai.provider || "off"} · models {Object.entries(d.ai.models).map(([t, m]) => `${t}: ${m}`).join(", ")} ·
-        companies permitted: {d.allowed_companies}. Usage metadata only: no part data is shown here.</p>
+        companies permitted: {d.allowed_companies === "all" ? "all" : d.allowed_companies}. Usage metadata only: no part data is shown here.</p>
       <UsageTable usage={d.usage} />
       {(d.usage.by_company ?? []).length > 0 && (
         <table className="table" aria-label="AI usage by company">

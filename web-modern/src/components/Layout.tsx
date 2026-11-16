@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
   { to: "/passport-register", label: "Digital passports", capability: "passports.view", operatorOnly: true, platformAdminOnly: true },
   { to: "/requests", label: "My requests", capability: "requests.view" },
   { to: "/incoming", label: "Incoming requests", capability: "requests.handle" },
+  { to: "/estimate-rates", label: "Estimate rates", capability: "requests.handle", operatorOnly: true, platformAdminOnly: true },
   { to: "/edit-requests", label: "Edit requests", capability: "edits.request" },
   { to: "/users", label: "Users", capability: "users.view" },
   { to: "/audit", label: "Audit trail", capability: "audit.view", ariesAdminOnly: true },
@@ -63,7 +64,7 @@ const META: Record<string, [string, IconName]> = {
   "/": ["overview", "dashboard"], "/registrations": ["admin", "inbox"], "/clients": ["admin", "building"],
   "/admin/inventory": ["inventory", "boxes"], "/parts": ["inventory", "boxes"], "/inventory-import": ["inventory", "upload"],
   "/projects": ["inventory", "folder"], "/passports": ["inventory", "passport"], "/approvals": ["inventory", "review"], "/passport-register": ["inventory", "passport"], "/requests": ["requests", "message"],
-  "/incoming": ["requests", "incoming"], "/edit-requests": ["requests", "edit"], "/users": ["admin", "users"], "/audit": ["admin", "shield"],
+  "/incoming": ["requests", "incoming"], "/estimate-rates": ["admin", "chart"], "/edit-requests": ["requests", "edit"], "/users": ["admin", "users"], "/audit": ["admin", "shield"],
   "/company/data-sharing": ["admin", "lock"], "/origin-claims": ["inventory", "review"], "/thumbnail-contracts": ["admin", "lock"],
 };
 /** The AI assessment workflow (CN-007) lives in tabs of Inventory import; the sidebar links to it directly. */

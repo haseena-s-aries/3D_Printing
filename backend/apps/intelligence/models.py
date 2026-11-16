@@ -420,3 +420,47 @@ class DisclosureEvent(TenantOwnedModel):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class EstimateRates(TenantOwnedModel):
+    """Aries' rates for manufacturing cost estimates (one row, in the Aries organisation): currency, machine-hour and
+    labour rates, fallback material prices, fixed extras, overhead, margin and the uncertainty range. The Aries Admin or
+    Manager edits them; every estimate keeps a copy of the rates it used."""
+
+    data = models.JSONField(default=dict)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+
+class ManufacturingEstimate(TenantOwnedModel):
+    """Estimated cost, manpower and days of manufacturing a requested spare part by each route (OEM, conventional, 3D
+    printing), for Aries to decide (decision of 16 Nov 2026). Gemini estimates the work (kg, hours, days) and looks up
+    indicative prices on the web with their sources; the money is calculated here from Aries' rates. Each estimate is a
+    version; an engineer's correction makes a new version. Admin or Manager records the chosen route. Internal to Aries:
+    never shown to the client."""
+
+    class Mode(models.TextChoices):
+        AI = "ai", "Gemini estimate"
+        MANUAL = "manual", "Manual estimate"
+        ADJUSTED = "adjusted", "Corrected by an engineer"
+
+    request = models.ForeignKey("servicerequests.ClientRequest", on_delete=models.PROTECT, related_name="estimates")
+    part = models.ForeignKey("parts.SparePart", on_delete=models.PROTECT, related_name="+")
+    version = models.PositiveIntegerField()
+    mode = models.CharField(max_length=10, choices=Mode.choices)
+    quantity = models.PositiveIntegerField(default=1)
+    inputs = models.JSONField(default=dict)  # part and passport data used (what was sent to the AI)
+    feasibility = models.JSONField(default=dict)  # rule-based status per route
+    work = models.JSONField(default=dict)  # per route: material kg, machine hours, manpower, days, risks (AI or engineer)
+    prices = models.JSONField(default=dict)  # material price per kg and OEM price, each with its source
+    rates = models.JSONField(default=dict)  # copy of the Aries rates used
+    result = models.JSONField(default=dict)  # calculated cost, manpower and days per route
+    ai = models.JSONField(default=dict, blank=True)  # model, usage, errors, web sources
+    note = models.CharField(max_length=500, blank=True)
+    chosen_route = models.CharField(max_length=16, blank=True)
+    chosen_note = models.CharField(max_length=500, blank=True)
+    chosen_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    chosen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-version"]
+        constraints = [models.UniqueConstraint(fields=["request", "version"], name="uniq_estimate_version")]

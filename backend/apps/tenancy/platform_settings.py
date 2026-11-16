@@ -45,7 +45,7 @@ class PlatformSettingsView(APIView):
         body = {
             "switches": [{"key": k, "label": label, "on": bool(getattr(s, k, False))} for k, label in SWITCHES],
             "ai": {"provider": getattr(s, "AI_PROVIDER", "") or "off", "provider_configured": bool(getattr(s, "GEMINI_API_KEY", "")),
-                   "allowed_companies": list(getattr(s, "AI_ALLOWED_COMPANIES", [])),
+                   "allowed_companies": ["All companies"],
                    "client_sharing_companies": list(getattr(s, "AI_CLIENT_SHARING_COMPANIES", [])),
                    "calls_per_minute": getattr(s, "AI_CALLS_PER_MINUTE", 0), "calls_per_day": getattr(s, "AI_CALLS_PER_DAY", 0),
                    "daily_budget_usd": getattr(s, "AI_DAILY_BUDGET_USD", 0)},

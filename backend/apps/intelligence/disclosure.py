@@ -617,7 +617,7 @@ def _money_add(bucket: dict, other: dict) -> None:
 def _bare_row(t) -> dict:
     zero = {"preliminary": 0, "information_requested": 0, "reviewed": 0, "pending": 0, "with_recommendation": 0}
     return {"id": str(t.pk), "company": t.name, "workspace_enabled": False, "sharing_permitted": sharing_permitted(t),
-            "external_ai_permitted": t.slug in settings.AI_ALLOWED_COMPANIES, "inventory": {"parts": None, "imported": 0},
+            "external_ai_permitted": True, "inventory": {"parts": None, "imported": 0},
             "classification": {"verified": 0, "ai_suggested": 0}, "feasibility": {"assessed": 0, "additive": {}, "conventional": {}},
             "reviews": zero, "savings": {"estimated": {}, "verified": {}}, "trend": [], "disclosure": {"shared": 0, "awaiting_share": 0},
             "open_requests": 0}
@@ -661,7 +661,7 @@ def admin_dashboard(request) -> dict:
             awaiting = SharedAssessment.objects.filter(tenant=t, status=SA.APPROVED).count()
             open_req = ClientRequest.objects.filter(tenant=t, kind=K.ASSESSMENT, status__in=SR.OPEN).count()
             row = {"id": str(t.pk), "company": t.name, "workspace_enabled": enabled, "sharing_permitted": sharing_permitted(t),
-                   "external_ai_permitted": t.slug in settings.AI_ALLOWED_COMPANIES,
+                   "external_ai_permitted": True,
                    "inventory": {"parts": SparePart.objects.filter(tenant=t).count(), "imported": len(imported)},
                    "classification": {"verified": classified, "ai_suggested": suggested},
                    "feasibility": feas, "reviews": {**review, "pending": review["preliminary"] + review["information_requested"],
