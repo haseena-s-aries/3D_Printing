@@ -295,9 +295,9 @@ function OrganisationDashboard() {
       <MyOrganisations />
       <div className="grid-2">
         <Card title="Platform status">
-          <Notice kind="warning">
-            Passports are approved by an Aries Admin, Manager or project engineer (never by the person who submitted them). Publication and
-            manufacturing release are not available yet{oq("OQ-36")}; manufacturing requests are received as enquiries.
+          <Notice>
+            An Aries Engineer completes the passport (R-L1 and R-L2) and it is published to the client. Requests on a published part
+            are manufacturing orders: engineering check, QA check, release, production, inspection and delivery. Other requests are enquiries.
           </Notice>
           <Notice>DWG drawings can be downloaded; in-browser DWG preview is not available yet{oq("OQ-27")}.</Notice>
         </Card>
@@ -325,7 +325,13 @@ function OperatorHome() {
   // the client spoke last (a message or requested information) and Aries has not answered yet
   const messages = open.filter((r) => r.awaiting_reply && r.status !== "submitted")
     .sort((a, b) => (b.last_client_activity_at ?? "").localeCompare(a.last_client_activity_at ?? ""));
-  const platformAdmin = session?.membership.role === "operator_admin" || session?.membership.role === "operator_manager";
+  const role = session?.membership.role ?? "";
+  const platformAdmin = role === "operator_admin" || role === "operator_manager";
+  const title = { operator_admin: "Aries Admin Dashboard", operator_manager: "Aries Manager Dashboard", operator_engineer: "Aries Engineer Dashboard",
+    operator_qa: "Aries QA Dashboard", operator_support: "Aries Support Dashboard" }[role] ?? "Aries Dashboard";
+  // newest work first, requests waiting for acknowledgement on top
+  const recent = [...open].sort((a, b) => Number(b.status === "submitted") - Number(a.status === "submitted")
+    || (b.submitted_at ?? "").localeCompare(a.submitted_at ?? ""));
   const approvalRows = useApi<{ client_id: string; client_name: string; part_id: string; part_number: string; name: string; revision: number;
     kind_label: string; review_state: string; aries_completion_requested: boolean; submitted_by_email: string; submitted_at: string }[]>(
     platformAdmin && can("passports.approve") ? "/operator/approvals/" : null);
@@ -346,7 +352,8 @@ function OperatorHome() {
   return (
     <>
       <MarineBanner>
-        <PageHeader title={session?.membership.role === "operator_manager" ? "Aries Manager Dashboard" : "Aries Admin Dashboard"} subtitle="Manage client companies, registrations, assignments and incoming requests." />
+        <PageHeader title={title} subtitle={platformAdmin ? "Manage client companies, registrations, assignments and incoming requests."
+          : "Client requests from the companies you are assigned to, and the work waiting for you."} />
       </MarineBanner>
       <NeedsAttention compact />
       <div className="stats stats-3">
@@ -363,6 +370,26 @@ function OperatorHome() {
           <Stat label="Client submissions awaiting approval" value={approvals.data ? approvals.data.length : "…"} to="/approvals" icon="boxes" />
         )}
       </div>
+      {can("requests.handle") && (
+        <Card title={`Client requests (${open.length} open)`} actions={<Link className="btn btn-small" to="/incoming">Open all</Link>}>
+          <ErrorNotice error={queue.error} />
+          {queue.loading && !queue.data ? <Loading /> : recent.length === 0 ? <Empty icon="message">No open client requests.</Empty> : (
+            <ul className="list" aria-label="Open client requests">
+              {recent.slice(0, 8).map((r) => (
+                <li key={r.id} className="row-between">
+                  <span>
+                    <Link to={`/incoming/${r.id}`}><strong>{r.intake_number || r.reference}</strong></Link>{" "}
+                    <KindBadge kind={r.kind} /> <StatusBadge status={r.status} />
+                    {r.awaiting_reply && r.status !== "submitted" && <> <Badge tone="warning">New client message</Badge></>}
+                    <br /><span className="muted small">{r.client_name} · {r.part_number ? `${r.part_number} · ` : ""}{r.part_name} · {formatDate(r.submitted_at)}</span>
+                  </span>
+                  <Link className="btn btn-small btn-primary" to={`/incoming/${r.id}`}>{r.status === "submitted" ? "Acknowledge" : "Open"}</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       {messages.length > 0 && (
         <Card title="Client messages awaiting your reply">
           <ul className="list" aria-label="Client messages awaiting reply">
