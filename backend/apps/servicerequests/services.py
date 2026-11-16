@@ -35,14 +35,15 @@ OPERATOR_ACTIONS = {
     "acknowledge": ({K.ENQUIRY, K.MANUFACTURING, K.DIGITISATION, K.ASSESSMENT}, _ACK_FROM, S.ACKNOWLEDGED, False),
     "request_information": ({K.ENQUIRY, K.MANUFACTURING, K.DIGITISATION, K.ASSESSMENT},
                             _WORKING | {S.ANSWERED, S.SCHEDULED, S.IN_PROGRESS, S.ENGINEERING_CHECKED, S.QA_APPROVED}, S.INFORMATION_REQUESTED, True),
-    "respond": ({K.ENQUIRY, K.MANUFACTURING, K.ASSESSMENT}, _WORKING | {S.ANSWERED}, S.ANSWERED, True),
+    # manufacturing orders talk to the client with "message" (status unchanged); a reply would leave the order flow
+    "respond": ({K.ENQUIRY, K.ASSESSMENT}, _WORKING | {S.ANSWERED}, S.ANSWERED, True),
     "close": ({K.ENQUIRY, K.MANUFACTURING, K.ASSESSMENT}, OPEN - {S.SUBMITTED}, S.CLOSED, True),
     "schedule": ({K.DIGITISATION}, _WORKING, S.SCHEDULED, False),
     "start": ({K.DIGITISATION}, _WORKING | {S.SCHEDULED}, S.IN_PROGRESS, False),
     "complete": ({K.DIGITISATION}, {S.IN_PROGRESS}, S.COMPLETED, False),
     "decline": ({K.DIGITISATION}, OPEN - {S.SUBMITTED}, S.DECLINED, True),
     # manufacturing order flow
-    "engineering_check": ({K.MANUFACTURING}, _WORKING, S.ENGINEERING_CHECKED, False),
+    "engineering_check": ({K.MANUFACTURING}, _WORKING | {S.ANSWERED}, S.ENGINEERING_CHECKED, False),  # answered: orders replied to earlier
     "qa_approve": ({K.MANUFACTURING}, {S.ENGINEERING_CHECKED}, S.QA_APPROVED, False),
     "release": ({K.MANUFACTURING}, {S.QA_APPROVED}, S.RELEASED, False),
     "start_production": ({K.MANUFACTURING}, {S.RELEASED}, S.IN_PRODUCTION, False),

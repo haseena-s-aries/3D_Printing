@@ -2,7 +2,8 @@
  * Operator: one client request. Actions follow the server's workflow: acknowledge, request information, reply and
  * close (enquiries), schedule / start / complete / decline and create the project (3D scanning), and for manufacturing
  * requests the order flow: engineering check -> QA check -> release -> production -> inspection -> delivered. Each step
- * is shown only to the role that may take it (`my_steps` from the server, which enforces the same rule).
+ * is shown only to the role that may take it (`my_steps` from the server, which enforces the same rule). Orders talk to
+ * the client with "Send message" (a reply would leave the order flow). The ordered passport is shown read-only below.
  */
 import type { OperatorRequest } from "@passport/api-types";
 import { useEffect, useState } from "react";
@@ -16,13 +17,48 @@ import { JobSheetPanel } from "../components/JobSheetPanel";
 import ScanHandoverPanel from "../components/ScanHandoverPanel";
 import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader } from "../components/ui";
+import { Meters, RevisionContent, type Detail } from "./PassportApprovalsPage";
 import { AttachmentList, RequestFacts } from "./RequestDetailPage";
+
+type OrderPassport = Detail & { ordered_revision_number: number | null; current_revision_number: number | null };
+
+/** The passport of the ordered part, read-only, so the engineering check, QA check and inspection are done from the
+ *  request: the revision the client ordered, R-L1 / R-L2 / R-L3, documents, reports and the 3D model (audited). */
+function OrderPassportCard({ id, kind }: { id: string; kind: string }) {
+  const [open, setOpen] = useState(kind === "manufacturing_request");
+  const root = `/operator/requests/${id}/passport`;
+  const d = useApi<OrderPassport>(open ? `${root}/` : null);
+  const p = d.data;
+  return (
+    <div className="card order-passport">
+      <div className="card-head">
+        <h2>Passport for this order{p ? ` · ${p.passport_number} rev ${p.revision.revision_number}` : ""}</h2>
+        <button type="button" className="btn btn-small" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Show passport details"}</button>
+      </div>
+      {open && (
+        <>
+          <ErrorNotice error={d.error} />
+          {d.loading && !p ? <Loading label="Loading passport…" /> : p && (
+            <>
+              <p className="muted small">{p.part_number} · {p.part_name} · read only. Check these details, documents and the 3D model before taking your step.</p>
+              {p.ordered_revision_number && p.current_revision_number && p.current_revision_number !== p.ordered_revision_number && (
+                <Notice kind="warning">The client ordered revision {p.ordered_revision_number}. The passport is now at revision {p.current_revision_number}; this shows the ordered revision.</Notice>
+              )}
+              <Meters c={(p.revision.completeness ?? {}) as Record<string, { done: number; total: number }>} />
+              <div className="approval-content"><RevisionContent d={{ ...p, root }} /></div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 type Action = { action: string; label: string; done: string; needsMessage?: boolean; primary?: boolean };
 
 /** Manufacturing order steps: [action, from statuses, roles, label, done text, message required]. */
 const ORDER: [string, string[], string[], string, string, boolean][] = [
-  ["engineering_check", ["acknowledged", "information_provided"], ["engineer"], "Engineering check passed", "Engineering check recorded", false],
+  ["engineering_check", ["acknowledged", "information_provided", "answered"], ["engineer"], "Engineering check passed", "Engineering check recorded", false],
   ["qa_approve", ["engineering_checked"], ["qa"], "QA approve", "QA approval recorded", false],
   ["release", ["qa_approved"], ["admin"], "Release for production", "Released for production", false],
   ["start_production", ["released"], ["engineer", "admin"], "Start production", "Production started", false],
@@ -46,7 +82,6 @@ function actionsFor(kind: string, status: string, steps: string[]): Action[] {
       .forEach(([action, , , label, done, needsMessage]) => out.push({ action, label, done, needsMessage, primary: action !== "inspection_failed" }));
     if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "message", label: "Send message", done: "Message sent", needsMessage: true });
     if (working || ["engineering_checked", "qa_approved"].includes(status)) out.push({ action: "request_information", label: "Request information", done: "Information requested", needsMessage: true });
-    if (working || status === "answered") out.push({ action: "respond", label: "Send reply", done: "Reply sent", needsMessage: true });
     if (OPEN_STATUSES.includes(status) && status !== "submitted") out.push({ action: "close", label: "Close with reason", done: "Request closed", needsMessage: true });
     return out;
   }
@@ -133,7 +168,7 @@ export default function IncomingRequestDetailPage() {
               <p className="small">
                 {r.part_summary.passport_number ? `Passport ${r.part_summary.passport_number}` : "No passport"} · {String(r.part_summary.dimensions || "")}{" "}
                 {sameOrg && r.part_summary.passport_id ? <Link to={`/passports/${r.part_summary.passport_id}`}>Open passport</Link>
-                  : <span className="muted">Switch to {r.client_name} to open the passport.</span>}
+                  : r.part_summary.passport_id ? <span className="muted">Details below, under "Passport for this order".</span> : null}
               </p>
             </div>
           )}
@@ -163,6 +198,7 @@ export default function IncomingRequestDetailPage() {
           {r.project_code && <p className="small">Project <strong>{r.project_code}</strong>{r.created_part ? " · draft part created" : ""} in {r.client_name}.</p>}
         </Card>
       </div>
+      {r.kind !== "digitisation" && r.part_summary?.passport_id && <OrderPassportCard id={id!} kind={r.kind} />}
       <ScanHandoverPanel envelopeId={id!} request={r} sameOrg={sameOrg} onChange={(next) => req.setData(next)} />
       <JobSheetPanel envelopeId={id!} status={r.status} kind={r.kind} />
       <div className="grid-2">
