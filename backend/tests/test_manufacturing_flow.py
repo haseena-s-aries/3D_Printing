@@ -150,7 +150,8 @@ def test_request_shows_full_part_details_even_without_a_passport(world, order):
     d = login(world["op_admin"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/").json()
     assert d["has_passport"] is False and d["part"]["manufacturer"] == "OEM Ltd" and d["part"]["dimensions"] == "Ø20 x 5 mm"
     assert d["files"] == [] and d["reports"] == []
-    assert login(world["op_eng"], world["a"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404
+    # the Aries Admin is no longer refused file content (decision of 16 Nov 2026): a missing report is simply not found
+    assert login(world["op_admin"]).get(f"/api/v1/operator/requests/{e2.pk}/passport/reports/00000000-0000-0000-0000-000000000000/").status_code == 404
 
 
 def test_project_scoped_engineer_lists_a_request_whose_project_comes_from_its_part(world, order):

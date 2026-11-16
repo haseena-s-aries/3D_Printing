@@ -9,9 +9,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.audit.models import AuditEvent
 from apps.parts.models import SparePart
+from apps.tenancy.admin_workspace import OPEN_DECISION
 from apps.tenancy.context import tenant_context
 from apps.tenancy.models import Membership, Role
-from apps.tenancy.permissions import ADMIN_WORKSPACE_GRANTS, capabilities_for
+from apps.tenancy.permissions import capabilities_for
 
 from .conftest import PASSWORD, login
 from .test_files import upload
@@ -62,10 +63,10 @@ def test_workspaces_are_created_audited_and_sign_in_stays_in_the_aries_workspace
         assert AuditEvent.objects.filter(action="admin.workspace_membership_created").count() == 2
     r = admin.post("/api/v1/auth/switch/", {"tenant": "client-a", "refresh": admin.refresh_token}, format="json")
     access = r.json()["session"]["admin_access"]
-    assert r.status_code == 200 and access["admin_workspace"] is True and access["file_decision"] == "" and access["aries_slug"] == "operator"
+    assert r.status_code == 200 and access["admin_workspace"] is True and access["file_decision"] == OPEN_DECISION and access["aries_slug"] == "operator"
 
 
-def test_capabilities_add_operations_but_no_sign_off_or_file_content(aw):
+def test_capabilities_add_operations_and_file_content_but_no_sign_off(aw):
     w = aw["w"]
     login(w["op_admin"])  # provisions the workspaces
     m = Membership.objects.get(user=w["op_admin"], tenant=w["a"])
@@ -73,10 +74,9 @@ def test_capabilities_add_operations_but_no_sign_off_or_file_content(aw):
     assert {"parts.manage", "passports.edit_draft", "projects.manage", "intelligence.assess", "inventory.import", "jobsheets.prepare",
             "ai.share", "edits.request", "users.manage", "audit.view"} <= caps
     assert not caps & SIGN_OFF
-    assert not caps & {"files.download_original", "files.download_derivative", "reports.generate_client", "reports.preview_client",
-                       "reports.view_internal", "clients.manage", "inventory.admin_overview"}
-    assert ADMIN_WORKSPACE_GRANTS - caps <= {"reports.generate_internal", "reports.view_internal", "reports.generate_client",
-                                             "reports.download_client", "reports.preview_client"}  # file content: closed
+    assert not caps & {"clients.manage", "inventory.admin_overview"}
+    # file content is open in every company (decision of 16 Nov 2026)
+    assert {"files.download_original", "files.download_derivative"} <= caps
     assert "parts.manage" not in capabilities_for(Membership.objects.get(user=w["a_admin"]))  # client roles unchanged
     op = set(capabilities_for(Membership.objects.get(user=w["op_admin"], tenant=w["operator"])))
     assert {"jobsheets.view", "jobsheets.prepare"} <= op and "jobsheets.qa_review" not in op and "parts.manage" not in op
@@ -114,25 +114,23 @@ def test_independent_sign_off_and_release_gates_hold(aw):
     assert a.post(f"/api/v1/edit-requests/00000000-0000-0000-0000-000000000000/approve/", {"note": "x"}, format="json").status_code in (403, 404)
 
 
-def test_confidential_file_content_needs_a_documented_decision(aw, settings):
+def test_confidential_file_content_is_open_to_the_aries_admin_and_audited(aw, settings):
+    """Decision of 16 Nov 2026: the Aries Admin opens file content in every company; a company's own documented reference,
+    when configured, is still shown."""
     w = aw["w"]
     a = admin_in(w, w["a"])
     photo = aw["photo"]
-    files = a.get(f"/api/v1/files/?part={aw['part']['id']}").json()["results"]
-    assert {f["title"] for f in files} >= {photo["title"]}  # metadata visible
+    assert a.session_payload["admin_access"]["file_decision"] == OPEN_DECISION
     for variant in ("original", "preview"):
-        assert a.post(f"/api/v1/files/{photo['id']}/versions/1/download-link/", {"variant": variant}, format="json").status_code == 403
-    r = a.get(f"/api/v1/files/{photo['id']}/versions/1/thumbnail/")
-    assert r.status_code == 403 and r.json()["error"]["code"] == "file_access_not_authorized"
-    assert a.get(f"/api/v1/parts/{aw['part']['id']}/").json()["thumbnail"] is None
-    # documented decision for company A only
-    settings.ADMIN_FILE_ACCESS_DECISIONS = "client-a=SYN-FILE-DECISION-1"
-    a = admin_in(w, w["a"])
-    assert a.session_payload["admin_access"]["file_decision"] == "SYN-FILE-DECISION-1"
+        assert a.post(f"/api/v1/files/{photo['id']}/versions/1/download-link/", {"variant": variant}, format="json").status_code == 200
     assert a.get(f"/api/v1/files/{photo['id']}/versions/1/thumbnail/").status_code == 200
-    assert a.post(f"/api/v1/files/{photo['id']}/versions/1/download-link/", {"variant": "original"}, format="json").status_code == 200
+    assert a.get(f"/api/v1/parts/{aw['part']['id']}/").json()["thumbnail"] is not None
     m_b = Membership.objects.get(user=w["op_admin"], tenant=w["b"])
-    assert "files.download_original" not in capabilities_for(m_b)
+    assert "files.download_original" in capabilities_for(m_b)
+    settings.ADMIN_FILE_ACCESS_DECISIONS = "client-a=SYN-FILE-DECISION-1"
+    assert admin_in(w, w["a"]).session_payload["admin_access"]["file_decision"] == "SYN-FILE-DECISION-1"
+    with tenant_context(w["a"]):
+        assert AuditEvent.objects.filter(action="file.download_link_issued").count() == 2  # every opening is audited
 
 
 def test_client_roles_and_engineers_unchanged_by_the_switch(aw, settings):
