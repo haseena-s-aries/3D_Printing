@@ -102,3 +102,32 @@ def test_publish_makes_the_part_orderable_and_unpublish_stops_it(world):
     assert login(world["op_eng"]).post(root, {"action": "suspend_ordering"}, format="json").status_code == 403  # register is admin-only
     with tenant_context(world["a"]):
         assert ClientRequest.objects.filter(kind="manufacturing_request").count() == 1
+
+
+def test_send_reply_is_not_offered_on_orders_and_an_answered_order_can_continue(world, order):
+    act, w = order["act"], world
+    act(w["op_eng"], "acknowledge")
+    r = act(w["op_eng"], "respond", "We will start soon")
+    assert r.status_code == 409  # orders use "message", which keeps the status
+    assert act(w["op_eng"], "message", "We will start soon").json()["status"] == "acknowledged"
+    with tenant_context(w["a"]):  # an order answered before this change can still go to the engineering check
+        ClientRequest.objects.filter(pk=order["ref"]["id"]).update(status="answered")
+    assert act(w["op_eng"], "engineering_check").json()["status"] == "engineering_checked"
+
+
+def test_order_shows_the_ordered_passport_revision_to_aries_staff(world, order):
+    from apps.audit.models import AuditEvent
+
+    env = order["env"]
+    url = f"/api/v1/operator/requests/{env.pk}/passport/"
+    for user, tenant in ((world["op_qa"], None), (world["op_eng"], world["a"]), (world["op_mgr"], None)):
+        d = login(user, tenant).get(url)
+        assert d.status_code == 200, d.content
+        body = d.json()
+        assert body["passport_id"] == order["passport"]["id"] and body["part_number"] == "MF-1"
+        assert body["ordered_revision_number"] == 1 and body["revision"]["revision_number"] == 1
+        assert {"files", "reports", "evidence_files", "revision"} <= set(body)
+    assert login(world["op_qa"]).get(f"{url}files/00000000-0000-0000-0000-000000000000/").status_code == 404
+    assert login(world["a_admin"]).get(url).status_code == 403  # Aries staff only
+    with tenant_context(world["a"]):
+        assert AuditEvent.objects.filter(action="passport.viewed_by_aries", data__request=order["ref"]["reference"]).exists()

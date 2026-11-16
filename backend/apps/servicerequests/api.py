@@ -442,6 +442,7 @@ def _assigned_clients(user) -> set[str]:
 class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
     permission_classes = [HasCapability]
     capabilities = {"list": "requests.handle", "retrieve": "requests.handle", "act": "requests.handle", "attachment": "requests.handle",
+                    "passport": "requests.handle", "passport_file": "requests.handle", "passport_report": "requests.handle",
                     # CN-004 draft job sheets: Aries Engineers prepare; QA has read access; gates stay closed
                     "jobsheet": "jobsheets.view", "jobsheet_revision": "jobsheets.view", "jobsheet_cancel": "jobsheets.prepare",
                     "jobsheet_gate": "jobsheets.prepare"}
@@ -549,6 +550,69 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
         return Response(data)
+
+    # ---- the passport of the ordered part (read-only), so the engineering check, QA check and inspection can be done
+    # from the request itself (decision of 16 Nov 2026). Shows the revision the client ordered; audited in the company.
+    def _order_passport(self, env):
+        obj = self._load(env)  # inside the client's tenant context: also applies the project rule
+        passport = DigitalPassport.objects.select_related("part", "tenant").filter(pk=obj.passport_id).first() if obj.passport_id else None
+        if passport is None:
+            raise DomainError("not_found", "This request has no digital passport.", http_status=404)
+        return obj, passport
+
+    def _blocked(self, request, env):
+        from apps.tenancy import admin_workspace
+
+        if admin_workspace.file_content_blocked_for(request.user, env.client_tenant):
+            raise DomainError(*admin_workspace.BLOCKED, http_status=403)
+
+    @extend_schema(responses={200: dict})
+    @action(detail=True, methods=["get"], url_path="passport")
+    def passport(self, request, pk=None):
+        from apps.passports.api import RevisionSerializer
+        from apps.passports.approval_api import _evidence_files, _part_files, _reports
+        from apps.passports.operator_api import _row
+
+        env = self._envelope(request, pk)
+        with tenant_context(env.client_tenant_id):
+            obj, p = self._order_passport(env)
+            current = p.revisions.order_by("-revision_number").first()
+            ordered = p.revisions.select_related("approved_by").filter(revision_number=obj.passport_revision_number).first() if obj.passport_revision_number else None
+            r = ordered or current
+            if r is None:
+                raise DomainError("not_found", "This passport has no revision yet.", http_status=404)
+            data = {**_row(env.client_tenant, p, r), "passport_state": p.publication_state,
+                    "ordered_revision_number": obj.passport_revision_number, "current_revision_number": current.revision_number if current else None,
+                    "submitted_by_email": r.approved_by.email if r.approved_by_id else "", "submitted_at": r.approved_at,
+                    "revision": RevisionSerializer(r, context={"request": request, "approver": True}).data,
+                    "evidence_files": _evidence_files(r), "files": _part_files(request, p), "reports": _reports(p)}
+            record(request, "passport.viewed_by_aries", obj=p, tenant=env.client_tenant,
+                   data={"passport": p.passport_number, "request": obj.reference, "revision_number": r.revision_number})
+        return Response(data)
+
+    @extend_schema(responses={(200, "application/octet-stream"): bytes})
+    @action(detail=True, methods=["get"], url_path=r"passport/files/(?P<file_id>[0-9a-f-]+)")
+    def passport_file(self, request, pk=None, file_id=None):
+        from apps.passports.approval_api import file_response, open_part_file
+
+        env = self._envelope(request, pk)
+        self._blocked(request, env)
+        variant = request.query_params.get("variant", "preview")
+        with tenant_context(env.client_tenant_id):
+            obj, p = self._order_passport(env)
+            key, name, ctype = open_part_file(request, env.client_tenant, p, file_id, variant, {"request": obj.reference})
+        return file_response(key, name, ctype, variant == "original")
+
+    @extend_schema(responses={(200, "application/pdf"): bytes})
+    @action(detail=True, methods=["get"], url_path=r"passport/reports/(?P<report_id>[0-9a-f-]+)")
+    def passport_report(self, request, pk=None, report_id=None):
+        from apps.passports.approval_api import stream_report
+
+        env = self._envelope(request, pk)
+        self._blocked(request, env)
+        with tenant_context(env.client_tenant_id):
+            obj, p = self._order_passport(env)
+            return stream_report(request, env.client_tenant, p, report_id, {"request": obj.reference})
 
     @extend_schema(responses={(200, "application/octet-stream"): bytes})
     @action(detail=True, methods=["get"], url_path=r"attachments/(?P<aid>[0-9a-f-]+)")
