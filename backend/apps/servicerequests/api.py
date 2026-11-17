@@ -422,6 +422,16 @@ class OperatorRequestSerializer(RequestSerializer):
                 "manufacturing_eligibility": passport.manufacturing_eligibility if passport else None}
 
 
+def _production_route(obj) -> dict | None:
+    """The chosen production route of a manufacturing request (Aries view only; the client sees the route name in the
+    release step of its history, never the estimated cost)."""
+    if obj.kind == K.ENQUIRY or obj.kind == K.MANUFACTURING:
+        from apps.intelligence.estimate import chosen_route
+
+        return chosen_route(obj)
+    return None
+
+
 def _operator_staff(request):
     """The caller must be operator staff: an active operator-role membership in the operator organisation."""
     op = svc.operator_tenant()
@@ -527,6 +537,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             obj = self._load(env)
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
+            data["production_route"] = _production_route(obj)
             record(request, "request.viewed_by_operator", obj=obj, tenant=env.client_tenant, data={"reference": obj.reference})
         return Response(data)
 
@@ -559,6 +570,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             obj = self._load(env)  # fresh history (the earlier prefetch predates this action)
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
+            data["production_route"] = _production_route(obj)
         return Response(data)
 
     # ---- manufacturing cost estimate (decision of 16 Nov 2026): OEM / conventional / 3D printing compared on cost,

@@ -40,9 +40,19 @@ def test_full_order_chain_with_roles(world, order):
     assert act(w["op_eng"], "engineering_check").json()["status"] == "engineering_checked"
     assert act(w["op_admin"], "qa_approve").status_code == 403  # QA only
     assert act(w["op_qa"], "qa_approve").json()["status"] == "qa_approved"
+    # release needs the production route chosen in the cost estimate (decision of 17 Nov 2026)
+    r = act(w["op_mgr"], "release")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "route_not_chosen"
+    est_url = f"/api/v1/operator/requests/{order['env'].pk}/estimate/"
+    assert login(w["op_eng"], w["a"]).post(est_url, {"action": "manual"}, format="json").status_code == 200
+    login(w["op_mgr"]).post(est_url, {"action": "choose", "route": "conventional", "note": "Cheaper, one day slower"}, format="json")
     r = act(w["op_eng"], "release")
     assert r.status_code == 403 and r.json()["error"]["code"] == "role_not_allowed"
-    assert act(w["op_mgr"], "release").json()["status"] == "released"
+    released = act(w["op_mgr"], "release").json()
+    assert released["status"] == "released" and released["events"][-1]["message"] == "Production route: Conventional manufacturing."
+    assert released["production_route"]["route"] == "conventional" and released["production_route"]["note"] == "Cheaper, one day slower"
+    fixed = login(w["op_mgr"]).post(est_url, {"action": "choose", "route": "additive"}, format="json")
+    assert fixed.status_code == 409 and fixed.json()["error"]["code"] == "route_fixed"  # production goes ahead that way
     assert act(w["op_eng"], "start_production").json()["status"] == "in_production"
     assert act(w["op_qa"], "inspection_failed").status_code == 400  # what was wrong is required
     failed = act(w["op_qa"], "inspection_failed", "Surface porosity, reprint").json()

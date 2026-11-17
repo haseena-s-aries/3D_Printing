@@ -2920,6 +2920,55 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/operator/estimate-rates/:
+    get:
+      operationId: v1_operator_estimate_rates_retrieve
+      description: |-
+        Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
+        Aries Admin or Manager changes them.
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    put:
+      operationId: v1_operator_estimate_rates_update
+      description: |-
+        Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
+        Aries Admin or Manager changes them.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/operator/overview/:
     get:
       operationId: v1_operator_overview_list
@@ -3368,6 +3417,67 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/operator/requests/{id}/estimate/:
+    get:
+      operationId: v1_operator_requests_estimate_retrieve
+      description: Mixed into OperatorRequestViewSet (which provides _envelope and
+        _load).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1_operator_requests_estimate_create
+      description: Mixed into OperatorRequestViewSet (which provides _envelope and
+        _load).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvelopeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EnvelopeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EnvelopeRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/operator/requests/{id}/jobsheet/:
     get:
       operationId: v1_operator_requests_jobsheet_retrieve
@@ -3551,6 +3661,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobSheet'
+          description: ''
+  /api/v1/operator/requests/{id}/passport/:
+    get:
+      operationId: v1_operator_requests_passport_retrieve
+      description: |-
+        The ordered part (read-only) so engineering, QA and inspection are done from the request itself (decision of
+        16 Nov 2026): the spare part's details, its files and, when it has one, the passport revision the client ordered
+        (R-L1 / R-L2 / R-L3), reports and 3D model. Audited in the client company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/operator/requests/{id}/passport/files/{file_id}/:
+    get:
+      operationId: v1_operator_requests_passport_files_retrieve
+      description: Mixed into OperatorRequestViewSet (which provides _envelope and
+        _load).
+      parameters:
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          pattern: ^[0-9a-f-]+$
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/operator/requests/{id}/passport/reports/{report_id}/:
+    get:
+      operationId: v1_operator_requests_passport_reports_retrieve
+      description: Mixed into OperatorRequestViewSet (which provides _envelope and
+        _load).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      - in: path
+        name: report_id
+        schema:
+          type: string
+          pattern: ^[0-9a-f-]+$
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/v1/organisation/profile/:
     get:
@@ -7648,6 +7847,78 @@ components:
       - status_label
       - submitted_at
       - updated_at
+    EnvelopeRequest:
+      type: object
+      properties:
+        intake_number:
+          type: string
+          maxLength: 20
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 30
+        client_tenant:
+          type: string
+          format: uuid
+        client_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 24
+        status:
+          type: string
+          minLength: 1
+          maxLength: 24
+        priority:
+          type: string
+          minLength: 1
+          maxLength: 12
+        project_ref:
+          type: string
+          format: uuid
+          nullable: true
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+        awaiting_reply:
+          type: boolean
+        last_client_activity:
+          type: string
+          maxLength: 30
+        last_client_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+        part_number:
+          type: string
+          maxLength: 80
+        part_name:
+          type: string
+          maxLength: 200
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_date:
+          type: string
+          format: date
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+      required:
+      - client_name
+      - client_tenant
+      - kind
+      - priority
+      - reference
+      - status
+      - submitted_at
     Event:
       type: object
       properties:
@@ -8801,14 +9072,21 @@ components:
       - complete
       - create_project
       - decline
+      - deliver
+      - engineering_check
       - hand_over
+      - inspection_failed
+      - inspection_passed
       - link_project
       - message
+      - qa_approve
       - record_deliverable
+      - release
       - request_information
       - respond
       - schedule
       - start
+      - start_production
       type: string
       description: |-
         * `acknowledge` - acknowledge
@@ -8817,14 +9095,21 @@ components:
         * `complete` - complete
         * `create_project` - create_project
         * `decline` - decline
+        * `deliver` - deliver
+        * `engineering_check` - engineering_check
         * `hand_over` - hand_over
+        * `inspection_failed` - inspection_failed
+        * `inspection_passed` - inspection_passed
         * `link_project` - link_project
         * `message` - message
+        * `qa_approve` - qa_approve
         * `record_deliverable` - record_deliverable
+        * `release` - release
         * `request_information` - request_information
         * `respond` - respond
         * `schedule` - schedule
         * `start` - start
+        * `start_production` - start_production
     OperatorActionInputRequest:
       type: object
       properties:
@@ -9808,10 +10093,14 @@ components:
       enum:
       - publish
       - unpublish
+      - suspend_ordering
+      - allow_ordering
       type: string
       description: |-
         * `publish` - publish
         * `unpublish` - unpublish
+        * `suspend_ordering` - suspend_ordering
+        * `allow_ordering` - allow_ordering
     PassportPublishDecisionRequest:
       type: object
       properties:
@@ -11642,6 +11931,11 @@ components:
       - answered
       - scheduled
       - in_progress
+      - engineering_checked
+      - qa_approved
+      - released
+      - in_production
+      - inspected
       - completed
       - closed
       - declined
@@ -11655,6 +11949,11 @@ components:
         * `answered` - Answered
         * `scheduled` - Scheduled
         * `in_progress` - In progress
+        * `engineering_checked` - Engineering checked
+        * `qa_approved` - QA approved
+        * `released` - Released for production
+        * `in_production` - In production
+        * `inspected` - Inspected
         * `completed` - Completed
         * `closed` - Closed
         * `declined` - Declined

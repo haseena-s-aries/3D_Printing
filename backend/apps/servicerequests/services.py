@@ -231,6 +231,14 @@ def operator_action(request, obj: ClientRequest, action: str, message: str = "")
             raise DomainError("separation_of_duties", "You did the engineering check; another person must do the QA check.", http_status=403)
     if needs_message and not message.strip():
         raise DomainError("message_required", "Please enter a message for the client.", http_status=400)
+    if action == "release":  # production goes ahead the way the Admin or Manager decided (decision of 17 Nov 2026)
+        from apps.intelligence.estimate import chosen_route
+
+        route = chosen_route(obj)
+        if route is None:
+            raise DomainError("route_not_chosen", "Choose the production route (OEM purchase, conventional manufacturing or 3D printing) "
+                              "in the cost estimate before releasing the order.", http_status=409)
+        message = f"Production route: {route['label']}." + (f" {message.strip()}" if message.strip() else "")
     event = "inspection_failed" if action == "inspection_failed" else to_state
     return transition(request, obj, to_status=to_state, event=event, side=RequestEvent.Side.OPERATOR, message=message.strip())
 
