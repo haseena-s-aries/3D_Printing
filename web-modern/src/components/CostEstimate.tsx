@@ -161,6 +161,7 @@ function Comparison({ e, data, busy, locked, onChoose }: { e: Estimate; data: Da
             <tr><th />{routes.map((k) => (
               <th key={k} className={e.chosen_route === k ? "is-chosen" : ""}>
                 {e.result.routes[k].label}{" "}
+                {e.chosen_route === k && <Badge tone="success">✓ Chosen</Badge>}{" "}
                 {e.result.cheapest === k && <Badge tone="success">Cheapest</Badge>}{" "}
                 {e.result.fastest === k && <Badge tone="info">Fastest</Badge>}
               </th>
@@ -198,10 +199,10 @@ function Comparison({ e, data, busy, locked, onChoose }: { e: Estimate; data: Da
               <span className="small">{r.process || "—"}<br />{r.material} · {r.machine}<br /><SourceLink s={r.material_price_source} /></span>
             ))}
             {row("Risks", (r) => r.risks.length ? <ul className="estimate-list small">{r.risks.map((x, i) => <li key={i}>{x}</li>)}</ul> : <span className="muted small">None stated</span>)}
-            {data.can_choose && !locked && row("", (r, k) => (
-              <button type="button" className={`btn btn-small ${e.chosen_route === k ? "btn-primary" : ""}`} disabled={r.feasible === "no" || !!busy}
-                onClick={() => onChoose(k)}>{e.chosen_route === k ? "Chosen" : "Choose this route"}</button>
-            ))}
+            {data.can_choose && !locked && row("", (r, k) => e.chosen_route === k
+              ? <Badge tone="success">✓ Chosen</Badge>
+              : <button type="button" className="btn btn-small" disabled={r.feasible === "no" || !!busy} onClick={() => onChoose(k)}>
+                {e.chosen_route ? "Choose this route instead" : "Choose this route"}</button>)}
           </tbody>
         </table>
       </div>
