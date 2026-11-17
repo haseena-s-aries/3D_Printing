@@ -44,6 +44,9 @@ const RL2_REQUIRED = new Set(["manufacturing_solution", "material_selection", "m
   "applicable_standards", "mechanical_acceptance", "dimensional_tolerances", "ndt", "inspection_test_plan", "mtc_required", "test_coupons",
   ...["job_number", "material", "feedstock", "machine", "layer_thickness", "support_strategy", "build_orientation", "inert_gas",
     "heat_treatment", "post_processing", "machining", "printing_hours", "post_processing_hours"].map((k) => `manufacturing_spec.${k}`)]);
+/** 3D-printing settings: not needed when the manufacturing process is a conventional one (same rule as the server). */
+const SPEC_AM_ONLY = new Set(["layer_thickness", "support_strategy", "build_orientation", "inert_gas", "printing_hours"].map((k) => `manufacturing_spec.${k}`));
+const CONVENTIONAL_PROCESSES = new Set(["cnc machining", "casting", "reverse-engineered conventional manufacture"]);
 
 type PrefillFrom = "original_material" | "dimensions" | "application" | "proposed_material" | "material_change_reason";
 const PREFILL: [keyof RL1, PrefillFrom][] = [
@@ -474,8 +477,11 @@ export function RL2Form({ passportId, revision, editable, onSaved, files = [] }:
   const params = spec.process_parameters ?? [];
   const s2 = (k: keyof RL2) => (rl2[k] as string | undefined) ?? "";
   const ss = (k: keyof ManufacturingSpec) => (spec[k] as string | undefined) ?? "";
+  const conventional = CONVENTIONAL_PROCESSES.has(String(rl2.manufacturing_process ?? "").trim().toLowerCase());
+  const req = (key: string) => RL2_REQUIRED.has(key) && !(conventional && SPEC_AM_ONLY.has(key));
   const f = (key: string, control: ReactElement<{ id?: string }>, hint?: ReactNode, value?: unknown) => (
-    <PField key={key} label={FIELD_LABELS[key]} hint={hint} required={RL2_REQUIRED.has(key)} missing={RL2_REQUIRED.has(key) && !filledValue(value)}>
+    <PField key={key} label={FIELD_LABELS[key]} required={req(key)} missing={req(key) && !filledValue(value)}
+      hint={conventional && SPEC_AM_ONLY.has(key) ? "3D printing only: not needed for this manufacturing process." : hint}>
       {control}
     </PField>
   );
@@ -495,7 +501,7 @@ export function RL2Form({ passportId, revision, editable, onSaved, files = [] }:
       <div className="form-sections span-2" key={revision.id} role="group" aria-label="R-L2 — manufacturing solution and acceptance">
         <Missing c={revision.completeness?.rl2} />
         <Section title="Manufacturing solution">
-          <PField label={FIELD_LABELS.manufacturing_process} hint="Optional controlled selection; describe the full solution below.">
+          <PField label={FIELD_LABELS.manufacturing_process} hint="Choose the process. For CNC machining, casting or conventional manufacture the 3D-printing settings (layer thickness, supports, orientation, inert gas, printing hours) are not needed.">
             <SelectOther value={s2("manufacturing_process")} onChange={(v) => set("manufacturing_process", v)} options={opts.list("manufacturing_processes")} />
           </PField>
           {f("material_selection", <ComboText value={s2("material_selection")} onChange={(v) => set("material_selection", v)} options={opts.list("material_grades")} />, PROVISIONAL, rl2.material_selection)}

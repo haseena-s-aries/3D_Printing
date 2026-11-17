@@ -22,6 +22,20 @@ RL2_REQUIRED = ["manufacturing_solution", "material_selection", "material_catego
                 "mtc_required", "test_coupons"]
 SPEC_REQUIRED = ["job_number", "material", "feedstock", "machine", "layer_thickness", "support_strategy", "build_orientation",
                  "inert_gas", "heat_treatment", "post_processing", "machining", "printing_hours", "post_processing_hours"]
+# 3D-printing settings: required only when the part is made by additive manufacturing. A cast or machined part (the
+# manufacturing process is a conventional one) does not need them (decision of 17 Nov 2026).
+SPEC_AM_ONLY = ["layer_thickness", "support_strategy", "build_orientation", "inert_gas", "printing_hours"]
+CONVENTIONAL_PROCESSES = {"cnc machining", "casting", "reverse-engineered conventional manufacture"}
+
+
+def is_conventional(rl2: dict) -> bool:
+    return str((rl2 or {}).get("manufacturing_process") or "").strip().lower() in CONVENTIONAL_PROCESSES
+
+
+def spec_required(rl2: dict) -> list:
+    return [k for k in SPEC_REQUIRED if not (is_conventional(rl2) and k in SPEC_AM_ONLY)]
+
+
 # BR-008: the five R-L3 evidence documents
 RL3_EVIDENCE = ["itp", "machine_details", "print_orientation", "dimensional_inspection", "material_test_certificate"]
 
@@ -166,7 +180,8 @@ def completeness(content: dict) -> dict:
     rl2 = content.get("rl2") or {}
     spec = rl2.get("manufacturing_spec") or {}
     rl2_missing = [k for k in RL2_REQUIRED if not _filled(rl2.get(k))]
-    rl2_missing += [f"manufacturing_spec.{k}" for k in SPEC_REQUIRED if not _filled(spec.get(k))]
+    spec_req = spec_required(rl2)
+    rl2_missing += [f"manufacturing_spec.{k}" for k in spec_req if not _filled(spec.get(k))]
 
     evidence = (content.get("rl3") or {}).get("evidence") or {}
     rl3_missing = [k for k in RL3_EVIDENCE if not evidence.get(k)]
@@ -176,7 +191,7 @@ def completeness(content: dict) -> dict:
 
     return {
         "rl1": level(len(rl1_required), rl1_missing),
-        "rl2": level(len(RL2_REQUIRED) + len(SPEC_REQUIRED), rl2_missing),
+        "rl2": level(len(RL2_REQUIRED) + len(spec_req), rl2_missing),
         "rl3": level(len(RL3_EVIDENCE), rl3_missing),
     }
 
