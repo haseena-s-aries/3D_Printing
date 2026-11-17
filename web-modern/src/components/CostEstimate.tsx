@@ -65,7 +65,7 @@ function SourceLink({ s }: { s?: Source }) {
     : <span className="muted small">{s.note || text}</span>;
 }
 
-export function CostEstimateCard({ envelopeId }: { envelopeId: string }) {
+export function CostEstimateCard({ envelopeId, locked = false, onChange }: { envelopeId: string; locked?: boolean; onChange?: () => void }) {
   const base = `/operator/requests/${envelopeId}/estimate/`;
   const d = useApi<Data>(base);
   const [busy, setBusy] = useState("");
@@ -78,6 +78,7 @@ export function CostEstimateCard({ envelopeId }: { envelopeId: string }) {
     setError(null);
     try {
       d.setData(await api<Data>(base, { body }));
+      if (body.action === "choose") onChange?.(); // the request page shows the chosen route and enables release
       return true;
     } catch (err) {
       setError(err);
@@ -114,8 +115,8 @@ export function CostEstimateCard({ envelopeId }: { envelopeId: string }) {
             <EstimateEditor e={e} data={data} busy={busy === "adjust"} onCancel={() => setEditing(false)}
               onSave={async (work, prices, note) => { if (await post({ action: "adjust", work, prices, note }, "adjust")) setEditing(false); }} />
           ) : (
-            <Comparison e={e} data={data} busy={busy} onChoose={(route) => {
-              const note = window.prompt(`Choose ${data.routes[route]} for this order? Add a note (optional):`, "");
+            <Comparison e={e} data={data} busy={busy} locked={locked} onChoose={(route) => {
+              const note = window.prompt(`Choose ${data.routes[route]} for this order? Why this route (e.g. "cheaper, only one day slower"):`, "");
               if (note !== null) void post({ action: "choose", route, note }, "choose");
             }} />
           )}
@@ -133,7 +134,7 @@ export function CostEstimateCard({ envelopeId }: { envelopeId: string }) {
   );
 }
 
-function Comparison({ e, data, busy, onChoose }: { e: Estimate; data: Data; busy: string; onChoose: (route: string) => void }) {
+function Comparison({ e, data, busy, locked, onChoose }: { e: Estimate; data: Data; busy: string; locked: boolean; onChoose: (route: string) => void }) {
   const money = useMoney(e.result.currency);
   const routes = ORDER.filter((r) => e.result.routes[r]);
   const row = (title: string, cell: (r: RouteResult, key: string) => ReactNode) => (
@@ -146,6 +147,10 @@ function Comparison({ e, data, busy, onChoose }: { e: Estimate; data: Data; busy
         {e.ai.confidence != null && ` · Gemini confidence ${Math.round(e.ai.confidence * 100)} %`} · rates in {e.result.currency}{" "}
         (<Link to="/estimate-rates">Estimate rates</Link>)
       </p>
+      {!e.chosen_route && data.can_choose && !locked && (
+        <Notice>Compare the routes and click <strong>Choose this route</strong> under the one Aries will use, with the reason. The order can be released after that.</Notice>
+      )}
+      {locked && e.chosen_route && <p className="muted small">The order is released: production goes ahead on the chosen route.</p>}
       {e.chosen_route && (
         <Notice kind="success">Route chosen: <strong>{data.routes[e.chosen_route]}</strong> by {e.chosen_by}
           {e.chosen_at ? ` · ${formatDate(e.chosen_at)}` : ""}{e.chosen_note ? ` · ${e.chosen_note}` : ""}</Notice>
@@ -193,7 +198,7 @@ function Comparison({ e, data, busy, onChoose }: { e: Estimate; data: Data; busy
               <span className="small">{r.process || "—"}<br />{r.material} · {r.machine}<br /><SourceLink s={r.material_price_source} /></span>
             ))}
             {row("Risks", (r) => r.risks.length ? <ul className="estimate-list small">{r.risks.map((x, i) => <li key={i}>{x}</li>)}</ul> : <span className="muted small">None stated</span>)}
-            {data.can_choose && row("", (r, k) => (
+            {data.can_choose && !locked && row("", (r, k) => (
               <button type="button" className={`btn btn-small ${e.chosen_route === k ? "btn-primary" : ""}`} disabled={r.feasible === "no" || !!busy}
                 onClick={() => onChoose(k)}>{e.chosen_route === k ? "Chosen" : "Choose this route"}</button>
             ))}

@@ -517,6 +517,9 @@ def adjust(request, obj, base: ManufacturingEstimate, work: dict, prices: dict, 
 def choose(request, e: ManufacturingEstimate, route: str, note: str) -> ManufacturingEstimate:
     if route not in ROUTES:
         raise DomainError("invalid_route", "Choose oem, conventional or additive.", http_status=400)
+    if e.request.status in ("released", "in_production", "inspected", "completed"):
+        raise DomainError("route_fixed", "The order is released: production goes ahead on the chosen route, which can no longer be changed.",
+                          http_status=409)
     r = (e.result.get("routes") or {}).get(route)
     if r is None or r.get("feasible") == "no":
         raise DomainError("route_not_feasible", "This route is not feasible in the estimate.", http_status=409)
@@ -532,4 +535,20 @@ def serialise(e: ManufacturingEstimate) -> dict:
             "work": e.work, "prices": e.prices, "result": e.result, "feasibility": e.feasibility, "rates": e.rates, "ai": e.ai,
             "note": e.note, "created_at": e.created_at, "created_by": e.created_by.email if e.created_by_id else "",
             "chosen_route": e.chosen_route, "chosen_note": e.chosen_note, "chosen_at": e.chosen_at,
+            "chosen_by": e.chosen_by.email if e.chosen_by_id else ""}
+
+
+def chosen_route(obj) -> dict | None:
+    """The production route decided for a request: the most recent estimate version with a chosen route (with its
+    estimated cost and days, who chose it and why), or None. Inside the client's tenant context."""
+    e = ManufacturingEstimate.objects.filter(request=obj).exclude(chosen_route="").select_related("chosen_by").order_by("-version").first()
+    if e is None:
+        return None
+    r = (e.result.get("routes") or {}).get(e.chosen_route) or {}
+    cost = r.get("cost") or {}
+    latest = ManufacturingEstimate.objects.filter(request=obj).order_by("-version").values_list("version", flat=True).first()
+    return {"route": e.chosen_route, "label": ROUTE_LABEL.get(e.chosen_route, e.chosen_route), "version": e.version,
+            "newer_version": latest if latest and latest > e.version else None, "currency": e.result.get("currency", ""),
+            "low": cost.get("low"), "high": cost.get("high"), "total": cost.get("total"), "days": r.get("total_days"),
+            "manpower_hours": r.get("manpower_hours"), "note": e.chosen_note, "chosen_at": e.chosen_at,
             "chosen_by": e.chosen_by.email if e.chosen_by_id else ""}

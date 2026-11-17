@@ -1446,6 +1446,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/estimate-rates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
+         *     Aries Admin or Manager changes them.
+         */
+        get: operations["v1_operator_estimate_rates_retrieve"];
+        /**
+         * @description Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
+         *     Aries Admin or Manager changes them.
+         */
+        put: operations["v1_operator_estimate_rates_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/overview/": {
         parameters: {
             query?: never;
@@ -1669,6 +1693,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests/{id}/estimate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Mixed into OperatorRequestViewSet (which provides _envelope and _load). */
+        get: operations["v1_operator_requests_estimate_retrieve"];
+        put?: never;
+        /** @description Mixed into OperatorRequestViewSet (which provides _envelope and _load). */
+        post: operations["v1_operator_requests_estimate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/{id}/jobsheet/": {
         parameters: {
             query?: never;
@@ -1731,6 +1773,61 @@ export interface paths {
         };
         /** @description Mixed into OperatorRequestViewSet (which provides _envelope and _load). */
         get: operations["v1_operator_requests_jobsheet_revisions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/passport/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The ordered part (read-only) so engineering, QA and inspection are done from the request itself (decision of
+         *     16 Nov 2026): the spare part's details, its files and, when it has one, the passport revision the client ordered
+         *     (R-L1 / R-L2 / R-L3), reports and 3D model. Audited in the client company.
+         */
+        get: operations["v1_operator_requests_passport_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/passport/files/{file_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Mixed into OperatorRequestViewSet (which provides _envelope and _load). */
+        get: operations["v1_operator_requests_passport_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/passport/reports/{report_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Mixed into OperatorRequestViewSet (which provides _envelope and _load). */
+        get: operations["v1_operator_requests_passport_reports_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3436,6 +3533,31 @@ export interface components {
             /** @description True when the caller is assigned to this client and can open it */
             readonly assigned: boolean;
         };
+        EnvelopeRequest: {
+            intake_number?: string;
+            reference: string;
+            /** Format: uuid */
+            client_tenant: string;
+            client_name: string;
+            kind: string;
+            status: string;
+            priority: string;
+            /** Format: uuid */
+            project_ref?: string | null;
+            /** Format: uuid */
+            assigned_to?: string | null;
+            awaiting_reply?: boolean;
+            last_client_activity?: string;
+            /** Format: date-time */
+            last_client_activity_at?: string | null;
+            part_number?: string;
+            part_name?: string;
+            quantity?: number | null;
+            /** Format: date */
+            required_date?: string | null;
+            /** Format: date-time */
+            submitted_at: string;
+        };
         Event: {
             /** Format: uuid */
             readonly id: string;
@@ -3929,17 +4051,24 @@ export interface components {
          *     * `complete` - complete
          *     * `create_project` - create_project
          *     * `decline` - decline
+         *     * `deliver` - deliver
+         *     * `engineering_check` - engineering_check
          *     * `hand_over` - hand_over
+         *     * `inspection_failed` - inspection_failed
+         *     * `inspection_passed` - inspection_passed
          *     * `link_project` - link_project
          *     * `message` - message
+         *     * `qa_approve` - qa_approve
          *     * `record_deliverable` - record_deliverable
+         *     * `release` - release
          *     * `request_information` - request_information
          *     * `respond` - respond
          *     * `schedule` - schedule
          *     * `start` - start
+         *     * `start_production` - start_production
          * @enum {string}
          */
-        OperatorActionInputActionEnum: "acknowledge" | "assign" | "close" | "complete" | "create_project" | "decline" | "hand_over" | "link_project" | "message" | "record_deliverable" | "request_information" | "respond" | "schedule" | "start";
+        OperatorActionInputActionEnum: "acknowledge" | "assign" | "close" | "complete" | "create_project" | "decline" | "deliver" | "engineering_check" | "hand_over" | "inspection_failed" | "inspection_passed" | "link_project" | "message" | "qa_approve" | "record_deliverable" | "release" | "request_information" | "respond" | "schedule" | "start" | "start_production";
         OperatorActionInputRequest: {
             action: components["schemas"]["OperatorActionInputActionEnum"];
             /** @default  */
@@ -4419,9 +4548,11 @@ export interface components {
         /**
          * @description * `publish` - publish
          *     * `unpublish` - unpublish
+         *     * `suspend_ordering` - suspend_ordering
+         *     * `allow_ordering` - allow_ordering
          * @enum {string}
          */
-        PassportPublishDecisionActionEnum: "publish" | "unpublish";
+        PassportPublishDecisionActionEnum: "publish" | "unpublish" | "suspend_ordering" | "allow_ordering";
         PassportPublishDecisionRequest: {
             action: components["schemas"]["PassportPublishDecisionActionEnum"];
             reason?: string;
@@ -5146,13 +5277,18 @@ export interface components {
          *     * `answered` - Answered
          *     * `scheduled` - Scheduled
          *     * `in_progress` - In progress
+         *     * `engineering_checked` - Engineering checked
+         *     * `qa_approved` - QA approved
+         *     * `released` - Released for production
+         *     * `in_production` - In production
+         *     * `inspected` - Inspected
          *     * `completed` - Completed
          *     * `closed` - Closed
          *     * `declined` - Declined
          *     * `withdrawn` - Withdrawn
          * @enum {string}
          */
-        RequestStatusEnum: "submitted" | "acknowledged" | "information_requested" | "information_provided" | "answered" | "scheduled" | "in_progress" | "completed" | "closed" | "declined" | "withdrawn";
+        RequestStatusEnum: "submitted" | "acknowledged" | "information_requested" | "information_provided" | "answered" | "scheduled" | "in_progress" | "engineering_checked" | "qa_approved" | "released" | "in_production" | "inspected" | "completed" | "closed" | "declined" | "withdrawn";
         /**
          * @description * `manufacturing` - manufacturing
          *     * `digitisation` - digitisation
@@ -8277,6 +8413,60 @@ export interface operations {
             };
         };
     };
+    v1_operator_estimate_rates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_estimate_rates_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+                "application/x-www-form-urlencoded": {
+                    [key: string]: unknown;
+                };
+                "multipart/form-data": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_operator_overview_list: {
         parameters: {
             query?: never;
@@ -8631,6 +8821,60 @@ export interface operations {
             };
         };
     };
+    v1_operator_requests_estimate_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_requests_estimate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvelopeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["EnvelopeRequest"];
+                "multipart/form-data": components["schemas"]["EnvelopeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_operator_requests_jobsheet_retrieve: {
         parameters: {
             query?: never;
@@ -8778,6 +9022,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobSheet"];
+                };
+            };
+        };
+    };
+    v1_operator_requests_passport_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_requests_passport_files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    v1_operator_requests_passport_reports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };

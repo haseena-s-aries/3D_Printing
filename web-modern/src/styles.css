@@ -1883,3 +1883,5 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .rates-grid dt { font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
 .rates-grid dd { margin: 0; }
 .rates-grid input { width: 100%; }
+.route-summary { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--ok-line); background: var(--ok-bg); }
