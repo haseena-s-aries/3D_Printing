@@ -208,7 +208,7 @@ export default function IncomingRequestDetailPage() {
       {r.kind === "manufacturing_request" && (
         <Card title="Order progress">
           <OrderProgress status={r.status} />
-          {WAITING[r.status] && <p className="muted small">Waiting for {r.status === "qa_approved" && route ? "an Aries Admin or Manager to release it" : WAITING[r.status]}.</p>}
+          {WAITING[r.status] && <p className="muted small">Waiting for {String(r.status) === "qa_approved" && route ? "an Aries Admin or Manager to release it" : WAITING[r.status]}.</p>}
           <RouteSummary route={route} status={r.status} />
         </Card>
       )}
