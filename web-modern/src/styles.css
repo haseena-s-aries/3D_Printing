@@ -1885,3 +1885,13 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .rates-grid input { width: 100%; }
 .route-summary { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; margin-top: 8px; padding: 8px 12px; border-radius: 8px;
   border: 1px solid var(--ok-line); background: var(--ok-bg); }
+
+/* Sidebar: the logo and name stay at the top, the wave and "Shared platform" footer stay at the bottom; only the
+   menu scrolls (it takes the space in between). */
+.sidebar { overflow: hidden; }
+.sidebar > nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; margin-right: -6px; padding-right: 6px; }
+.sidebar > nav::-webkit-scrollbar { width: 6px; }
+.sidebar > nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
+.sidebar > .sidebar-wave { margin-top: 0; }
+@media (max-height: 760px) { .sidebar > .sidebar-wave { display: none; } } /* short screens: room for the menu */
