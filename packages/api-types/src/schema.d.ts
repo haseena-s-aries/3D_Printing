@@ -2801,6 +2801,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/requests/{id}/quotation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The current client organisation's requests. */
+        post: operations["v1_requests_quotation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/requests/{id}/reply/": {
         parameters: {
             query?: never;
@@ -4195,6 +4212,10 @@ export interface components {
             readonly updated_at: string;
             readonly events: components["schemas"]["Event"][];
             readonly attachments: components["schemas"]["Attachment"][];
+            /** @description The quotation in force: method, price, delivery days, validity and status only (never the cost breakdown). */
+            readonly quotation: {
+                [key: string]: unknown;
+            } | null;
             readonly client_name: string;
             readonly part_summary: {
                 [key: string]: unknown;
@@ -4828,6 +4849,16 @@ export interface components {
             test_coupons?: string;
             mechanical_acceptance?: components["schemas"]["AcceptanceRowRequest"][];
         };
+        /**
+         * @description * `accept` - accept
+         *     * `reject` - reject
+         * @enum {string}
+         */
+        QuotationDecisionDecisionEnum: "accept" | "reject";
+        QuotationDecisionRequest: {
+            decision: components["schemas"]["QuotationDecisionDecisionEnum"];
+            note?: string;
+        };
         RL1: {
             cad_3d_available?: boolean | null;
             drawings_2d_available?: boolean | null;
@@ -5182,6 +5213,10 @@ export interface components {
             readonly updated_at: string;
             readonly events: components["schemas"]["Event"][];
             readonly attachments: components["schemas"]["Attachment"][];
+            /** @description The quotation in force: method, price, delivery days, validity and status only (never the cost breakdown). */
+            readonly quotation: {
+                [key: string]: unknown;
+            } | null;
         };
         RequestAttachmentUploadRequest: {
             /** Format: binary */
@@ -5265,6 +5300,10 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+            /** @description The quotation in force: method, price, delivery days, validity and status only (never the cost breakdown). */
+            readonly quotation: {
+                [key: string]: unknown;
+            } | null;
         };
         RequestOptions: {
             services: string[];
@@ -11032,6 +11071,34 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    v1_requests_quotation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this client request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotationDecisionRequest"];
+                "multipart/form-data": components["schemas"]["QuotationDecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["QuotationDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Request"];
                 };
             };
         };

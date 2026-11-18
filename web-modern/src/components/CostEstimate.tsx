@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
+import { formatDay, formatPrice, type ClientQuotation } from "./requests";
 import { Badge, ErrorNotice, Loading, Notice, formatDate } from "./ui";
 
 type Source = { source?: string; url?: string; title?: string; note?: string };
@@ -35,7 +36,7 @@ type Estimate = {
 };
 type Data = {
   latest: Estimate | null; versions: { version: number; mode: string; created_at: string; created_by: string; chosen_route: string }[];
-  ai: { enabled: boolean; reason: string }; can_prepare: boolean; can_choose: boolean;
+  ai: { enabled: boolean; reason: string }; can_prepare: boolean; can_choose: boolean; quotation: ClientQuotation | null; status: string;
   roles: Record<string, string>; machines: Record<string, string>; routes: Record<string, string>;
 };
 
@@ -119,6 +120,11 @@ export function CostEstimateCard({ envelopeId, locked = false, onChange }: { env
               const note = window.prompt(`Choose ${data.routes[route]} for this order? Why this route (e.g. "cheaper, only one day slower"):`, "");
               if (note !== null) void post({ action: "choose", route, note }, "choose");
             }} />
+          )}
+          {e && e.chosen_route && !editing && (
+            <QuotationPanel key={`${e.version}-${e.chosen_route}`} e={e} data={data} busy={busy} locked={locked}
+              onSend={(body) => void post({ action: "quote", ...body }, "quote")}
+              onWithdraw={() => { const why = window.prompt("Why is the quotation withdrawn? (shown to the client)", ""); if (why !== null) void post({ action: "withdraw_quote", note: why }, "withdraw"); }} />
           )}
           {data.versions.length > 1 && (
             <details className="estimate-versions">
@@ -310,5 +316,62 @@ function EstimateEditor({ e, data, busy, onSave, onCancel }: {
         <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy ? "Saving…" : "Save and recalculate"}</button>
       </div>
     </form>
+  );
+}
+
+/** Quotation to the client (decision of 18 Nov 2026): the chosen method with one price, delivery days and validity. The
+ *  client sees only these; it accepts or rejects; release for production waits for the acceptance. */
+function QuotationPanel({ e, data, busy, locked, onSend, onWithdraw }: {
+  e: Estimate; data: Data; busy: string; locked: boolean;
+  onSend: (b: { price: string; delivery_days: number; valid_until: string; note: string }) => void; onWithdraw: () => void;
+}) {
+  const q = data.quotation;
+  const r = e.result.routes[e.chosen_route];
+  const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const [price, setPrice] = useState(String(r?.cost?.total ?? ""));
+  const [days, setDays] = useState(String(Math.max(1, Math.ceil(r?.total_days ?? 0)) || ""));
+  const [until, setUntil] = useState(in14);
+  const [note, setNote] = useState("");
+  const [open, setOpen] = useState(false);
+  const routeChanged = !!q && q.route !== e.chosen_route && q.status !== "withdrawn";
+  const canSend = data.can_choose && !locked && (!q || q.status !== "sent" || routeChanged);
+  return (
+    <section className="quotation-panel">
+      <h3>Quotation to the client</h3>
+      {q && (
+        <div className={`quotation-status is-${q.status}`}>
+          <strong>#{q.number} · {q.method} · {formatPrice(q)} · {q.delivery_days} days</strong>{" "}
+          <Badge tone={q.status === "accepted" ? "success" : q.status === "sent" && !q.expired ? "info" : "warning"}>{q.expired ? "Expired" : q.status_label}</Badge>
+          <div className="muted small">Sent by {q.sent_by} on {formatDate(q.sent_at)} · valid until {formatDay(q.valid_until)}
+            {q.decided_at ? ` · decided ${formatDate(q.decided_at)}${q.decided_by ? ` by ${q.decided_by}` : ""}` : ""}
+            {q.client_note ? ` · client: “${q.client_note}”` : ""}</div>
+          {routeChanged && <Notice kind="warning">The chosen route changed after this quotation. Send a new quotation for {data.routes[e.chosen_route]}.</Notice>}
+          {q.status === "sent" && data.can_choose && !locked && <button type="button" className="btn btn-small btn-ghost" disabled={!!busy} onClick={onWithdraw}>Withdraw quotation</button>}
+        </div>
+      )}
+      {!q && <p className="muted small">The client sees only the method, the price, the delivery time and the validity, never this breakdown.
+        The order can be released after the client accepts.</p>}
+      {canSend && !open && (
+        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+          {q ? "Send a new quotation" : `Send quotation for ${data.routes[e.chosen_route]}`}</button>
+      )}
+      {canSend && open && (
+        <form className="form-grid quotation-form" onSubmit={(ev) => { ev.preventDefault(); onSend({ price, delivery_days: Number(days), valid_until: until, note }); setOpen(false); }}>
+          <label className="field"><span>Price to the client ({e.result.currency}, total for {e.result.quantity} pcs)</span>
+            <input type="number" min={0.01} step="0.01" required value={price} onChange={(ev) => setPrice(ev.target.value)} />
+            <span className="field-hint">From the estimate: {r?.cost ? `${r.cost.low} – ${r.cost.high}, estimate ${r.cost.total}` : "no cost"}. Adjust if needed.</span></label>
+          <label className="field"><span>Delivery time (days)</span>
+            <input type="number" min={1} max={730} required value={days} onChange={(ev) => setDays(ev.target.value)} /></label>
+          <label className="field"><span>Valid until</span>
+            <input type="date" required value={until} min={new Date().toISOString().slice(0, 10)} onChange={(ev) => setUntil(ev.target.value)} /></label>
+          <label className="field span-2"><span>Note to the client (optional)</span>
+            <input maxLength={1000} value={note} onChange={(ev) => setNote(ev.target.value)} placeholder="e.g. Price includes delivery to site and material certificate" /></label>
+          <div className="form-actions span-2">
+            <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" disabled={!!busy} aria-busy={busy === "quote"}>Send to client</button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

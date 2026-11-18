@@ -6137,6 +6137,41 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/requests/{id}/quotation/:
+    post:
+      operationId: v1_requests_quotation_create
+      description: The current client organisation's requests.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this client request.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuotationDecisionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuotationDecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuotationDecisionRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+          description: ''
   /api/v1/requests/{id}/reply/:
     post:
       operationId: v1_requests_reply_create
@@ -9411,6 +9446,13 @@ components:
           items:
             $ref: '#/components/schemas/Attachment'
           readOnly: true
+        quotation:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: 'The quotation in force: method, price, delivery days, validity
+            and status only (never the cost breakdown).'
+          readOnly: true
         client_name:
           type: string
           readOnly: true
@@ -9483,6 +9525,7 @@ components:
       - project_code
       - proposed_material
       - quantity
+      - quotation
       - quotation_reference
       - reason
       - reference
@@ -10704,6 +10747,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AcceptanceRowRequest'
+    QuotationDecisionDecisionEnum:
+      enum:
+      - accept
+      - reject
+      type: string
+      description: |-
+        * `accept` - accept
+        * `reject` - reject
+    QuotationDecisionRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/QuotationDecisionDecisionEnum'
+        note:
+          type: string
+      required:
+      - decision
     RL1:
       type: object
       properties:
@@ -11621,6 +11681,13 @@ components:
           items:
             $ref: '#/components/schemas/Attachment'
           readOnly: true
+        quotation:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: 'The quotation in force: method, price, delivery days, validity
+            and status only (never the cost breakdown).'
+          readOnly: true
       required:
       - acknowledged_at
       - attachments
@@ -11656,6 +11723,7 @@ components:
       - project_code
       - proposed_material
       - quantity
+      - quotation
       - quotation_reference
       - reason
       - reference
@@ -11868,6 +11936,13 @@ components:
           type: string
           format: date-time
           readOnly: true
+        quotation:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: 'The quotation in force: method, price, delivery days, validity
+            and status only (never the cost breakdown).'
+          readOnly: true
       required:
       - acknowledged_at
       - client_reference
@@ -11901,6 +11976,7 @@ components:
       - project_code
       - proposed_material
       - quantity
+      - quotation
       - quotation_reference
       - reason
       - reference

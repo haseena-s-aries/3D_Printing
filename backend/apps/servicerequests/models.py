@@ -227,3 +227,38 @@ class Notification(TimeStampedModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["recipient", "read_at"])]
+
+
+class Quotation(TenantOwnedModel):
+    """The price Aries offers the client for a request (decision of 18 Nov 2026): the chosen manufacturing method, one
+    price, delivery time and validity. Made by the Aries Admin or Manager from the cost estimate's chosen route; the
+    client sees only these fields (never the breakdown, rates, margin or the other routes) and accepts or rejects. A
+    manufacturing order is released for production only after the client accepted. A new quotation supersedes the
+    previous one."""
+
+    class Status(models.TextChoices):
+        SENT = "sent", "Waiting for the client"
+        ACCEPTED = "accepted", "Accepted by the client"
+        REJECTED = "rejected", "Rejected by the client"
+        WITHDRAWN = "withdrawn", "Withdrawn by Aries"
+        SUPERSEDED = "superseded", "Replaced by a newer quotation"
+
+    request = models.ForeignKey(ClientRequest, on_delete=models.PROTECT, related_name="quotations")
+    number = models.PositiveIntegerField()  # 1, 2, ... per request
+    estimate_id = models.UUIDField(null=True, blank=True)  # the cost estimate version it was made from (Aries internal)
+    route = models.CharField(max_length=16)
+    method = models.CharField(max_length=120)  # what the client sees, e.g. "Conventional manufacturing"
+    price = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    delivery_days = models.PositiveIntegerField()
+    valid_until = models.DateField()
+    note = models.CharField(max_length=1000, blank=True)  # shown to the client
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.SENT)
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    client_note = models.CharField(max_length=1000, blank=True)
+
+    class Meta:
+        ordering = ["-number"]
+        constraints = [models.UniqueConstraint(fields=["request", "number"], name="uniq_quotation_number")]

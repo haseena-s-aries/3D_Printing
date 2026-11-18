@@ -6,8 +6,8 @@ import { Link, useParams } from "react-router-dom";
 import { api, fetchObjectUrl, upload } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
-import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
-import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader, formatBytes, formatDate } from "../components/ui";
+import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline, formatDay, formatPrice, type ClientQuotation } from "../components/requests";
+import { BackLink, Badge, Card, ErrorNotice, Loading, Notice, PageHeader, formatBytes, formatDate } from "../components/ui";
 
 export async function downloadAttachment(path: string, filename: string) {
   const url = await fetchObjectUrl(path);
@@ -100,6 +100,66 @@ export function RequestFacts({ r }: { r: ServiceRequest }) {
   );
 }
 
+/** The quotation from Aries: the proposed method, price, delivery time and validity. The client accepts or rejects. */
+function QuotationCard({ q, canDecide, requestId, onDone }: { q: ClientQuotation; canDecide: boolean; requestId: string; onDone: (r: ServiceRequest) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  const open = q.status === "sent" && !q.expired;
+  async function decide(decision: "accept" | "reject") {
+    if (decision === "accept" && !window.confirm(`Accept ${q.method} for ${formatPrice(q)}, delivery in ${q.delivery_days} days? Aries then starts the order.`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onDone(await api<ServiceRequest>(`/requests/${requestId}/quotation/`, { body: { decision, note: decision === "reject" ? reason : "" } }));
+      setRejecting(false);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const tone: "success" | "warning" | "info" = q.status === "accepted" ? "success" : q.status === "rejected" || q.status === "withdrawn" || q.expired ? "warning" : "info";
+  return (
+    <div className={`card quotation-card is-${q.status}`}>
+      <div className="card-head">
+        <h2>Quotation from Aries <span className="muted small">#{q.number}</span></h2>
+        <Badge tone={tone}>{q.expired ? "Expired" : q.status === "sent" ? "Waiting for your decision" : q.status === "accepted" ? "Accepted" : q.status_label}</Badge>
+      </div>
+      <dl className="quotation-facts">
+        <div><dt>Proposed method</dt><dd>{q.method}</dd></div>
+        <div><dt>Price</dt><dd className="quotation-price">{formatPrice(q)}</dd></div>
+        <div><dt>Delivery</dt><dd>{q.delivery_days} days after your acceptance</dd></div>
+        <div><dt>Valid until</dt><dd>{formatDay(q.valid_until)}</dd></div>
+      </dl>
+      {q.note && <p className="small">{q.note}</p>}
+      <ErrorNotice error={error} />
+      {q.status === "accepted" && <Notice kind="success">You accepted this quotation{q.decided_at ? ` on ${formatDate(q.decided_at)}` : ""}. Aries is preparing the order.</Notice>}
+      {q.status === "rejected" && <Notice kind="warning">You rejected this quotation{q.client_note ? `: ${q.client_note}` : ""}. Aries may send a revised one.</Notice>}
+      {q.status === "withdrawn" && <Notice kind="warning">Aries withdrew this quotation. A new one will follow.</Notice>}
+      {q.expired && <Notice kind="warning">This quotation has expired. Send Aries a message to ask for a new one.</Notice>}
+      {open && canDecide && !rejecting && (
+        <div className="toolbar">
+          <button type="button" className="btn btn-primary" disabled={busy} aria-busy={busy} onClick={() => void decide("accept")}>Accept quotation</button>
+          <button type="button" className="btn" disabled={busy} onClick={() => setRejecting(true)}>Reject</button>
+        </div>
+      )}
+      {open && canDecide && rejecting && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void decide("reject"); }}>
+          <label className="field"><span>Why do you reject it? (shown to Aries)</span>
+            <textarea rows={2} maxLength={1000} required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. price too high, delivery too late" /></label>
+          <div className="toolbar">
+            <button type="button" className="btn btn-ghost" onClick={() => setRejecting(false)}>Cancel</button>
+            <button className="btn btn-primary" disabled={busy || !reason.trim()} aria-busy={busy}>Reject quotation</button>
+          </div>
+        </form>
+      )}
+      {open && !canDecide && <p className="muted small">Your Client Administrator or the person who sent the request decides.</p>}
+    </div>
+  );
+}
+
 export default function RequestDetailPage() {
   const { id } = useParams();
   const { can } = useAuth();
@@ -160,6 +220,10 @@ export default function RequestDetailPage() {
           <OrderProgress status={r.status} />
           <p className="muted small">Every order is checked by Aries engineering and QA and released before production, and inspected before delivery.</p>
         </Card>
+      )}
+      {(r as ServiceRequest & { quotation?: ClientQuotation | null }).quotation && (
+        <QuotationCard q={(r as ServiceRequest & { quotation: ClientQuotation }).quotation} canDecide={can("requests.create")} requestId={r.id}
+          onDone={(next) => req.setData(next)} />
       )}
       {r.status === "information_requested" && <Notice kind="warning">Our team needs more information. Please reply below.</Notice>}
       <div className="grid-2">

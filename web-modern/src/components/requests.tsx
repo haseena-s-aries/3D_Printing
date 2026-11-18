@@ -92,7 +92,31 @@ const EVENT_TEXT: Record<string, string> = {
   in_production: "Production started",
   inspection_failed: "Inspection found issues · part is being reworked",
   inspected: "Inspection passed",
+  quotation_sent: "Quotation from Aries",
+  quotation_withdrawn: "Quotation withdrawn by Aries",
+  quotation_accepted: "Quotation accepted",
+  quotation_rejected: "Quotation rejected",
 };
+
+/** What a client sees of a quotation: the method, one price, delivery days and validity (decision of 18 Nov 2026). */
+export type ClientQuotation = { number: number; method: string; price: string; currency: string; delivery_days: number; valid_until: string;
+  note: string; status: "sent" | "accepted" | "rejected" | "withdrawn" | "superseded"; status_label: string; expired: boolean;
+  sent_at: string; decided_at: string | null; client_note: string; route?: string; sent_by?: string; decided_by?: string };
+
+/** A date without a time (quotation validity). */
+export function formatDay(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+export function formatPrice(q: Pick<ClientQuotation, "price" | "currency">): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: q.currency }).format(Number(q.price));
+  } catch {
+    return `${q.currency} ${q.price}`;
+  }
+}
 
 /** Manufacturing order flow (decision of 13 Nov 2026). `completed` means delivered for a manufacturing request. */
 export const ORDER_STEPS: [string, string][] = [

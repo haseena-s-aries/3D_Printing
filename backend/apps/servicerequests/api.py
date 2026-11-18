@@ -76,6 +76,7 @@ class RequestSerializer(serializers.ModelSerializer):
     project_code = serializers.SerializerMethodField()
     linked_part_number = serializers.SerializerMethodField()
     responsible = serializers.SerializerMethodField(help_text="Responsible Aries Engineer (clients see only that one is assigned)")
+    quotation = serializers.SerializerMethodField()
     handover = serializers.SerializerMethodField(help_text="Scanning-to-passport handover: deliverables and passport (D-15)")
 
     class Meta:
@@ -86,8 +87,15 @@ class RequestSerializer(serializers.ModelSerializer):
                   "material_change_reason", "linked_part", "linked_part_number", "job_progress", "site_location", "equipment", "part_description", "reason",
                   "preferred_date", "contact_name", "contact_phone", "contact_email", "quotation_reference", "project",
                   "project_code", "created_part", "acknowledged_at", "closed_reason", "requested_by_email", "responsible", "handover", "created_at",
-                  "updated_at", "events", "attachments"]
+                  "updated_at", "events", "attachments", "quotation"]
         read_only_fields = fields
+
+    @extend_schema_field(serializers.DictField(allow_null=True, help_text="The quotation in force: method, price, delivery days, validity "
+                                                "and status only (never the cost breakdown)."))
+    def get_quotation(self, obj) -> dict | None:
+        from .quotations import client_view, current
+
+        return client_view(current(obj))
 
     def get_responsible(self, obj) -> dict | None:
         if not obj.assigned_to_id:
@@ -243,7 +251,7 @@ class ClientRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
     permission_classes = [HasCapability]
     capabilities = {"list": "requests.view", "retrieve": "requests.view", "create": "requests.create",
                     "reply": "requests.create", "withdraw": "requests.create", "attachments": "requests.create",
-                    "attachment": "requests.view", "form_options": "requests.view"}
+                    "attachment": "requests.view", "form_options": "requests.view", "quotation": "requests.view"}
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_serializer_class(self):
@@ -315,6 +323,17 @@ class ClientRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
         s.is_valid(raise_exception=True)
         obj = svc.client_message(request, self.get_object(), s.validated_data["message"])
         return Response(RequestSerializer(obj).data)
+
+    @extend_schema(request=inline_serializer("QuotationDecision", {"decision": serializers.ChoiceField(choices=["accept", "reject"]),
+                                                                  "note": serializers.CharField(required=False, allow_blank=True)}),
+                   responses={200: RequestSerializer})
+    @action(detail=True, methods=["post"])
+    def quotation(self, request, pk=None):
+        from .quotations import decide
+
+        obj = self.get_object()
+        decide(request, obj, str(request.data.get("decision", "")), str(request.data.get("note", "") or ""))
+        return Response(RequestSerializer(self.get_object()).data)
 
     @extend_schema(request=MessageInput, responses={200: RequestSerializer})
     @action(detail=True, methods=["post"])
@@ -420,6 +439,12 @@ class OperatorRequestSerializer(RequestSerializer):
                 "passport_id": str(passport.pk) if passport else None, "passport_number": passport.passport_number if passport else None,
                 "publication_state": passport.publication_state if passport else None,
                 "manufacturing_eligibility": passport.manufacturing_eligibility if passport else None}
+
+
+def _quotation_operator(obj) -> dict | None:
+    from .quotations import current, operator_view
+
+    return operator_view(current(obj))
 
 
 def _production_route(obj) -> dict | None:
@@ -538,6 +563,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
             data["production_route"] = _production_route(obj)
+            data["quotation"] = _quotation_operator(obj)
             record(request, "request.viewed_by_operator", obj=obj, tenant=env.client_tenant, data={"reference": obj.reference})
         return Response(data)
 
@@ -571,6 +597,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             data = OperatorRequestSerializer(obj, context={"client_name": env.client_name, "intake_number": env.intake_number, "operator": True}).data
             data["my_steps"] = sorted(svc.staff_roles(request))
             data["production_route"] = _production_route(obj)
+            data["quotation"] = _quotation_operator(obj)
         return Response(data)
 
     # ---- manufacturing cost estimate (decision of 16 Nov 2026): OEM / conventional / 3D printing compared on cost,
@@ -602,6 +629,16 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                     if base is None:
                         raise DomainError("no_estimate", "There is no estimate to correct yet.", http_status=409)
                     est.adjust(request, obj, base, request.data.get("work") or {}, request.data.get("prices") or {}, note)
+                elif action_ in ("quote", "withdraw_quote"):
+                    from .quotations import send, withdraw
+
+                    if "admin" not in roles:
+                        raise DomainError("role_not_allowed", "Only an Aries Admin or Manager sends quotations to the client.", http_status=403)
+                    if action_ == "quote":
+                        send(request, obj, price=request.data.get("price"), delivery_days=request.data.get("delivery_days"),
+                             valid_until=request.data.get("valid_until"), note=note)
+                    else:
+                        withdraw(request, obj, note)
                 elif action_ == "choose":
                     if "admin" not in roles:
                         raise DomainError("role_not_allowed", "Only an Aries Admin or Manager chooses the route.", http_status=403)
@@ -610,7 +647,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                         raise DomainError("no_estimate", "Prepare an estimate first.", http_status=409)
                     est.choose(request, e, str(request.data.get("route", "")), note)
                 else:
-                    raise DomainError("invalid_action", "Choose run, manual, adjust or choose.", http_status=400)
+                    raise DomainError("invalid_action", "Choose run, manual, adjust, choose, quote or withdraw_quote.", http_status=400)
             versions = list(ManufacturingEstimate.objects.filter(request=obj).select_related("created_by", "chosen_by").order_by("-version")[:20])
             data = {"latest": est.serialise(versions[0]) if versions else None,
                     "versions": [{"version": v.version, "mode": v.get_mode_display(),
@@ -618,6 +655,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                                   "cheapest": v.result.get("cheapest", ""), "chosen_route": v.chosen_route} for v in versions],
                     "ai": {"enabled": ai_status(obj.tenant)["enabled"], "reason": ai_status(obj.tenant)["reason"]},
                     "can_prepare": bool(roles & {"engineer", "admin"}), "can_choose": "admin" in roles,
+                    "quotation": _quotation_operator(obj), "status": obj.status,
                     "roles": est.ROLES, "machines": est.MACHINES, "routes": est.ROUTE_LABEL}
         return Response(data)
 
