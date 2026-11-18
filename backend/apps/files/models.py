@@ -102,6 +102,20 @@ class LinkRedemption(TenantOwnedModel):
         ordering = ["-created_at"]
 
 
+class DownloadLink(TenantOwnedModel):
+    """Short public handle for a signed download token.
+
+    The signed payload remains unchanged; only its long value is kept server-side so
+    IIS/HTTP.sys never has to receive the compressed token in the URL path.
+    """
+
+    handle = models.CharField(max_length=64, unique=True)
+    signed_token = models.TextField()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class AdminThumbnailConsent(TenantOwnedModel):
     """A client company's decision to let the Aries Admin see its sanitized photo thumbnails in the administrative
     inventory (ADMIN_THUMBNAIL_CONSENT_ENABLED). Append-only: each grant or revocation is a new row, and a database trigger

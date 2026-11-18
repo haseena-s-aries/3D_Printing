@@ -146,7 +146,7 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", True)
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", False)
     SECURE_HSTS_SECONDS = 31536000
 
 # Uploads are streamed to temporary files, never held fully in memory

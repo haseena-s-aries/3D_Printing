@@ -5,7 +5,7 @@ The link is re-validated on use: membership still active, object still present i
 Watermarking (BR-027) is not implemented yet: its policy and feasibility are open (OQ-33).
 """
 from datetime import timedelta
-from urllib.parse import quote
+import secrets
 
 from django.conf import settings
 from django.http import FileResponse, HttpResponseRedirect
@@ -27,7 +27,7 @@ from apps.tenancy.models import Membership, Tenant
 from apps.tenancy.permissions import has_capability
 from apps.tenancy.viewsets import TenantModelViewSet, TenantScopedRelatedField
 
-from .models import Derivative, EngineeringFile, FileVersion
+from .models import Derivative, DownloadLink, EngineeringFile, FileVersion
 from .services import make_link_token, read_link_token, redeem_link, store_version
 from .storage import get_storage
 
@@ -342,7 +342,15 @@ class EngineeringFileViewSet(TenantModelViewSet):
         record(request, "file.download_link_issued", obj=fv, data={"variant": variant, "expires_in": seconds})
         # Public links must use the frontend/IIS origin. The API is also reachable on the
         # internal backend port, but that port is not the browser-facing application URL.
-        url = f"{settings.WEB_BASE_URL.rstrip('/')}/api/v1/downloads/{quote(token, safe='')}/"
+        # Keep the full signed payload server-side and expose only a short opaque handle.
+        handle = secrets.token_urlsafe(24)
+        DownloadLink.objects.create(
+            tenant=request.tenant,
+            created_by=request.user,
+            handle=handle,
+            signed_token=token,
+        )
+        url = f"{settings.WEB_BASE_URL.rstrip('/')}/api/v1/downloads/{handle}/"
         return Response({"url": url, "expires_at": timezone.now() + timedelta(seconds=seconds), "filename": filename})
 
 
@@ -377,6 +385,10 @@ class DownloadView(APIView):
 
     @extend_schema(responses={200: bytes}, tags=["files"])
     def get(self, request, token):
+        link = DownloadLink.objects.filter(handle=token).first()
+        if link is None:
+            raise DomainError("link_invalid", "This download link is not valid.", http_status=403)
+        token = link.signed_token
         data = read_link_token(token, max_age=settings.DOWNLOAD_LINK_SECONDS)
         membership = Membership.objects.select_related("tenant", "user").filter(
             pk=data["m"], user_id=data["u"], tenant_id=data["t"], is_active=True,
