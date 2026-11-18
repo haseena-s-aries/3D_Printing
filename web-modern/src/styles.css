@@ -1895,3 +1895,15 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .sidebar > nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
 .sidebar > .sidebar-wave { margin-top: 0; }
 @media (max-height: 760px) { .sidebar > .sidebar-wave { display: none; } } /* short screens: room for the menu */
+
+/* Quotation: client card and Aries panel */
+.quotation-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 18px; margin: 0 0 10px; }
+.quotation-facts dt { color: var(--muted); font-size: 0.8rem; }
+.quotation-facts dd { margin: 2px 0 0; font-weight: 600; }
+.quotation-price { font-size: 1.25rem; }
+.quotation-card.is-sent { border-color: var(--accent-line); }
+.quotation-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.quotation-panel h3 { margin: 0; font-size: 1rem; }
+.quotation-status { display: grid; gap: 4px; }
+.quotation-form { margin-top: 4px; }
+.quotation-line { margin: 6px 0 0; }

@@ -77,6 +77,10 @@ EVENT_TITLES = {
     "in_production": "{ref}: in production",
     "inspection_failed": "{ref}: inspection found issues, part is being reworked",
     "inspected": "{ref}: inspection passed",
+    "quotation_sent": "{ref}: quotation from Aries, please review",
+    "quotation_withdrawn": "{ref}: quotation withdrawn",
+    "quotation_accepted": "{ref}: the client accepted the quotation",
+    "quotation_rejected": "{ref}: the client rejected the quotation",
     "operator_message": "{ref}: new message from Aries",
     "project_created": "{ref}: project and draft part created",
     "handed_over": "{ref}: scanning work handed over to the digital passport",
@@ -238,6 +242,11 @@ def operator_action(request, obj: ClientRequest, action: str, message: str = "")
         if route is None:
             raise DomainError("route_not_chosen", "Choose the production route (OEM purchase, conventional manufacturing or 3D printing) "
                               "in the cost estimate before releasing the order.", http_status=409)
+        from .quotations import accepted_for_route
+
+        if not accepted_for_route(obj, route["route"]):  # the client agreed to the price first (decision of 18 Nov 2026)
+            raise DomainError("quotation_not_accepted", f"Send the client a quotation for {route['label']} and wait for the client to accept it "
+                              "before releasing the order.", http_status=409)
         message = f"Production route: {route['label']}." + (f" {message.strip()}" if message.strip() else "")
     event = "inspection_failed" if action == "inspection_failed" else to_state
     return transition(request, obj, to_status=to_state, event=event, side=RequestEvent.Side.OPERATOR, message=message.strip())

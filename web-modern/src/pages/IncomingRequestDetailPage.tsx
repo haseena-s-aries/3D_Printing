@@ -16,7 +16,7 @@ import { Eligibility } from "../components/catalog";
 import { JobSheetPanel } from "../components/JobSheetPanel";
 import { CostEstimateCard } from "../components/CostEstimate";
 import ScanHandoverPanel from "../components/ScanHandoverPanel";
-import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline } from "../components/requests";
+import { KindBadge, OPEN_STATUSES, OrderProgress, StatusBadge, Timeline, formatPrice, type ClientQuotation } from "../components/requests";
 import { BackLink, Card, ErrorNotice, Loading, Notice, PageHeader, formatDate } from "../components/ui";
 import { FieldGrid, Meters, PartFiles, RevisionContent, Section, type Detail } from "./PassportApprovalsPage";
 import { AttachmentList, RequestFacts } from "./RequestDetailPage";
@@ -119,7 +119,7 @@ const ORDER: [string, string[], string[], string, string, boolean][] = [
 ];
 const WAITING: Record<string, string> = {
   acknowledged: "an Aries Engineer to do the engineering check", information_provided: "an Aries Engineer to do the engineering check",
-  engineering_checked: "Aries QA to do the QA check (not the engineer who checked it)", qa_approved: "an Aries Admin or Manager to choose the production route (Cost estimate below) and release it",
+  engineering_checked: "Aries QA to do the QA check (not the engineer who checked it)", qa_approved: "an Aries Admin or Manager to choose the route and send the quotation (Cost estimate below)",
   released: "an Aries Engineer, Admin or Manager to start production", in_production: "Aries QA to inspect the part",
   inspected: "an Aries Engineer, Admin or Manager to mark it delivered",
 };
@@ -196,6 +196,7 @@ export default function IncomingRequestDetailPage() {
 
   const steps = (r as OperatorRequest & { my_steps?: string[] }).my_steps ?? [];
   const route = (r as OperatorRequest & { production_route?: ProductionRoute | null }).production_route ?? null;
+  const quotation = (r as OperatorRequest & { quotation?: ClientQuotation | null }).quotation ?? null;
   const actions = actionsFor(r.kind, r.status, steps);
   return (
     <>
@@ -208,8 +209,17 @@ export default function IncomingRequestDetailPage() {
       {r.kind === "manufacturing_request" && (
         <Card title="Order progress">
           <OrderProgress status={r.status} />
-          {WAITING[r.status] && <p className="muted small">Waiting for {String(r.status) === "qa_approved" && route ? "an Aries Admin or Manager to release it" : WAITING[r.status]}.</p>}
+          {WAITING[r.status] && <p className="muted small">Waiting for {String(r.status) === "qa_approved" && route
+            ? (quotation?.status === "accepted" ? "an Aries Admin or Manager to release it" : quotation?.status === "sent" ? "the client to accept the quotation" : "an Aries Admin or Manager to send the quotation")
+            : WAITING[r.status]}.</p>}
           <RouteSummary route={route} status={r.status} />
+          {route && quotation && (
+            <p className="small quotation-line">Quotation #{quotation.number}: {quotation.method} · {formatPrice(quotation)} · {quotation.delivery_days} days ·{" "}
+              <strong>{quotation.expired ? "Expired" : quotation.status_label}</strong></p>
+          )}
+          {route && !quotation && String(r.status) === "qa_approved" && (
+            <Notice kind="warning">Send the client a quotation in the <strong>Cost estimate</strong> below; release waits for the client's acceptance.</Notice>
+          )}
         </Card>
       )}
       <div className="grid-2">
@@ -239,9 +249,12 @@ export default function IncomingRequestDetailPage() {
               )}
               <div className="toolbar wrap">
                 {actions.map((a) => {
-                  const blocked = a.action === "release" && !route; // production goes ahead the way the Admin or Manager chose
+                  // production goes ahead the way the Admin or Manager chose, at the price the client accepted
+                  const accepted = !!route && quotation?.status === "accepted" && quotation.route === route.route;
+                  const blocked = a.action === "release" && !accepted;
                   return <button key={a.action} type="button" className={`btn ${a.primary ? "btn-primary" : ""}`} disabled={busy || blocked}
-                    title={blocked ? "Choose the production route in the Cost estimate first" : undefined} onClick={() => void act(a)}>{a.label}</button>;
+                    title={blocked ? (!route ? "Choose the production route in the Cost estimate first" : "Waiting for the client to accept the quotation") : undefined}
+                    onClick={() => void act(a)}>{a.label}</button>;
                 })}
                 {r.kind === "digitisation" && !r.created_part && ["acknowledged", "information_provided", "scheduled", "in_progress"].includes(r.status) && (
                   <button type="button" className="btn" disabled={busy} onClick={() => void act({ action: "create_project", label: r.project ? "Create draft part" : "Create project and draft part",

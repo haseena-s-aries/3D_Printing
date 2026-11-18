@@ -46,6 +46,11 @@ def test_full_order_chain_with_roles(world, order):
     est_url = f"/api/v1/operator/requests/{order['env'].pk}/estimate/"
     assert login(w["op_eng"], w["a"]).post(est_url, {"action": "manual"}, format="json").status_code == 200
     login(w["op_mgr"]).post(est_url, {"action": "choose", "route": "conventional", "note": "Cheaper, one day slower"}, format="json")
+    # ... and the client accepted the quotation for that route (decision of 18 Nov 2026)
+    r = act(w["op_mgr"], "release")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "quotation_not_accepted"
+    assert login(w["op_mgr"]).post(est_url, {"action": "quote", "price": "950", "delivery_days": 10}, format="json").status_code == 200
+    assert login(w["a_admin"]).post(f"/api/v1/requests/{order['ref']['id']}/quotation/", {"decision": "accept"}, format="json").status_code == 200
     r = act(w["op_eng"], "release")
     assert r.status_code == 403 and r.json()["error"]["code"] == "role_not_allowed"
     released = act(w["op_mgr"], "release").json()
@@ -60,7 +65,7 @@ def test_full_order_chain_with_roles(world, order):
     assert act(w["op_qa"], "inspection_passed").json()["status"] == "inspected"
     assert act(w["op_admin"], "deliver").json()["status"] == "completed"
     detail = login(w["a_admin"]).get(f"/api/v1/requests/{order['ref']['id']}/").json()
-    assert [e["event"] for e in detail["events"]] == ["submitted", "acknowledged", "engineering_checked", "qa_approved", "released",
+    assert [e["event"] for e in detail["events"]] == ["submitted", "acknowledged", "engineering_checked", "qa_approved", "quotation_sent", "quotation_accepted", "released",
                                                       "in_production", "inspection_failed", "inspected", "completed"]
     titles = unread(w["a_admin"])
     assert any("released for production" in t for t in titles) and any("inspection found issues" in t for t in titles)

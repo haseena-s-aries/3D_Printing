@@ -252,15 +252,20 @@ export function SizeInput({ id, value, onChange, disabled, units }: Base & { uni
 }
 
 /** Heat treatment: process, temperature (°C) and hold time (h) (types 1 + 5). */
+const OTHER_HEAT = "__other__";
+
 export function HeatTreatmentInput({ id, value, onChange, disabled, processes }: Base & { processes: Option[] }) {
   const parsed = parseHeat(value, processes);
   const [draft, setDraft] = useState<Heat | null>(null);
-  if (!parsed && !draft) {
+  const [custom, setCustom] = useState(false); // "Other / specify": free text, e.g. "Case carburising + hardening + tempering"
+  if ((!parsed && !draft) || custom) {
     return (
       <span className="ctl ctl-custom">
-        <input id={id} value={value ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} value={value ?? ""} disabled={disabled} autoFocus={custom} placeholder="Describe the heat treatment"
+          onChange={(e) => onChange(e.target.value)} />
         <span className="ctl-tag">Custom value</span>
-        {!disabled && <button type="button" className="link-btn small" onClick={() => setDraft({ process: "", temp: "", hours: "" })}>Choose process and enter °C / h</button>}
+        {!disabled && <button type="button" className="link-btn small" onClick={() => { setCustom(false); setDraft({ process: "", temp: "", hours: "" }); onChange(""); }}>
+          Choose from the list and enter °C / h</button>}
       </span>
     );
   }
@@ -273,9 +278,14 @@ export function HeatTreatmentInput({ id, value, onChange, disabled, processes }:
   };
   return (
     <span className="ctl ctl-heat">
-      <select id={id} disabled={disabled} value={processes.find((p) => norm(p.value) === norm(h.process))?.value ?? ""} onChange={(e) => set({ ...h, process: e.target.value })}>
+      <select id={id} disabled={disabled} value={processes.find((p) => norm(p.value) === norm(h.process))?.value ?? ""}
+        onChange={(e) => {
+          if (e.target.value === OTHER_HEAT) { setDraft(null); setCustom(true); onChange(""); return; }
+          set({ ...h, process: e.target.value });
+        }}>
         <option value="">—</option>
         {processes.map((p) => <option key={p.value} value={p.value}>{p.value}</option>)}
+        <option value={OTHER_HEAT}>Other / specify…</option>
       </select>
       <input aria-label="Temperature °C" type="number" step="any" placeholder="°C" disabled={disabled || !h.process || h.process === "None"} value={h.temp}
         onChange={(e) => set({ ...h, temp: e.target.value })} />
