@@ -25,6 +25,7 @@ const PassportApprovalsPage = lazy(() => import("./pages/PassportApprovalsPage")
 const SubmissionApprovalsPage = lazy(() => import("./pages/SubmissionApprovalsPage"));
 const OperatorPassportsPage = lazy(() => import("./pages/OperatorPassportsPage"));
 const EstimateRatesPage = lazy(() => import("./pages/EstimateRatesPage"));
+const ArchivePage = lazy(() => import("./pages/ArchivePage"));
 const DataSharingPage = lazy(() => import("./pages/DataSharingPage"));
 const PhotoOriginPage = lazy(() => import("./pages/PhotoOriginPage"));
 const AdminCompaniesPage = lazy(() => import("./pages/AdminCompaniesPage"));
@@ -142,6 +143,7 @@ export default function App() {
         <Route path="audit" element={<RequireCapability capability="audit.view"><AuditPage /></RequireCapability>} />
         <Route path="passport-register" element={<RequireCapability capability="passports.view"><Suspense fallback={<Loading />}><OperatorPassportsPage /></Suspense></RequireCapability>} />
         <Route path="estimate-rates" element={<RequireCapability capability="requests.handle"><Suspense fallback={<Loading />}><EstimateRatesPage /></Suspense></RequireCapability>} />
+        <Route path="archive" element={<RequireCapability capability="clients.manage"><Suspense fallback={<Loading />}><ArchivePage /></Suspense></RequireCapability>} />
         <Route path="approvals" element={<RequireCapability capability="passports.approve"><Suspense fallback={<Loading />}><SubmissionApprovalsPage /></Suspense></RequireCapability>} />
         <Route path="passport-approvals" element={<RequireCapability capability="passports.approve"><Suspense fallback={<Loading />}><PassportApprovalsPage /></Suspense></RequireCapability>} />
         <Route path="requests" element={<RequireCapability capability="requests.view"><Suspense fallback={<Loading />}><MyRequestsPage /></Suspense></RequireCapability>} />

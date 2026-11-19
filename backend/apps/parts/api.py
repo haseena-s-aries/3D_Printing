@@ -350,7 +350,7 @@ class SparePartViewSet(TenantModelViewSet):
     capabilities = {"list": "parts.view", "retrieve": "parts.view", "create": "parts.manage",
                     "update": "parts.manage", "partial_update": "parts.manage",
                     "review": "parts.review", "resubmit": "parts.submit", "clone": "parts.submit", "history": "parts.view",
-                    "field_values": "parts.view", "stage_counts": "parts.view"}
+                    "field_values": "parts.view", "stage_counts": "parts.view", "archive": "parts.archive"}
 
     def _client_submission(self) -> bool:
         """Clients write through the submission rules; Aries Engineers through engineering master-data rules."""
@@ -400,6 +400,16 @@ class SparePartViewSet(TenantModelViewSet):
             submissions.stamp(obj, moved, source="client" if client else "aries", user=self.request.user, verified=not client)
             obj.save(update_fields=["field_provenance"])
         record(self.request, "spare_part.updated", obj=obj, data={"fields": changed, "client_submission": client})
+
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["post"])
+    def archive(self, request, pk=None):
+        """Hide a spare part (and its passport) everywhere, without erasing anything; an Aries Admin or Manager restores it
+        from the Archive screen. Refused while it has open requests or a published passport (decision of 19 Nov 2026)."""
+        from apps.tenancy.archive import archive_part
+
+        part = archive_part(request, self.get_object())
+        return Response({"archived": True, "part_number": part.part_number})
 
     @extend_schema(request=inline_serializer("PartReview", {
         "decision": serializers.ChoiceField(choices=["request_info", "accept", "decline", "verify"]),

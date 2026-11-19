@@ -37,6 +37,8 @@ CAPABILITIES: dict[str, set] = {
     "parts.submit": {R.CLIENT_ADMIN, R.CLIENT_ENGINEER, R.CLIENT_USER},
     # Aries Engineers review submissions of their assigned clients/projects (request details, accept, decline).
     "parts.review": {R.OPERATOR_ENGINEER},
+    # Archive a spare part (hidden everywhere, restorable; decision of 19 Nov 2026): Aries Admin, Manager and Engineers.
+    "parts.archive": {R.OPERATOR_ADMIN, R.OPERATOR_ENGINEER},
     "passports.view": ALL_ROLES,
     # OQ-05: operator creates passport drafts. Approval (decision of 12 Nov 2026, apps.passports.approval): an Aries Admin or
     # Aries Manager, or an Aries Engineer with access to the passport's project; never the person who submitted it.
@@ -139,7 +141,7 @@ del _cap, _roles
 # Aries Admin in a client company (ADMIN_WORKSPACE_ENABLED, apps.tenancy.admin_workspace): engineering-platform operations
 # on top of what the role already holds there. Independent sign-off is deliberately absent (edits.review,
 # intelligence.review, jobsheets.qa_review, files.origin_confirm); passport approval and manufacturing release stay closed.
-ADMIN_WORKSPACE_GRANTS = {"projects.manage", "parts.manage", "parts.review", "passports.edit_draft", "edits.request", "inventory.import",
+ADMIN_WORKSPACE_GRANTS = {"projects.manage", "parts.manage", "parts.review", "parts.archive", "passports.edit_draft", "edits.request", "inventory.import",
                           "intelligence.view", "intelligence.assess", "ai.share", "jobsheets.view", "jobsheets.prepare",
                           "reports.generate_internal", "reports.view_internal", "reports.generate_client", "reports.download_client",
                           "reports.preview_client", "reports.withdraw"}
@@ -168,7 +170,7 @@ CONTRACT_REVIEW_GRANTS = {"contracts.thumbnail_view", "contracts.thumbnail_verif
 # CanAuthorEngineering (Membership.engineering_authoring): the engineering work an Aries Engineer holds by role beyond read
 # access, i.e. exactly what an Aries Engineer had and an Aries QA did not. Removed when the permission is off, so a converted
 # QA membership keeps its QA rights without gaining authoring. Engineering review (edit_reviewer) stays a separate permission.
-ENGINEERING_AUTHORING = {"projects.manage", "parts.manage", "parts.review", "passports.edit_draft", "files.upload", "files.origin_claim",
+ENGINEERING_AUTHORING = {"projects.manage", "parts.manage", "parts.review", "parts.archive", "passports.edit_draft", "files.upload", "files.origin_claim",
                          "reports.generate_internal", "reports.generate_client", "edits.request", "jobsheets.prepare", "inventory.import",
                          "intelligence.view", "intelligence.assess", "intelligence.classify", "intelligence.review", "ai.share",
                          "reports.withdraw", "passports.approve", "passports.publish"}

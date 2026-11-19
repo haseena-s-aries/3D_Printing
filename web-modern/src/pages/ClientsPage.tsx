@@ -21,7 +21,8 @@ export default function ClientsPage() {
   const rows = list.data?.results ?? [];
   const c = useListControls(rows, {
     text: (r) => `${r.name} ${r.slug}`,
-    filters: [["all", "All", () => true], ["active", "Active", (r) => r.status === "active"], ["suspended", "Suspended", (r) => r.status !== "active"],
+    filters: [["all", "All", () => true], ["active", "Active", (r) => r.status === "active"], ["suspended", "Suspended", (r) => r.status !== "active"], ["test", "Test companies", (r) => r.is_test],
+      ["queued", "Queued for deletion", (r) => !!r.deletion_requested_at],
       ["incomplete", "Profile incomplete", (r) => !r.profile_complete]],
     sorts: [["name", "Name A–Z", (a, b) => a.name.localeCompare(b.name)], ["members", "Most members", (a, b) => b.member_count - a.member_count || a.name.localeCompare(b.name)]],
     pageSize: 15,
@@ -95,7 +96,8 @@ export default function ClientsPage() {
                       <div className="muted small">{r.slug}{!r.profile_complete && <> <Badge tone="warning">Profile incomplete</Badge></>}</div>
                     </td>
                     <td>
-                      <Badge tone={r.status === "active" ? "success" : "warning"}>{r.status}</Badge>
+                      <Badge tone={r.status === "active" ? "success" : "warning"}>{r.deletion_requested_at ? "queued for deletion" : r.status}</Badge>
+                      {r.is_test && <> <Badge>Test</Badge></>}
                     </td>
                     <td>{r.hosting_model}</td>
                     <td>{r.member_count}</td>

@@ -41,6 +41,14 @@ class Tenant(TimeStampedModel):
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=40, blank=True)
 
+    # Test companies (decision of 19 Nov 2026): an Aries Admin or Manager marks a company as a test company and may then
+    # queue it for deletion. Queueing suspends it at once (nobody can sign in, it leaves every list); the privileged
+    # `manage.py purge_test_companies` (run as dp_owner) erases queued companies for good. A queued company can be restored
+    # until then.
+    is_test = models.BooleanField(default=False)
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    deletion_requested_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     class Meta:
         ordering = ["name"]
 

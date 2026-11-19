@@ -595,6 +595,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clients/{id}/request-deletion/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_request_deletion_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clients/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clients/{id}/test-company/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_test_company_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/company/admin-thumbnail-consent/": {
         parameters: {
             query?: never;
@@ -1446,6 +1497,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The Archive screen (Aries Admin or Manager): archived parts and requests of every company, and their restore. */
+        get: operations["v1_operator_archive_retrieve"];
+        put?: never;
+        /** @description The Archive screen (Aries Admin or Manager): archived parts and requests of every company, and their restore. */
+        post: operations["v1_operator_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/estimate-rates/": {
         parameters: {
             query?: never;
@@ -1676,6 +1745,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests/{id}/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide a request from the client's and Aries' lists without erasing anything (Aries Admin or Manager; decision of
+         *     19 Nov 2026). Not while the order is released or in production. Restore from the Archive screen.
+         */
+        post: operations["v1_operator_requests_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/{id}/attachments/{aid}/": {
         parameters: {
             query?: never;
@@ -1891,6 +1980,26 @@ export interface paths {
         head?: never;
         /** @description No DELETE by default: business records are retired by status, not removed. */
         patch: operations["v1_parts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/parts/{id}/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide a spare part (and its passport) everywhere, without erasing anything; an Aries Admin or Manager restores it
+         *     from the Archive screen. Refused while it has open requests or a published passport (decision of 19 Nov 2026).
+         */
+        post: operations["v1_parts_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/parts/{id}/clone/": {
@@ -3017,6 +3126,19 @@ export interface components {
             note?: string;
         };
         /**
+         * @description * `part` - part
+         *     * `request` - request
+         * @enum {string}
+         */
+        ArchiveRestoreKindEnum: "part" | "request";
+        ArchiveRestoreRequest: {
+            kind: components["schemas"]["ArchiveRestoreKindEnum"];
+            /** Format: uuid */
+            client_id: string;
+            /** Format: uuid */
+            id: string;
+        };
+        /**
          * @description * `assessment` - assessment
          *     * `reassessment` - reassessment
          *     * `new_information` - new_information
@@ -3098,6 +3220,9 @@ export interface components {
             readonly member_count: number;
             /** @description All required company-profile fields are filled in. */
             readonly profile_complete: boolean;
+            readonly is_test: boolean;
+            /** Format: date-time */
+            readonly deletion_requested_at: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -3130,6 +3255,9 @@ export interface components {
              */
             invite_contact: boolean;
         };
+        ClientDeletionRequestRequest: {
+            confirm_name: string;
+        };
         ClientProjectCreateRequest: {
             code: string;
             name: string;
@@ -3148,6 +3276,9 @@ export interface components {
          * @enum {string}
          */
         ClientStatusEnum: "active" | "suspended";
+        ClientTestFlagRequest: {
+            is_test: boolean;
+        };
         ClientUserProjectsRequest: {
             scope: components["schemas"]["ScopeEnum"];
             project_ids?: string[];
@@ -6854,6 +6985,84 @@ export interface operations {
             };
         };
     };
+    v1_clients_request_deletion_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientDeletionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ClientDeletionRequestRequest"];
+                "multipart/form-data": components["schemas"]["ClientDeletionRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
+                };
+            };
+        };
+    };
+    v1_clients_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
+                };
+            };
+        };
+    };
+    v1_clients_test_company_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientTestFlagRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ClientTestFlagRequest"];
+                "multipart/form-data": components["schemas"]["ClientTestFlagRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
+                };
+            };
+        };
+    };
     v1_company_admin_thumbnail_consent_retrieve: {
         parameters: {
             query?: never;
@@ -8452,6 +8661,54 @@ export interface operations {
             };
         };
     };
+    v1_operator_archive_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArchiveRestoreRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ArchiveRestoreRequest"];
+                "multipart/form-data": components["schemas"]["ArchiveRestoreRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_operator_estimate_rates_retrieve: {
         parameters: {
             query?: never;
@@ -8833,6 +9090,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorRequest"];
+                };
+            };
+        };
+    };
+    v1_operator_requests_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -9303,6 +9584,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SparePart"];
+                };
+            };
+        };
+    };
+    v1_parts_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this spare part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

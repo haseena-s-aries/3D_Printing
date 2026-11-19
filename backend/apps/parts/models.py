@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from apps.core.archive import ActiveManager
 from apps.tenancy.owned import TenantOwnedModel
 
 
@@ -109,9 +110,16 @@ class SparePart(TenantOwnedModel):
     def in_lifecycle(self) -> bool:
         return self.review_state not in self.NOT_IN_LIFECYCLE and self.status != self.Status.OBSOLETE
 
+    # Archived (decision of 19 Nov 2026): hidden everywhere, restorable; the part number is free for a new part meanwhile.
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    objects = ActiveManager()
+    all_objects = models.Manager()
+
     class Meta:
         ordering = ["part_number"]
-        constraints = [models.UniqueConstraint(fields=["tenant", "part_number"], name="uniq_part_number_per_tenant")]
+        constraints = [models.UniqueConstraint(fields=["tenant", "part_number"], condition=models.Q(archived_at__isnull=True),
+                                               name="uniq_part_number_per_tenant")]
 
     def __str__(self):
         return f"{self.part_number} {self.name}"

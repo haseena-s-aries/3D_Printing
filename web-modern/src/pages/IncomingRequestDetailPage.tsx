@@ -7,7 +7,7 @@
  */
 import type { OperatorRequest } from "@passport/api-types";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
@@ -156,6 +156,7 @@ function actionsFor(kind: string, status: string, steps: string[]): Action[] {
 export default function IncomingRequestDetailPage() {
   const { id } = useParams();
   const { session } = useAuth();
+  const navigate = useNavigate();
   const req = useApi<OperatorRequest>(`/operator/requests/${id}/`);
   const [message, setMessage] = useState("");
   const [quote, setQuote] = useState<string | null>(null);
@@ -172,6 +173,20 @@ export default function IncomingRequestDetailPage() {
   if (req.error || !req.data) return <><BackLink to="/incoming">Incoming requests</BackLink><ErrorNotice error={req.error} /></>;
   const r = req.data;
   const sameOrg = session?.tenant.name === r.client_name; // passports open in the client organisation context
+
+  /** Hide the request from the client's and Aries' lists (nothing is erased); an Aries Admin or Manager restores it. */
+  async function archive() {
+    if (!window.confirm(`Archive ${r.intake_number || r.reference}? It is hidden for the client and for Aries. Nothing is erased; an Aries Admin or Manager can restore it from the Archive.`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/operator/requests/${id}/archive/`, { body: {} });
+      navigate("/incoming", { replace: true });
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
 
   async function act(a: Action) {
     if (a.needsMessage && !message.trim()) {
@@ -263,6 +278,9 @@ export default function IncomingRequestDetailPage() {
               </div>
             </div>
           ) : <p className="muted">No further actions: this request is {r.status.replace(/_/g, " ")}.</p>}
+          {steps.includes("admin") && !["released", "in_production", "inspected"].includes(String(r.status)) && (
+            <p><button type="button" className="btn btn-ghost btn-small" disabled={busy} onClick={() => void archive()}>Archive this request</button></p>
+          )}
           {r.project_code && <p className="small">Project <strong>{r.project_code}</strong>{r.created_part ? " · draft part created" : ""} in {r.client_name}.</p>}
         </Card>
       </div>

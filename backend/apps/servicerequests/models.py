@@ -14,6 +14,7 @@ Manufacturing requests follow the order flow in services.py: engineering check, 
 from django.conf import settings
 from django.db import models
 
+from apps.core.archive import ActiveManager
 from apps.core.models import TimeStampedModel
 from apps.tenancy.owned import TenantOwnedModel
 
@@ -114,6 +115,12 @@ class ClientRequest(TenantOwnedModel):
     acknowledged_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     closed_reason = models.TextField(blank=True)
 
+    # Archived (decision of 19 Nov 2026): hidden from the client's and Aries' lists, restorable; nothing is erased.
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    objects = ActiveManager()
+    all_objects = models.Manager()
+
     class Meta:
         ordering = ["-created_at"]
         constraints = [models.UniqueConstraint(fields=["tenant", "reference"], name="uniq_request_reference_per_tenant")]
@@ -207,6 +214,10 @@ class RequestEnvelope(TenantOwnedModel):
     awaiting_reply = models.BooleanField(default=False)
     last_client_activity = models.CharField(max_length=30, blank=True)
     last_client_activity_at = models.DateTimeField(null=True, blank=True)
+
+    archived_at = models.DateTimeField(null=True, blank=True)  # mirrors the request's archive state (hidden from the intake queue)
+    objects = ActiveManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ["-submitted_at"]

@@ -305,7 +305,7 @@ def sync_envelope(obj: ClientRequest) -> None:
     # the part's project was lost and project-scoped Aries staff could not see the request in their lists
     project_ref = request_project_id(obj)
     with tenant_context(op):
-        env, _ = RequestEnvelope.objects.update_or_create(request_id=obj.pk, defaults=dict(
+        env, _ = RequestEnvelope.all_objects.update_or_create(request_id=obj.pk, defaults=dict(
             awaiting_reply=client_spoke and obj.status in OPEN, last_client_activity=last.event[:30] if client_spoke else "",
             last_client_activity_at=last.created_at if client_spoke else None,
             tenant=op, client_tenant_id=obj.tenant_id, client_name=client_name, reference=obj.reference, kind=obj.kind,
@@ -332,7 +332,7 @@ def assign_intake_number(env: RequestEnvelope) -> None:
     """Next platform-wide intake number of the submission year (called inside the operator context)."""
     stem = f"ARQ-{env.submitted_at.year}-"
     for _attempt in range(5):
-        last = (RequestEnvelope.objects.filter(intake_number__startswith=stem).order_by("-intake_number")
+        last = (RequestEnvelope.all_objects.filter(intake_number__startswith=stem).order_by("-intake_number")
                 .values_list("intake_number", flat=True).first())
         env.intake_number = f"{stem}{(int(last.rsplit('-', 1)[1]) + 1) if last else 1:05d}"
         try:
@@ -346,7 +346,7 @@ def assign_intake_number(env: RequestEnvelope) -> None:
 
 def envelope_id(obj: ClientRequest):
     with tenant_context(operator_tenant()):
-        return RequestEnvelope.objects.filter(request_id=obj.pk).values_list("pk", flat=True).first()
+        return RequestEnvelope.all_objects.filter(request_id=obj.pk).values_list("pk", flat=True).first()
 
 
 # ---- notifications -----------------------------------------------------------------------------------------------

@@ -64,7 +64,7 @@ export default function ClientManagementPage() {
         ))}
       </div>
       <section role="tabpanel" id={`client-panel-${tab}`} aria-labelledby={`client-tab-${tab}`} className="tab-panel">
-        {tab === "overview" && <ClientOverview client={c} details={details} onChanged={changed} />}
+        {tab === "overview" && <ClientOverview client={c} details={details} onChanged={changed} canManage={can("clients.manage")} />}
         {tab === "engineers" && <ClientEngineers client={c} details={details} onChanged={changed} />}
         {tab === "projects" && <ClientProjects client={c} details={details} />}
         {tab === "users" && <Card title="Client users"><ClientUsers client={c} onChanged={() => { void client.reload(); void details.reload(); }} /></Card>}
