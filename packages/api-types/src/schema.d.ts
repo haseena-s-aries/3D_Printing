@@ -595,6 +595,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clients/{id}/request-deletion/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_request_deletion_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clients/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clients/{id}/test-company/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator administrators manage client organisations (operator tenant only). */
+        post: operations["v1_clients_test_company_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/company/admin-thumbnail-consent/": {
         parameters: {
             query?: never;
@@ -3098,6 +3149,9 @@ export interface components {
             readonly member_count: number;
             /** @description All required company-profile fields are filled in. */
             readonly profile_complete: boolean;
+            readonly is_test: boolean;
+            /** Format: date-time */
+            readonly deletion_requested_at: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -3130,6 +3184,9 @@ export interface components {
              */
             invite_contact: boolean;
         };
+        ClientDeletionRequestRequest: {
+            confirm_name: string;
+        };
         ClientProjectCreateRequest: {
             code: string;
             name: string;
@@ -3148,6 +3205,9 @@ export interface components {
          * @enum {string}
          */
         ClientStatusEnum: "active" | "suspended";
+        ClientTestFlagRequest: {
+            is_test: boolean;
+        };
         ClientUserProjectsRequest: {
             scope: components["schemas"]["ScopeEnum"];
             project_ids?: string[];
@@ -6850,6 +6910,84 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_clients_request_deletion_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientDeletionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ClientDeletionRequestRequest"];
+                "multipart/form-data": components["schemas"]["ClientDeletionRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
+                };
+            };
+        };
+    };
+    v1_clients_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
+                };
+            };
+        };
+    };
+    v1_clients_test_company_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this tenant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientTestFlagRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ClientTestFlagRequest"];
+                "multipart/form-data": components["schemas"]["ClientTestFlagRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Client"];
                 };
             };
         };

@@ -33,8 +33,8 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tenant
         fields = ["id", "name", "slug", "status", "hosting_model", "region_code", "member_count", "profile_complete",
-                  "created_at", "updated_at"]
-        read_only_fields = ["id", "slug", "member_count", "profile_complete", "created_at", "updated_at"]
+                  "is_test", "deletion_requested_at", "created_at", "updated_at"]
+        read_only_fields = ["id", "slug", "member_count", "profile_complete", "is_test", "deletion_requested_at", "created_at", "updated_at"]
         extra_kwargs = {"region_code": {"help_text": "Informational only; region and residency rules are open (OQ-71)."},
                         "slug": {"help_text": "Short identifier used at sign-in; set at creation and not changed afterwards."}}
 
@@ -314,7 +314,8 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
     capabilities = {"list": "clients.view", "retrieve": "clients.view", "create": "clients.manage", "profile": "clients.manage",
                     "update": "clients.manage", "partial_update": "clients.manage", "members": "clients.manage",
                     "member_detail": "clients.manage", "details": "clients.view", "projects": "assignments.manage",
-                    "engineer_access": "assignments.manage"}
+                    "engineer_access": "assignments.manage", "test_company": "clients.manage", "request_deletion": "clients.manage",
+                    "restore": "clients.manage"}
 
     def get_queryset(self):
         return Tenant.objects.filter(kind=Tenant.Kind.CLIENT)
@@ -419,10 +420,37 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
         approved_reg = reg if reg is not None and reg.status == CompanyRegistration.Status.APPROVED else None
         return Response({"id": str(client.pk), "name": client.name, "slug": client.slug, "status": client.status,
                          "hosting_model": client.hosting_model, "region_code": client.region_code,
+                         "is_test": client.is_test, "deletion_requested_at": client.deletion_requested_at,
+                         "deletion_requested_by": client.deletion_requested_by.email if client.deletion_requested_by_id else "",
                          "origin": "self_registration" if approved_reg else "aries_admin",
                          "profile": profile_of(client), "contact": contact_status(client, approved_reg),
                          "created_at": client.created_at, "registration": registration, "people": people,
                          "aries_staff": staff, "counts": counts})
+
+    # ---- test companies (decision of 19 Nov 2026): mark, queue for deletion, restore. The permanent erase is the privileged
+    # `manage.py purge_test_companies` (apps.tenancy.purge); nothing in the web application erases protected records.
+    @extend_schema(request=inline_serializer("ClientTestFlag", {"is_test": serializers.BooleanField()}), responses={200: ClientSerializer})
+    @action(detail=True, methods=["post"], url_path="test-company")
+    def test_company(self, request, pk=None):
+        from . import purge
+
+        client = purge.set_test(request, self.get_object(), bool(request.data.get("is_test")))
+        return Response(ClientSerializer(client).data)
+
+    @extend_schema(request=inline_serializer("ClientDeletionRequest", {"confirm_name": serializers.CharField()}), responses={200: ClientSerializer})
+    @action(detail=True, methods=["post"], url_path="request-deletion")
+    def request_deletion(self, request, pk=None):
+        from . import purge
+
+        client = purge.request_deletion(request, self.get_object(), str(request.data.get("confirm_name", "")))
+        return Response(ClientSerializer(client).data)
+
+    @extend_schema(request=None, responses={200: ClientSerializer})
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        from . import purge
+
+        return Response(ClientSerializer(purge.restore(request, self.get_object())).data)
 
     @extend_schema(methods=["GET"], responses={200: dict})
     @extend_schema(methods=["POST"], request=inline_serializer("ClientProjectCreate", {

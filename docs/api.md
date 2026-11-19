@@ -18,7 +18,10 @@ across all endpoints.
 - **Pagination:** list endpoints return `{count, next, previous, results}`. Use `?page=` and
   `?page_size=` (default 25, max 200).
 - **No hard deletes:** there are no DELETE endpoints for business records. Versions, derivatives, approved
-  revisions and audit events are immutable at database level.
+  revisions and audit events are immutable at database level. The one exception is a **test company**: an Aries Admin
+  or Manager marks it (`POST /clients/{id}/test-company/`), queues it (`POST /clients/{id}/request-deletion/`, which
+  suspends it at once; `POST /clients/{id}/restore/` undoes it), and a privileged server command
+  (`manage.py purge_test_companies`, run as the database owner) erases queued companies for good.
 
 ## Errors
 

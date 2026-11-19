@@ -1196,6 +1196,102 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/clients/{id}/request-deletion/:
+    post:
+      operationId: v1_clients_request_deletion_create
+      description: Operator administrators manage client organisations (operator tenant
+        only).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientDeletionRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientDeletionRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientDeletionRequestRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
+  /api/v1/clients/{id}/restore/:
+    post:
+      operationId: v1_clients_restore_create
+      description: Operator administrators manage client organisations (operator tenant
+        only).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
+  /api/v1/clients/{id}/test-company/:
+    post:
+      operationId: v1_clients_test_company_create
+      description: Operator administrators manage client organisations (operator tenant
+        only).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientTestFlagRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientTestFlagRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientTestFlagRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
   /api/v1/company/admin-thumbnail-consent/:
     get:
       operationId: v1_company_admin_thumbnail_consent_retrieve
@@ -6815,6 +6911,14 @@ components:
           type: boolean
           readOnly: true
           description: All required company-profile fields are filled in.
+        is_test:
+          type: boolean
+          readOnly: true
+        deletion_requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -6825,7 +6929,9 @@ components:
           readOnly: true
       required:
       - created_at
+      - deletion_requested_at
       - id
+      - is_test
       - member_count
       - name
       - profile_complete
@@ -6910,6 +7016,14 @@ components:
       - slug
       - state
       - trade_licence_number
+    ClientDeletionRequestRequest:
+      type: object
+      properties:
+        confirm_name:
+          type: string
+          minLength: 1
+      required:
+      - confirm_name
     ClientProjectCreateRequest:
       type: object
       properties:
@@ -6951,6 +7065,13 @@ components:
       description: |-
         * `active` - Active
         * `suspended` - Suspended
+    ClientTestFlagRequest:
+      type: object
+      properties:
+        is_test:
+          type: boolean
+      required:
+      - is_test
     ClientUserProjectsRequest:
       type: object
       properties:

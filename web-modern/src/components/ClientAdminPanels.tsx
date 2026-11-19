@@ -11,7 +11,7 @@ import { useAuth } from "../auth/AuthContext";
 import { CompanyProfileFields, PROFILE_FIELDS, type CompanyProfile, type ProfileKey } from "./CompanyProfileFields";
 import { assignableRoles, fourRoles, roleLabel, roleOptionLabel } from "./roles";
 import { StaffPicker, type StaffOption } from "./StaffPicker";
-import { Badge, Card, Empty, ErrorNotice, Field, Loading, formatDate } from "./ui";
+import { Badge, Card, Empty, ErrorNotice, Field, Loading, Notice, formatDate } from "./ui";
 
 interface StaffRow {
   membership_id: string;
@@ -47,6 +47,9 @@ interface ClientDetails {
   hosting_model: string;
   region_code: string;
   origin: "self_registration" | "aries_admin";
+  is_test: boolean;
+  deletion_requested_at: string | null;
+  deletion_requested_by: string;
   profile: ProfileState;
   contact: ContactState;
   created_at: string;
@@ -241,8 +244,76 @@ export function useClientDetails(clientId: string) {
   return useApi<ClientDetails>(`/clients/${clientId}/details/`);
 }
 
+/** Test companies (decision of 19 Nov 2026). An Aries Admin or Manager marks a company as a test company and may queue it
+ *  for deletion: it is suspended at once (nobody signs in, it leaves every list) and can be restored. The permanent erase is a
+ *  separate server step (`purge_test_companies`, privileged), because the application itself cannot erase protected records. */
+function TestCompanyCard({ client, d, onChanged }: { client: Client; d: ClientDetails; onChanged: (msg: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [typed, setTyped] = useState("");
+  const [open, setOpen] = useState(false);
+  const queued = !!d.deletion_requested_at;
+  async function call(path: string, body: Record<string, unknown> | undefined, done: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/clients/${client.id}/${path}/`, { body: body ?? {} });
+      setOpen(false);
+      setTyped("");
+      onChanged(done);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card title="Test company">
+      <ErrorNotice error={error} />
+      {queued ? (
+        <>
+          <Notice kind="warning">
+            <strong>Queued for deletion</strong> since {formatDate(d.deletion_requested_at)}{d.deletion_requested_by ? ` by ${d.deletion_requested_by}` : ""}.
+            The company is suspended: nobody can sign in and it is removed from the work lists (it stays on the Clients list so you can restore it). It is erased permanently the next time the
+            server operator runs <code>python manage.py purge_test_companies</code>. Until then you can restore it.
+          </Notice>
+          <button type="button" className="btn" disabled={busy} aria-busy={busy} onClick={() => void call("restore", undefined, `${d.name} restored.`)}>Restore this company</button>
+        </>
+      ) : (
+        <>
+          <label className="inline-check">
+            <input type="checkbox" checked={d.is_test} disabled={busy}
+              onChange={(e) => void call("test-company", { is_test: e.target.checked }, e.target.checked ? `${d.name} marked as a test company.` : `${d.name} is no longer a test company.`)} />{" "}
+            This is a test company (created only for testing)
+          </label>
+          <p className="muted small">Only a company marked as a test company can be deleted. Real companies can never be deleted here.</p>
+          {d.is_test && !open && <button type="button" className="btn btn-danger" onClick={() => setOpen(true)}>Delete this test company…</button>}
+          {d.is_test && open && (
+            <form className="stack" onSubmit={(e) => { e.preventDefault(); void call("request-deletion", { confirm_name: typed }, `${d.name} is queued for deletion and suspended.`); }}>
+              <Notice kind="warning">
+                This suspends <strong>{d.name}</strong> now and queues it for permanent deletion with <strong>everything in it</strong>: its users,
+                spare parts, passports, requests, estimates, quotations, files and audit trail. It cannot be undone after the server operator
+                runs the purge. Other companies and Aries staff are not touched.
+              </Notice>
+              <Field label={`Type the company name to confirm: ${d.name}`}>
+                <input value={typed} autoComplete="off" onChange={(e) => setTyped(e.target.value)} />
+              </Field>
+              <div className="toolbar">
+                <button type="button" className="btn btn-ghost" onClick={() => { setOpen(false); setTyped(""); }}>Cancel</button>
+                <button className="btn btn-danger" disabled={busy || typed.trim() !== d.name} aria-busy={busy}>Queue for deletion</button>
+              </div>
+            </form>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
 /** Overview: company information, profile and the existing project/part/passport counts. */
-export function ClientOverview({ client, details, onChanged }: { client: Client; details: Loaded<ClientDetails>; onChanged: (msg: string) => void }) {
+export function ClientOverview({ client, details, onChanged, canManage = false }: {
+  client: Client; details: Loaded<ClientDetails>; onChanged: (msg: string) => void; canManage?: boolean;
+}) {
   const d = details.data;
   if (details.error) return <ErrorNotice error={details.error} />;
   if (details.loading || !d) return <Loading />;
@@ -252,7 +323,7 @@ export function ClientOverview({ client, details, onChanged }: { client: Client;
         <p className="muted small">Viewing these details is recorded in the audit trail of Aries and of the client. Part, passport and document
           content is not shown here.</p>
         <dl className="facts">
-          <div className="fact-row"><dt>Status</dt><dd><Badge tone={d.status === "active" ? "success" : "warning"}>{d.status}</Badge></dd></div>
+          <div className="fact-row"><dt>Status</dt><dd><Badge tone={d.status === "active" ? "success" : "warning"}>{d.deletion_requested_at ? "queued for deletion" : d.status}</Badge>{d.is_test ? <> <Badge>Test company</Badge></> : null}</dd></div>
           <div className="fact-row"><dt>Short identifier</dt><dd>{d.slug}</dd></div>
           <div className="fact-row"><dt>Hosting</dt><dd>{d.hosting_model === "dedicated" ? "Dedicated Azure deployment" : "Shared Azure platform"}{d.region_code ? ` · ${d.region_code}` : ""}</dd></div>
           <div className="fact-row"><dt>Origin</dt><dd>{d.origin === "self_registration" ? "Self-registration, verified and approved" : "Created by Aries Admin"}</dd></div>
@@ -269,9 +340,12 @@ export function ClientOverview({ client, details, onChanged }: { client: Client;
           <div className="stat"><strong>{d.aries_staff.filter((x) => x.is_active).length}</strong><span className="muted small">Aries staff</span></div>
         </div>
       </Card>
-      <Card>
-        <CompanyProfileCard key={JSON.stringify(d.profile.values)} client={client} d={d} onSaved={(msg) => { void details.reload(); onChanged(msg); }} />
-      </Card>
+      <div>
+        <Card>
+          <CompanyProfileCard key={JSON.stringify(d.profile.values)} client={client} d={d} onSaved={(msg) => { void details.reload(); onChanged(msg); }} />
+        </Card>
+        {canManage && <TestCompanyCard client={client} d={d} onChanged={(msg) => { void details.reload(); onChanged(msg); }} />}
+      </div>
     </div>
   );
 }

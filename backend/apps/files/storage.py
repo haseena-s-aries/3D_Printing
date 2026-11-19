@@ -42,6 +42,11 @@ class Storage(ABC):
         `inline` serves the object for in-browser viewing instead of as a download."""
         return None
 
+    def purge_tenant(self, tenant_id) -> int:
+        """Erase every stored object of one company; returns how many were removed. Only for the privileged purge of a
+        test company (apps.tenancy.purge); nothing else deletes stored objects."""
+        raise NotImplementedError
+
 
 def validate_key(key: str) -> str:
     parts = key.split("/")
@@ -85,6 +90,16 @@ class LocalStorage(Storage):
 
     def exists(self, key):
         return self._path(key).exists()
+
+    def purge_tenant(self, tenant_id) -> int:
+        import shutil
+
+        folder = (self.root / "tenants" / str(uuid.UUID(str(tenant_id)))).resolve()
+        if self.root not in folder.parents or not folder.exists():
+            return 0
+        removed = sum(1 for p in folder.rglob("*") if p.is_file())
+        shutil.rmtree(folder)
+        return removed
 
 
 class AzureBlobStorage(Storage):
@@ -136,6 +151,14 @@ class AzureBlobStorage(Storage):
     def exists(self, key):
         container, name = self._blob(key)
         return container.get_blob_client(name).exists()
+
+    def purge_tenant(self, tenant_id) -> int:
+        container = self.service.get_container_client("t-" + uuid.UUID(str(tenant_id)).hex)
+        if not container.exists():
+            return 0
+        removed = sum(1 for _ in container.list_blobs())
+        container.delete_container()
+        return removed
 
     def signed_url(self, key, filename, seconds, inline=False, content_type=None):
         """Read-only SAS for one blob. Uses the account key (Azurite / development).

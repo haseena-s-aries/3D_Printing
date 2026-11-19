@@ -212,3 +212,27 @@ the query. Without it, company tables return no rows.
 
 Stop both services, replace `backend\` and `web\`, run `manage.py migrate` as `dp_owner` (step 5), re-run `02-grant-runtime.sql`,
 and start the services again.
+
+## 14. Removing test companies
+
+The application never erases protected records (the audit trail and other tables have database guards that `dp_app` cannot
+switch off). To clear out companies created only for testing:
+
+1. As an Aries Admin or Manager, open **Clients**, the company, **Overview**: tick **This is a test company**, then **Delete this
+   test company**, and type its name. The company is suspended at once (nobody signs in, it leaves the work lists) and queued. A
+   queued company can still be restored from the same page.
+2. Take a database backup (section 11).
+3. On the server, as `dp_owner` (like `migrate`):
+
+```powershell
+cd C:\DigitalPassport\backend
+$env:DB_USER = "dp_owner"; $env:DB_PASSWORD = Read-Host "dp_owner password"
+..\.venv\Scripts\python manage.py purge_test_companies --dry-run   # lists what would be erased, changes nothing
+..\.venv\Scripts\python manage.py purge_test_companies             # asks you to type ERASE, then erases
+Remove-Item Env:DB_USER, Env:DB_PASSWORD
+```
+
+It erases the queued companies, all their records, users who belonged to nothing else, and their stored files; Aries staff and
+other companies are never touched. Each company is erased all or nothing: on any error nothing changes and the guards stay on.
+One audit event (`tenant.purged`) is kept in the Aries organisation. Always run `--dry-run` first on SQL Server.
+
