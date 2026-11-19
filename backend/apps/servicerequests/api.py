@@ -877,6 +877,88 @@ class OperatorOverviewView(APIView):
         return Response(rows)
 
 
+class OperatorAnalyticsView(APIView):
+    """Operator administrators: counts over time for the dashboard charts (aggregate counts only, no records).
+
+    - ``months``/``series``: per calendar month, the last 12 months oldest first: digital passports created, spare parts
+      added, approvals (passport revisions approved and client part submissions accepted), company registrations
+      submitted (email verified) and client requests submitted.
+    - ``activity``: client requests submitted per day for the last ``weeks`` weeks (rows Monday..Sunday).
+    - ``by_status``: every client request (not archived) by status, for the order-flow stages.
+    - ``clients``: per client organisation, its weekly activity (requests, parts and passports created) for the last 8 weeks.
+    Counts are read inside each client's own tenant context (row-level security applies), as in the overview."""
+
+    permission_classes = [HasCapability]
+    capabilities = {"get": "clients.view"}
+    MONTHS, WEEKS, CLIENT_WEEKS = 12, 12, 8
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        from datetime import datetime, timedelta  # noqa: PLC0415
+
+        from apps.passports.models import DigitalPassport as Passport, PassportRevision  # noqa: PLC0415
+        from apps.registrations.models import CompanyRegistration  # noqa: PLC0415
+
+        op = svc.operator_tenant()
+        if request.tenant.pk != op.pk:
+            raise DomainError("permission_denied", "Available in the operator organisation only.", http_status=403)
+        now = timezone.localtime()
+        today = now.date()
+        months, y, m = [], now.year, now.month
+        for _ in range(self.MONTHS):
+            months.insert(0, (y, m))
+            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+        since = timezone.make_aware(datetime(months[0][0], months[0][1], 1))
+        series = {k: dict.fromkeys(months, 0) for k in ("passports", "parts", "approvals", "registrations", "requests")}
+
+        def add(name, stamps):
+            for dt in stamps:
+                k = (timezone.localtime(dt).year, timezone.localtime(dt).month)
+                if k in series[name]:
+                    series[name][k] += 1
+
+        week0 = today - timedelta(days=today.weekday() + 7 * (self.WEEKS - 1))  # Monday, WEEKS weeks ago
+        cweek0 = today - timedelta(days=today.weekday() + 7 * (self.CLIENT_WEEKS - 1))
+        activity = [[0] * self.WEEKS for _ in range(7)]
+        per_client: dict = {}
+
+        def bump(cid, dt):
+            d = timezone.localtime(dt).date()
+            if d >= cweek0:
+                per_client.setdefault(cid, [0] * self.CLIENT_WEEKS)[min((d - cweek0).days // 7, self.CLIENT_WEEKS - 1)] += 1
+
+        by_status: dict = {}
+        with tenant_context(op):
+            for cid, submitted, st in RequestEnvelope.objects.values_list("client_tenant_id", "submitted_at", "status"):
+                by_status[st] = by_status.get(st, 0) + 1
+                if submitted >= since:
+                    add("requests", [submitted])
+                d = timezone.localtime(submitted).date()
+                if d >= week0:
+                    activity[d.weekday()][min((d - week0).days // 7, self.WEEKS - 1)] += 1
+                bump(str(cid), submitted)
+            add("registrations", CompanyRegistration.objects.filter(created_at__gte=since)
+                .exclude(status=CompanyRegistration.Status.UNVERIFIED).values_list("created_at", flat=True))
+        for t in Tenant.objects.filter(kind=Tenant.Kind.CLIENT):
+            with tenant_context(t):
+                parts = list(SparePart.objects.filter(created_at__gte=since).values_list("created_at", flat=True))
+                passports = list(Passport.objects.filter(created_at__gte=since).values_list("created_at", flat=True))
+                add("parts", parts)
+                add("passports", passports)
+                add("approvals", PassportRevision.objects.filter(approved_at__gte=since).values_list("approved_at", flat=True))
+                add("approvals", SparePart.objects.filter(review_state=SparePart.Review.ACCEPTED, reviewed_at__gte=since)
+                    .values_list("reviewed_at", flat=True))
+            for dt in parts + passports:
+                bump(str(t.pk), dt)
+        return Response({
+            "months": [f"{yy}-{mm:02d}" for yy, mm in months],
+            "series": {k: list(v.values()) for k, v in series.items()},
+            "activity": {"start": week0.isoformat(), "weeks": self.WEEKS, "days": activity},
+            "by_status": by_status,
+            "clients": {cid: weeks for cid, weeks in per_client.items()},
+        })
+
+
 class EstimateRatesView(APIView):
     """Aries' rates for manufacturing cost estimates: every Aries staff member who handles requests reads them; the
     Aries Admin or Manager changes them."""
