@@ -7,8 +7,10 @@ import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { KIND, KindBadge, STATUS, StatusBadge } from "../components/requests";
 import { Card, Empty, ErrorNotice, Loading, PageHeader, formatDate } from "../components/ui";
+import { NewTag, useUnread } from "../components/Unread";
 
 export default function MyRequestsPage() {
+  const unread = useUnread();  // rows with something new for this person
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const kind = params.get("kind") ?? "";
@@ -52,8 +54,8 @@ export default function MyRequestsPage() {
             <thead><tr><th>Reference</th><th>Type</th><th>Subject</th><th>Quantity / date</th><th>Status</th><th>Submitted</th></tr></thead>
             <tbody>
               {list.data.results.map((r) => (
-                <tr key={r.id}>
-                  <td><Link to={`/requests/${r.id}`}><strong>{r.reference}</strong></Link></td>
+                <tr key={r.id} className={unread.has(`/requests/${r.id}`) ? "row-new" : ""}>
+                  <td><Link to={`/requests/${r.id}`}><strong>{r.reference}</strong></Link>{unread.has(`/requests/${r.id}`) && <> <NewTag /></>}</td>
                   <td><KindBadge kind={r.kind} /></td>
                   <td>{r.kind === "digitisation" ? <>{r.part_description.split("\n")[0]}<div className="muted small">{r.site_location}</div></>
                     : <><strong>{r.part_number}</strong> {r.part_name}</>}</td>

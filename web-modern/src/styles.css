@@ -2140,3 +2140,25 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
    five KPI tiles stay on one row while they fit */
 @media (max-width: 1500px) { .chart-grid-foot:not(.dash-fit):not(:has(> :nth-child(3))) { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 1500px) and (min-width: 1100px) { .stats.stats-6:not(:has(> :nth-child(6))) { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* public forms: the field icon is drawn on the field, not inside the input. A browser's autofill and paste styling
+   (:-webkit-autofill, background-image: none !important) removed icons drawn as the input's background. The icon sits
+   over the input's left padding: label line (20px) + gap (5px) + half of the 46px input − half the 17px icon. */
+.login-card .field-label { line-height: 20px; }
+.login-card input[type="email"], .login-card input[type="password"], .login-card input[type="tel"], .login-card input[autocomplete="name"],
+.login-card input[autocomplete="username"], .login-card .password-input input[type="text"] { background-image: none; }
+.login-card .field:has(> input[type="email"], > input[autocomplete="username"], > input[type="tel"], > input[autocomplete="name"], > .password-input) { position: relative; }
+.login-card .field:has(> input[type="email"], > input[autocomplete="username"], > input[type="tel"], > input[autocomplete="name"], > .password-input)::before {
+  content: ""; position: absolute; left: 14px; top: 39.5px; width: 17px; height: 17px; z-index: 2; pointer-events: none;
+  background-repeat: no-repeat; background-position: center; background-size: 17px; }
+.login-card .field:has(> input[type="email"], > input[autocomplete="username"])::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667892' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3.5 6.5 8.5 6 8.5-6'/%3E%3C/svg%3E"); }
+.login-card .field:has(> .password-input)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667892' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E"); }
+.login-card .field:has(> input[type="tel"])::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667892' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2'/%3E%3C/svg%3E"); }
+.login-card .field:has(> input[autocomplete="name"])::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667892' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4 3.6-7 8-7s8 3 8 7'/%3E%3C/svg%3E"); }
+
+/* rows with something new for the person (an unread notification); opening the item clears it */
+.table tr.row-new td { background: color-mix(in srgb, var(--aries-blue, #146db6) 8%, transparent); }
+.table tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--aries-blue, #146db6); }
+.list li.row-new { background: color-mix(in srgb, var(--aries-blue, #146db6) 8%, transparent); box-shadow: inset 3px 0 0 var(--aries-blue, #146db6); }
+.new-tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; background: #e5484d; color: #fff;
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 2px; }
