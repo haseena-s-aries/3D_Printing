@@ -163,6 +163,10 @@ def _active_memberships(user):
     admin_workspace.ensure_workspaces(user)  # Aries Admin: every active client company (switch on only)
     qs = Membership.objects.select_related("tenant").filter(
         user=user, is_active=True, tenant__status=Tenant.Status.ACTIVE).order_by("tenant__kind", "tenant__name")
+    from apps.tenancy.models import aries_access_withdrawn
+
+    if aries_access_withdrawn(user):  # deactivated in the Aries organisation: no client company through an assignment
+        qs = qs.exclude(tenant__kind=Tenant.Kind.CLIENT, role__in=OPERATOR_ROLES)
     if admin_workspace.enabled() and admin_workspace.is_platform_admin(user):
         return qs
     return qs.exclude(role=Role.OPERATOR_ADMIN, tenant__kind=Tenant.Kind.CLIENT)  # workspaces unusable while switched off
