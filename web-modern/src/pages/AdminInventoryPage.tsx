@@ -14,6 +14,7 @@ import { AdminAssessmentSummary } from "../components/QuarterlyAssessment";
 import { STAGE_TEXT, STAGES, stageFrom } from "../components/inventoryStages";
 import { REVIEW_LABEL } from "../components/PartSubmission";
 import { useEnterContext } from "../components/AdminNav";
+import { ArchiveButton } from "../components/ArchiveButton";
 import { Icon } from "../components/icons";
 import { ListPager, ListToolbar, useListControls } from "../components/ListControls";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, Pager, formatDate, label } from "../components/ui";
@@ -45,6 +46,7 @@ const STAGE_BADGE: Record<string, "warning" | "info" | "success" | "danger"> = {
 export default function AdminInventoryPage({ clientId }: { clientId?: string } = {}) {
   const [params, setParams] = useSearchParams();
   const { can } = useAuth();
+  const canArchive = can("clients.manage");  // Aries Admin: archive a part (with its passport) from this list
   const f = Object.fromEntries(KEYS.map((k) => [k, params.get(k) ?? ""])) as Record<(typeof KEYS)[number], string>;
   if (clientId) f.client = clientId;
   const page = Number(params.get("page") ?? "1") || 1;
@@ -183,7 +185,8 @@ export default function AdminInventoryPage({ clientId }: { clientId?: string } =
           <>
             {layout === "grid" ? (
               <ul className="part-grid admin-grid" aria-label="Administrative inventory" aria-busy={data.loading}>
-                {o.results.map((r) => <li key={r.id}><AdminPartCard r={r} showClient={!clientId} canOpen={o.detail_access.enabled} /></li>)}
+                {o.results.map((r) => <li key={r.id}><AdminPartCard r={r} showClient={!clientId} canOpen={o.detail_access.enabled}
+                  onArchived={canArchive ? () => void data.reload() : undefined} /></li>)}
               </ul>
             ) : (
               <div className="table-scroll">
@@ -191,6 +194,7 @@ export default function AdminInventoryPage({ clientId }: { clientId?: string } =
                   <thead><tr><th>Part</th>{!clientId && <th>Client</th>}<th>Review · digitisation</th><th>Engineering completeness</th><th>Assigned engineer</th>
                     <th><span className="sr-only">Details and actions</span></th></tr></thead>
                   {o.results.map((r) => <AdminPartRows key={r.id} r={r} showClient={!clientId} reason={o.detail_access.reason} canOpen={o.detail_access.enabled}
+                    onArchived={canArchive ? () => void data.reload() : undefined}
                     open={expanded === r.id} onToggle={() => setExpanded((x) => (x === r.id ? "" : r.id))} />)}
                 </table>
               </div>
@@ -276,7 +280,7 @@ function OpenRecord({ r }: { r: Row }) {
   );
 }
 
-function AdminPartCard({ r, showClient, canOpen }: { r: Row; showClient: boolean; canOpen?: boolean }) {
+function AdminPartCard({ r, showClient, canOpen, onArchived }: { r: Row; showClient: boolean; canOpen?: boolean; onArchived?: () => void }) {
   return (
     <article className="part-card admin-card" aria-labelledby={`adm-${r.id}`}>
       <AdminPreview preview={r.preview} alt={r.part_number} />
@@ -298,14 +302,15 @@ function AdminPartCard({ r, showClient, canOpen }: { r: Row; showClient: boolean
         <div><dt>Engineer</dt><dd><Engineers r={r} /></dd></div>
       </dl>
       <p className="admin-card-updated muted small">Updated {formatDate(r.updated_at)}</p>
-      {canOpen && <div className="admin-card-actions"><OpenRecord r={r} /></div>}
+      {(canOpen || onArchived) && <div className="admin-card-actions">{canOpen && <OpenRecord r={r} />}
+        {onArchived && <ArchiveButton kind="part" clientId={r.client_id} id={r.id} title={r.part_number} onDone={onArchived} />}</div>}
     </article>
   );
 }
 
 /** List view: one concise row; the secondary summary opens in a details row below it (keyboard: the Details button). */
-function AdminPartRows({ r, showClient, reason, open, onToggle, canOpen }: { r: Row; showClient: boolean; reason: string; open: boolean;
-  onToggle: () => void; canOpen?: boolean }) {
+function AdminPartRows({ r, showClient, reason, open, onToggle, canOpen, onArchived }: { r: Row; showClient: boolean; reason: string; open: boolean;
+  onToggle: () => void; canOpen?: boolean; onArchived?: () => void }) {
   const id = `adm-detail-${r.id}`;
   return (
     <tbody className={open ? "is-open" : ""}>
@@ -319,6 +324,7 @@ function AdminPartRows({ r, showClient, reason, open, onToggle, canOpen }: { r: 
           <button type="button" className="btn btn-small btn-ghost" aria-expanded={open} aria-controls={id} onClick={onToggle}>
             <Icon name="chevron" size="sm" className="admin-chevron" />Details<span className="sr-only"> of {r.part_number}</span></button>
           {canOpen ? <OpenRecord r={r} /> : <button type="button" className="btn btn-small" disabled title={reason} aria-describedby="admin-detail-access">Open record</button>}
+          {onArchived && <ArchiveButton kind="part" clientId={r.client_id} id={r.id} title={r.part_number} onDone={onArchived} />}
         </td>
       </tr>
       {open && (

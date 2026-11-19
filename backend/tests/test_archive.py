@@ -115,3 +115,21 @@ def test_archiving_does_not_change_anything_else(world):
     eng.post(f"/api/v1/parts/{part['id']}/archive/", format="json")
     assert login(world["b_admin"]).get("/api/v1/parts/").json()["count"] == before
     assert login(world["a_admin"]).get("/api/v1/parts/stage-counts/").json().get("all", 0) == 0  # the only part is archived
+
+
+def test_the_aries_admin_archives_from_the_workspace_lists_with_the_same_rules(world, order):  # noqa: F811
+    """Digital inventory / Incoming requests: the Aries Admin archives without opening the record; same blocks, same audit."""
+    _eng, part, _passport = _part(world, "ARC-L1")
+    admin = login(world["op_admin"])
+    body = {"action": "archive", "kind": "part", "client_id": str(world["a"].pk), "id": part["id"]}
+    assert admin.post(ARCHIVE, body, format="json").json() == {"archived": True}
+    assert admin.post(ARCHIVE, body, format="json").json()["error"]["code"] == "already_archived"
+    assert any(r["id"] == part["id"] for r in admin.get(ARCHIVE).json())
+    # a request, from Incoming requests: hidden from the queue, listed in the Archive
+    req = {"action": "archive", "kind": "request", "client_id": str(world["a"].pk), "id": str(order["env"].request_id)}
+    assert admin.post(ARCHIVE, req, format="json").json() == {"archived": True}
+    assert str(order["env"].pk) not in [r["id"] for r in admin.get("/api/v1/operator/requests/").json()]
+    assert any(r["kind"] == "request" for r in admin.get(ARCHIVE).json())
+    # Aries Engineers, QA and client users cannot use it
+    assert login(world["op_eng"], world["operator"]).post(ARCHIVE, body, format="json").status_code == 403
+    assert login(world["a_admin"]).post(ARCHIVE, body, format="json").status_code == 403

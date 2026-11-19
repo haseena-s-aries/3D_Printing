@@ -1038,14 +1038,18 @@ class OperatorArchiveView(APIView):
         return Response(archived_items())
 
     @extend_schema(request=inline_serializer("ArchiveRestore", {"kind": serializers.ChoiceField(choices=["part", "request"]),
+                                                                "action": serializers.ChoiceField(choices=["archive", "restore"], required=False),
                                                                 "client_id": serializers.UUIDField(), "id": serializers.UUIDField()}),
                    responses={200: dict})
     def post(self, request):
-        from apps.tenancy.archive import restore
+        from apps.tenancy.archive import archive, restore
 
         _operator_staff(request)
         client = Tenant.objects.filter(pk=request.data.get("client_id"), kind=Tenant.Kind.CLIENT).first()
         if client is None:
             raise DomainError("not_found", "Company not found.", http_status=404)
+        if request.data.get("action") == "archive":  # from the Aries workspace lists; default (no action) restores
+            archive(request, str(request.data.get("kind", "")), client, request.data.get("id"))
+            return Response({"archived": True})
         restore(request, str(request.data.get("kind", "")), client, request.data.get("id"))
         return Response({"restored": True})

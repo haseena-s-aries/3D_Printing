@@ -138,7 +138,8 @@ export default function ClientUsers({ client, onChanged }: { client: Client; onC
                     <td>
                       <Badge tone={m.is_active ? "success" : "neutral"}>{m.is_active ? "Active" : "Inactive"}</Badge>{" "}
                       {m.can_manage && (
-                        <button type="button" className="link-btn small" onClick={() => void updateMember(m, { is_active: !m.is_active })}>
+                        <button type="button" className={`btn btn-small ${m.is_active ? "btn-ghost btn-archive" : ""}`}
+                          onClick={() => { if (!m.is_active || window.confirm(`Deactivate ${m.email}? They can no longer sign in. Nothing is erased: the audit trail keeps their actions, and you can reactivate them here.`)) void updateMember(m, { is_active: !m.is_active }); }}>
                           {m.is_active ? "Deactivate" : "Reactivate"}
                         </button>
                       )}
