@@ -1972,3 +1972,19 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .chart-bars a:hover .bar-fill { filter: brightness(1.12); }
 .bar-name { min-height: 2.5em; font-size: var(--fs-xs, 0.75rem); color: var(--muted); text-align: center; line-height: 1.25; overflow-wrap: anywhere; padding: 2px 4px 0; }
 .chart-bars a:hover .bar-name { color: var(--ink); text-decoration: underline; }
+
+/* fixed heights on wide screens: "Needs your attention" is as tall as the KPI tiles beside it, and the client requests card
+   as tall as the right-hand column; more items scroll inside the card instead of growing it (latest first) */
+@media (min-width: 1361px) {
+  .dash-top > .attention { contain: size; display: flex; flex-direction: column; overflow: hidden; }
+  .dash-top > .attention .attention-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; grid-template-columns: minmax(0, 1fr); align-content: start;
+    padding-right: 4px; scrollbar-width: thin; }
+}
+@media (min-width: 1101px) {
+  .dash-main:has(> .dash-col:not(.dash-col-wide):not(:empty)) { align-items: stretch; }
+  .dash-main:has(> .dash-col:not(.dash-col-wide):not(:empty)) > .dash-col-wide { contain: size; min-height: 420px; }
+  .dash-main:has(> .dash-col:not(.dash-col-wide):not(:empty)) > .dash-col-wide > .card { flex: 1 1 auto; min-height: 0; display: flex;
+    flex-direction: column; overflow: hidden; }
+  .dash-main:has(> .dash-col:not(.dash-col-wide):not(:empty)) > .dash-col-wide > .card > .list { flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    padding-right: 4px; scrollbar-width: thin; }
+}
