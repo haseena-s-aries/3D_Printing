@@ -2106,3 +2106,18 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 @media (max-width: 1280px) { .chart-grid-foot:has(> :nth-child(3)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } .chart-grid-foot:has(> :nth-child(3)) > .chart-wide { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .chart-grid-foot:has(> :nth-child(3)) { grid-template-columns: minmax(0, 1fr); } }
 .marine-banner-slim .page-header h1, .marine-banner-slim .page-header .muted { text-shadow: 0 1px 10px rgba(4, 18, 37, 0.95), 0 0 2px rgba(4, 18, 37, 0.8); }
+
+/* dashboards: no empty space. The latest-parts card takes the height of the card beside it (more rows scroll inside);
+   a row with a single card spans the width. */
+.chart-grid-single { grid-template-columns: minmax(0, 1fr); }
+.recent-compact { margin: 0; }
+.recent-compact li { padding: 8px 0; gap: 12px; }
+@media (min-width: 761px) {
+  .dash-fit { align-items: stretch; }
+  .dash-fit > .recent-card { contain: size; min-height: 240px; overflow: hidden; }
+  .dash-fit > .recent-card .recent-compact { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+}
+.dash-fit { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+@media (max-width: 1280px) { .dash-fit { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
+@media (max-width: 760px) { .dash-fit { grid-template-columns: minmax(0, 1fr); } }
+.chart-card .glance { min-height: 120px; }

@@ -216,7 +216,7 @@ export function RequestWorkflow({ byStatus, icon, base = "/incoming", noun = "cl
         ))}
       </ol>
       <div className="flow-foot">
-        <span className="muted small">Submitted → Delivered (all {noun}, excluding declined and withdrawn)</span>
+        <span className="muted small" title={`Delivered or closed, of all ${noun} (declined and withdrawn not counted)`}>Delivered of all {noun}</span>
         <span className="flow-rate"><strong>{rate === null ? "–" : `${rate}%`}</strong><span className="muted small">Completion rate</span></span>
       </div>
     </>
@@ -271,7 +271,7 @@ export function Growth({ values, n, label }: { values: number[]; n: number; labe
     <div className={`growth is-${dir}`}>
       <strong>{dir === "up" ? "▲ " : dir === "down" ? "▼ " : ""}{pct === null ? (now > 0 ? "New" : "–") : `${pct > 0 ? "+" : ""}${pct}%`}</strong>
       <span>{label}</span>
-      <span className="muted small">{now} in the last {n} months · {before} in the {n} before</span>
+      <span className="muted small" title={`${now} in the last ${n} months, ${before} in the ${n} before`}>vs. previous {n} months</span>
     </div>
   );
 }

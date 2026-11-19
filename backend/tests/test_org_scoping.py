@@ -146,3 +146,17 @@ def test_switching_changes_every_query_to_the_new_organisation(world, client):
     assert b.get("/api/v1/dashboard/summary/").json()["parts"]["total"] == 0
     # switching to an organisation without membership is refused
     assert b.post("/api/v1/auth/switch/", {"tenant": "operator-nope"}, format="json").status_code == 403
+
+
+def test_client_dashboard_analytics_for_aries_staff_inside_the_company(world, requests_ab):
+    """An Aries Engineer working inside client A counts client A's requests (their queue's scope), never client B's."""
+    from apps.projects.models import EngineerAccess
+    from apps.tenancy.context import tenant_context
+
+    eng = login(world["op_eng"], world["a"])
+    d = eng.get("/api/v1/dashboard/analytics/").json()
+    assert d["requests_visible"] is True and d["by_status"] == {"submitted": 1} and "SC-B" not in str(d)
+    with tenant_context(world["a"]):  # project-limited with no projects: no requests, as in the queue
+        EngineerAccess.objects.create(tenant=world["a"], user=world["op_eng"], scope=EngineerAccess.Scope.PROJECTS)
+    d = login(world["op_eng"], world["a"]).get("/api/v1/dashboard/analytics/").json()
+    assert d["by_status"] == {} and sum(d["series"]["parts"]) == 0
