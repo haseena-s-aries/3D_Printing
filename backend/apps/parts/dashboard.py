@@ -90,7 +90,8 @@ class DashboardAnalyticsView(APIView):
 
     Spare parts and passports are limited exactly as in the summary (`restrict`: project-scoped members see their
     projects, a project-scoped Client User also what they submitted); requests exactly as in the request list (project-
-    scoped members: their projects' requests and their own), and only for roles that can view requests.
+    scoped members: their projects' requests and their own), and only for roles that can view requests. Aries staff working
+    inside the company (requests.handle) count its requests too, limited to their assigned projects as in their queue.
     - ``months``/``series``: per calendar month, the last 12 months oldest first: spare parts added, digital passports
       created, passport revisions approved and requests submitted.
     - ``activity``: requests submitted per day for the last ``weeks`` weeks (rows Monday..Sunday).
@@ -137,12 +138,15 @@ class DashboardAnalyticsView(APIView):
         week0 = today - timedelta(days=today.weekday() + 7 * (self.WEEKS - 1))
         activity = [[0] * self.WEEKS for _ in range(7)]
         by_status: dict = {}
-        can_requests = has_capability(request, "requests.view")
+        client_member = has_capability(request, "requests.view")
+        staff = not client_member and has_capability(request, "requests.handle")
+        can_requests = client_member or staff
         if can_requests:
             reqs = ClientRequest.objects.filter(tenant=tenant)
-            ids = allowed_project_ids(request)  # the request list's rule (ClientRequestViewSet)
+            ids = allowed_project_ids(request)  # the request list's rule (ClientRequestViewSet); staff: their assigned projects
             if ids is not None:
-                reqs = reqs.filter(Q(project_id__in=ids) | Q(part__project_id__in=ids) | Q(requested_by=request.user))
+                own = Q(requested_by=request.user) if client_member else Q(pk__in=[])
+                reqs = reqs.filter(Q(project_id__in=ids) | Q(part__project_id__in=ids) | own)
             for created, st in reqs.values_list("created_at", "status"):
                 by_status[st] = by_status.get(st, 0) + 1
                 if created >= since:
