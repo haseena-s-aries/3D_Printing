@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 
 import ariesLogo from "../assets/aries-logo.png";
+import dashboardBanner from "../assets/dashboard-banner.webp";
 import hudDimensions from "../assets/hud-dimensions.jpg";
 import hudLayers from "../assets/hud-layers.jpg";
 import heroWave from "../assets/login_bottom_dotted_wave.svg";
@@ -179,7 +180,17 @@ const BANNER_FEATURES: [IconName, string][] = [["printer3d", "3D Printing"], ["g
  * Page-title banner, a grid of three areas: heading (left), printer photograph (centre) and, on dashboards (default),
  * the engineering panels (right); section pages (compact) have heading + photograph. The same height everywhere.
  */
-export function MarineBanner({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+export function MarineBanner({ children, compact = false, slim = false }: { children: ReactNode; compact?: boolean; slim?: boolean }) {
+  // dashboards: a short title strip so the analysis below starts high on the screen
+  if (slim) {
+    return (
+      <div className="marine-banner marine-banner-slim">
+        <div className="marine-banner-body">{children}</div>
+        <div className="marine-banner-photo" aria-hidden="true"><img src={dashboardBanner} alt="" /></div>
+        <BannerWave />
+      </div>
+    );
+  }
   return (
     <div className={`marine-banner${compact ? "" : " marine-banner-hud"}`}>
       <div className="marine-banner-body">
