@@ -474,6 +474,34 @@ def _assigned_clients(user) -> set[str]:
                                                       tenant__kind=Tenant.Kind.CLIENT).values_list("tenant_id", flat=True)}
 
 
+def _visible_envelopes(request, op, qs, limit=None) -> list:
+    """The request envelopes this Aries staff member may see, from `qs` (built in the operator tenant). Admins and Managers:
+    all. Engineers, QA and support: the clients they are actively assigned to; while they work inside one client company
+    (chosen in the top bar) only that company (decision of 16 Nov 2026); project-limited staff only the requests of their
+    assigned projects (CN-002 D4), with the same rule as the request detail. Shared by the queue and the dashboard."""
+    admin = _is_operator_admin(request.user, op)
+    with tenant_context(op):
+        if not admin:
+            qs = qs.filter(client_tenant_id__in=_assigned_clients(request.user))
+            current = getattr(request, "membership", None)
+            if current is not None and current.tenant.kind == Tenant.Kind.CLIENT:
+                qs = qs.filter(client_tenant_id=current.tenant_id)
+        rows = list(qs[:limit] if limit else qs)
+    if admin:
+        return rows
+    scope, live = {}, {}
+    for r in rows:
+        if r.client_tenant_id not in scope:
+            with tenant_context(r.client_tenant_id):  # the access rows live in the client's row-level-security context
+                allowed = allowed_project_ids_for(r.client_tenant_id, request.user.pk)
+                scope[r.client_tenant_id] = allowed
+                if allowed is not None:  # the request's project now (its part may have moved into a project since)
+                    ids = [x.request_id for x in rows if x.client_tenant_id == r.client_tenant_id]
+                    for cr in ClientRequest.objects.filter(pk__in=ids):
+                        live[cr.pk] = svc.request_project_id(cr)
+    return [r for r in rows if scope[r.client_tenant_id] is None or live.get(r.request_id, r.project_ref) in scope[r.client_tenant_id]]
+
+
 class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
     permission_classes = [HasCapability]
     capabilities = {"list": "requests.handle", "retrieve": "requests.handle", "act": "requests.handle", "attachment": "requests.handle",
@@ -522,13 +550,6 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
         assigned = _assigned_clients(request.user)
         with tenant_context(op):
             qs = RequestEnvelope.objects.all()
-            if not _is_operator_admin(request.user, op):
-                # engineers, QA and support see only the clients they are actively assigned to; while they work inside one
-                # client company (chosen in the top bar) only that company's requests (decision of 16 Nov 2026)
-                qs = qs.filter(client_tenant_id__in=assigned)
-                current = getattr(request, "membership", None)
-                if current is not None and current.tenant.kind == Tenant.Kind.CLIENT:
-                    qs = qs.filter(client_tenant_id=current.tenant_id)
             for field in ("kind", "status", "client_tenant", "priority"):
                 if p.get(field):
                     qs = qs.filter(**{field: p[field]})
@@ -538,19 +559,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
                 qs = qs.filter(awaiting_reply=True)
             if p.get("mine") == "true":
                 qs = qs.filter(assigned_to=request.user)
-            rows = list(qs[:500])
-        if not _is_operator_admin(request.user, op):
-            scope, live = {}, {}
-            for r in rows:  # project-limited staff list exactly what they can open (CN-002 D4), with the detail's rule
-                if r.client_tenant_id not in scope:
-                    with tenant_context(r.client_tenant_id):  # the access rows live in the client's row-level-security context
-                        allowed = allowed_project_ids_for(r.client_tenant_id, request.user.pk)
-                        scope[r.client_tenant_id] = allowed
-                        if allowed is not None:  # the request's project now (its part may have moved into a project since)
-                            ids = [x.request_id for x in rows if x.client_tenant_id == r.client_tenant_id]
-                            for cr in ClientRequest.objects.filter(pk__in=ids):
-                                live[cr.pk] = svc.request_project_id(cr)
-            rows = [r for r in rows if scope[r.client_tenant_id] is None or live.get(r.request_id, r.project_ref) in scope[r.client_tenant_id]]
+        rows = _visible_envelopes(request, op, qs, limit=500)
         if _is_operator_admin(request.user, op):
             assigned = {str(r.client_tenant_id) for r in rows}  # Admins and Managers can open every request
         return Response(EnvelopeSerializer(rows, many=True, context={"assigned": assigned}).data)
@@ -878,18 +887,23 @@ class OperatorOverviewView(APIView):
 
 
 class OperatorAnalyticsView(APIView):
-    """Operator administrators: counts over time for the dashboard charts (aggregate counts only, no records).
+    """Aries staff dashboard: counts over time for the charts (aggregate counts only, no records).
+
+    Scope: the Aries Admin (clients.view) sees every client organisation; Aries Engineers, QA and support
+    (requests.handle) only what they can open themselves: requests through the queue's rule (`_visible_envelopes`), and
+    spare parts, passports and approvals of their assigned clients, limited to their assigned projects where their access
+    is project-limited. Registrations are counted for the Aries Admin only.
 
     - ``months``/``series``: per calendar month, the last 12 months oldest first: digital passports created, spare parts
       added, approvals (passport revisions approved and client part submissions accepted), company registrations
       submitted (email verified) and client requests submitted.
     - ``activity``: client requests submitted per day for the last ``weeks`` weeks (rows Monday..Sunday).
-    - ``by_status``: every client request (not archived) by status, for the order-flow stages.
-    - ``clients``: per client organisation, its weekly activity (requests, parts and passports created) for the last 8 weeks.
-    Counts are read inside each client's own tenant context (row-level security applies), as in the overview."""
+    - ``by_status``: client requests (not archived) by status, for the order-flow stages.
+    - ``clients``: per client organisation in scope, its weekly activity (requests, parts and passports created), 8 weeks.
+    - ``client_assets``: per client organisation in scope, its spare parts, passports and open requests.
+    Counts are read inside each client's own tenant context (row-level security applies)."""
 
-    permission_classes = [HasCapability]
-    capabilities = {"get": "clients.view"}
+    permission_classes = [IsAuthenticated]
     MONTHS, WEEKS, CLIENT_WEEKS = 12, 12, 8
 
     @extend_schema(responses={200: dict})
@@ -898,7 +912,11 @@ class OperatorAnalyticsView(APIView):
 
         from apps.passports.models import DigitalPassport as Passport, PassportRevision  # noqa: PLC0415
         from apps.registrations.models import CompanyRegistration  # noqa: PLC0415
+        from apps.tenancy.permissions import has_capability  # noqa: PLC0415
 
+        everything = has_capability(request, "clients.view")
+        if not everything and not has_capability(request, "requests.handle"):
+            raise DomainError("permission_denied", "Your role does not allow this action.", http_status=403)
         op = svc.operator_tenant()
         if request.tenant.pk != op.pk:
             raise DomainError("permission_denied", "Available in the operator organisation only.", http_status=403)
@@ -928,34 +946,58 @@ class OperatorAnalyticsView(APIView):
                 per_client.setdefault(cid, [0] * self.CLIENT_WEEKS)[min((d - cweek0).days // 7, self.CLIENT_WEEKS - 1)] += 1
 
         by_status: dict = {}
+        open_by_client: dict = {}
         with tenant_context(op):
-            for cid, submitted, st in RequestEnvelope.objects.values_list("client_tenant_id", "submitted_at", "status"):
-                by_status[st] = by_status.get(st, 0) + 1
-                if submitted >= since:
-                    add("requests", [submitted])
-                d = timezone.localtime(submitted).date()
-                if d >= week0:
-                    activity[d.weekday()][min((d - week0).days // 7, self.WEEKS - 1)] += 1
-                bump(str(cid), submitted)
-            add("registrations", CompanyRegistration.objects.filter(created_at__gte=since)
-                .exclude(status=CompanyRegistration.Status.UNVERIFIED).values_list("created_at", flat=True))
-        for t in Tenant.objects.filter(kind=Tenant.Kind.CLIENT):
+            envelopes = RequestEnvelope.objects.all()
+        for env in _visible_envelopes(request, op, envelopes):
+            by_status[env.status] = by_status.get(env.status, 0) + 1
+            if env.status in svc.OPEN:
+                open_by_client[str(env.client_tenant_id)] = open_by_client.get(str(env.client_tenant_id), 0) + 1
+            if env.submitted_at >= since:
+                add("requests", [env.submitted_at])
+            d = timezone.localtime(env.submitted_at).date()
+            if d >= week0:
+                activity[d.weekday()][min((d - week0).days // 7, self.WEEKS - 1)] += 1
+            bump(str(env.client_tenant_id), env.submitted_at)
+        if everything:
+            with tenant_context(op):
+                add("registrations", CompanyRegistration.objects.filter(created_at__gte=since)
+                    .exclude(status=CompanyRegistration.Status.UNVERIFIED).values_list("created_at", flat=True))
+            clients = Tenant.objects.filter(kind=Tenant.Kind.CLIENT)
+        else:
+            ids = _assigned_clients(request.user)
+            clients = Tenant.objects.filter(kind=Tenant.Kind.CLIENT, pk__in=ids)
+        assets = []
+        for t in clients.order_by("name"):
             with tenant_context(t):
-                parts = list(SparePart.objects.filter(created_at__gte=since).values_list("created_at", flat=True))
-                passports = list(Passport.objects.filter(created_at__gte=since).values_list("created_at", flat=True))
+                parts_qs, passports_qs = SparePart.objects.all(), Passport.objects.all()
+                revisions = PassportRevision.objects.all()
+                if not everything:
+                    allowed = allowed_project_ids_for(t.pk, request.user.pk)  # None: the whole company
+                    if allowed is not None:
+                        parts_qs = parts_qs.filter(project_id__in=allowed)
+                        passports_qs = passports_qs.filter(part__project_id__in=allowed)
+                        revisions = revisions.filter(passport__part__project_id__in=allowed)
+                n_parts, n_passports = parts_qs.count(), passports_qs.count()
+                parts = list(parts_qs.filter(created_at__gte=since).values_list("created_at", flat=True))
+                passports = list(passports_qs.filter(created_at__gte=since).values_list("created_at", flat=True))
                 add("parts", parts)
                 add("passports", passports)
-                add("approvals", PassportRevision.objects.filter(approved_at__gte=since).values_list("approved_at", flat=True))
-                add("approvals", SparePart.objects.filter(review_state=SparePart.Review.ACCEPTED, reviewed_at__gte=since)
+                add("approvals", revisions.filter(approved_at__gte=since).values_list("approved_at", flat=True))
+                add("approvals", parts_qs.filter(review_state=SparePart.Review.ACCEPTED, reviewed_at__gte=since)
                     .values_list("reviewed_at", flat=True))
             for dt in parts + passports:
                 bump(str(t.pk), dt)
+            assets.append({"id": str(t.pk), "name": t.name, "counts": {"parts": n_parts, "passports": n_passports,
+                                                                       "open_requests": open_by_client.get(str(t.pk), 0)}})
         return Response({
+            "scope": "all" if everything else "assigned",
             "months": [f"{yy}-{mm:02d}" for yy, mm in months],
             "series": {k: list(v.values()) for k, v in series.items()},
             "activity": {"start": week0.isoformat(), "weeks": self.WEEKS, "days": activity},
             "by_status": by_status,
-            "clients": {cid: weeks for cid, weeks in per_client.items()},
+            "clients": {cid: weeks for cid, weeks in per_client.items() if any(a["id"] == cid for a in assets)},
+            "client_assets": assets,
         })
 
 

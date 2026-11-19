@@ -135,30 +135,19 @@ export function BarChart({ groups, series, stacked = false }: { stacked?: boolea
 const SHORT: Record<string, string> = { submitted: "Awaiting ack." };
 const statusLabel = (k: string) => SHORT[k] ?? STATUS[k]?.[0] ?? k;
 
-/** Open requests by status: donut with the total in the middle; the legend gives share and count and links to the queue. */
-export function RequestsByStatus({ requests }: { requests: { status: string }[] }) {
-  const counts = new Map<string, number>();
-  for (const r of requests) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
-  const order = Object.keys(STATUS);
-  const present = [...counts.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  // colour follows the status (its place in the workflow); beyond six statuses the smallest fold into "Other"
-  const keep = new Set([...present].sort((a, b) => counts.get(b)! - counts.get(a)!).slice(0, present.length > 6 ? 5 : 6));
-  const slices: { key: string; label: string; value: number; series: number; to?: string }[] = [];
-  let other = 0;
-  present.forEach((k) => {
-    if (keep.has(k)) slices.push({ key: k, label: statusLabel(k), value: counts.get(k)!, series: slices.length + 1, to: `/incoming?status=${k}` });
-    else other += counts.get(k)!;
-  });
-  if (other) slices.push({ key: "other", label: "Other", value: other, series: 0, to: "/incoming" });
-  const total = requests.length;
-  if (!total) return <p className="muted small chart-empty">No open client requests.</p>;
-  const r = 42, c = 2 * Math.PI * r, gap = slices.length > 1 ? 2 : 0;
+/** Part-to-whole donut with the total in the middle; the legend gives share and count and links to the list behind it. */
+export function Donut({ slices, caption, empty }: { caption: string; empty: string;
+  slices: { key: string; label: string; value: number; series: number; to?: string }[] }) {
+  const shown = slices.filter((s) => s.value > 0);
+  const total = shown.reduce((a, s) => a + s.value, 0);
+  if (!total) return <p className="muted small chart-empty">{empty}</p>;
+  const r = 42, c = 2 * Math.PI * r, gap = shown.length > 1 ? 2 : 0;
   let offset = 0;
   return (
     <div className="chart-donut">
-      <svg viewBox="0 0 120 120" role="img" aria-label={`${total} open requests by status`}>
+      <svg viewBox="0 0 120 120" role="img" aria-label={`${total} ${caption.toLowerCase()}: ${shown.map((s) => `${s.label} ${s.value}`).join(", ")}`}>
         <circle cx="60" cy="60" r={r} className="donut-track" />
-        {slices.map((s) => {
+        {shown.map((s) => {
           const len = (s.value / total) * c;
           const el = (
             <circle key={s.key} cx="60" cy="60" r={r} className="donut-slice" style={{ stroke: `var(--series-${s.series})` }}
@@ -170,18 +159,33 @@ export function RequestsByStatus({ requests }: { requests: { status: string }[] 
           return el;
         })}
         <text x="60" y="58" className="donut-total">{total}</text>
-        <text x="60" y="75" className="donut-caption">Requests</text>
+        <text x="60" y="75" className="donut-caption">{caption}</text>
       </svg>
       <ul className="chart-legend">
-        {slices.map((s) => (
-          <li key={s.key}>
-            <Link to={s.to!}><span className="swatch" style={{ background: `var(--series-${s.series})` }} />
-              {s.label} – {Math.round((s.value / total) * 100)}% <strong>({s.value})</strong></Link>
-          </li>
-        ))}
+        {shown.map((s) => {
+          const body = <><span className="swatch" style={{ background: `var(--series-${s.series})` }} />
+            {s.label} – {Math.round((s.value / total) * 100)}% <strong>({s.value})</strong></>;
+          return <li key={s.key}>{s.to ? <Link to={s.to}>{body}</Link> : body}</li>;
+        })}
       </ul>
     </div>
   );
+}
+
+/** Open requests by status. `base`: the request list the legend links to (/incoming for Aries, /requests for clients). */
+export function RequestsByStatus({ counts, base = "/incoming" }: { counts: Record<string, number>; base?: string }) {
+  const order = Object.keys(STATUS);
+  const present = Object.keys(counts).filter((k) => counts[k] > 0).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  // colour follows the status (its place in the workflow); beyond six statuses the smallest fold into "Other"
+  const keep = new Set([...present].sort((a, b) => counts[b] - counts[a]).slice(0, present.length > 6 ? 5 : 6));
+  const slices: { key: string; label: string; value: number; series: number; to?: string }[] = [];
+  let other = 0;
+  present.forEach((k) => {
+    if (keep.has(k)) slices.push({ key: k, label: statusLabel(k), value: counts[k], series: slices.length + 1, to: `${base}?status=${k}` });
+    else other += counts[k];
+  });
+  if (other) slices.push({ key: "other", label: "Other", value: other, series: 0, to: base });
+  return <Donut slices={slices} caption="Requests" empty="No open requests." />;
 }
 
 /** Client request flow (decision of 13 Nov 2026), grouped into its main stages, with the requests currently at each. */
@@ -194,7 +198,8 @@ const STAGES: { label: string; statuses: string[]; icon: string }[] = [
   { label: "Delivered", statuses: ["completed", "closed"], icon: "passport" },
 ];
 
-export function RequestWorkflow({ byStatus, icon }: { byStatus: Record<string, number>; icon: (name: string) => ReactNode }) {
+export function RequestWorkflow({ byStatus, icon, base = "/incoming", noun = "client requests" }: { byStatus: Record<string, number>;
+  icon: (name: string) => ReactNode; base?: string; noun?: string }) {
   const n = (ss: string[]) => ss.reduce((a, s) => a + (byStatus[s] ?? 0), 0);
   const counted = STAGES.reduce((a, s) => a + n(s.statuses), 0);
   const done = n(STAGES[STAGES.length - 1].statuses);
@@ -204,14 +209,14 @@ export function RequestWorkflow({ byStatus, icon }: { byStatus: Record<string, n
       <ol className="flow">
         {STAGES.map((s, i) => (
           <li key={s.label} className={i === STAGES.length - 1 ? "is-last" : ""}>
-            <Link to={s.statuses.length === 1 ? `/incoming?status=${s.statuses[0]}` : "/incoming"} title={`${s.label}: ${n(s.statuses)}`}>
+            <Link to={s.statuses.length === 1 ? `${base}?status=${s.statuses[0]}` : base} title={`${s.label}: ${n(s.statuses)}`}>
               {icon(s.icon)}<span className="flow-label">{s.label}</span><strong>{n(s.statuses)}</strong>
             </Link>
           </li>
         ))}
       </ol>
       <div className="flow-foot">
-        <span className="muted small">Submitted → Delivered (all client requests, excluding declined and withdrawn)</span>
+        <span className="muted small">Submitted → Delivered (all {noun}, excluding declined and withdrawn)</span>
         <span className="flow-rate"><strong>{rate === null ? "–" : `${rate}%`}</strong><span className="muted small">Completion rate</span></span>
       </div>
     </>
@@ -219,7 +224,7 @@ export function RequestWorkflow({ byStatus, icon }: { byStatus: Record<string, n
 }
 
 /** Client requests per day: rows Monday..Sunday, one column per week, one blue ramp from light (few) to dark (many). */
-export function ActivityHeatmap({ start, days }: { start: string; days: number[][] }) {
+export function ActivityHeatmap({ start, days, noun = "requests" }: { start: string; days: number[][]; noun?: string }) {
   const max = Math.max(0, ...days.flat());
   const step = (v: number) => (v === 0 ? 0 : max <= 1 ? 3 : Math.min(5, 1 + Math.floor(((v - 1) / Math.max(max - 1, 1)) * 5)));
   const base = new Date(`${start}T00:00:00`);
@@ -227,14 +232,14 @@ export function ActivityHeatmap({ start, days }: { start: string; days: number[]
   const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
     <div className="heat">
-      <div className="heat-grid" style={{ "--weeks": days[0]?.length ?? 12 } as CSSProperties} role="img" aria-label={`Client requests per day over ${days[0]?.length ?? 0} weeks; busiest day ${max}`}>
+      <div className="heat-grid" style={{ "--weeks": days[0]?.length ?? 12 } as CSSProperties} role="img" aria-label={`${noun} per day over ${days[0]?.length ?? 0} weeks; busiest day ${max}`}>
         {days.map((row, d) => (
           <div key={d} className="heat-row">
             <span className="heat-day">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][d]}</span>
             {row.map((v, w) => {
               const date = new Date(base); date.setDate(base.getDate() + w * 7 + d);
               const future = date > today;
-              return <span key={w} className={`heat-cell s${future ? "x" : step(v)}`} title={future ? "" : `${fmt(date)}: ${v} request${v === 1 ? "" : "s"}`} />;
+              return <span key={w} className={`heat-cell s${future ? "x" : step(v)}`} title={future ? "" : `${fmt(date)}: ${v} ${noun}`} />;
             })}
           </div>
         ))}

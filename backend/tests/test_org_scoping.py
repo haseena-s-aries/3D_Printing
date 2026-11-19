@@ -73,18 +73,51 @@ def test_operator_overview_is_aggregate_and_admin_only(world, requests_ab):
 
 
 def test_operator_analytics_is_aggregate_and_admin_only(world, requests_ab):
-    """Dashboard charts: counts per month / day / status only, for Aries Admins and Managers in the operator organisation."""
+    """Dashboard charts: counts per month / day / status only. The Aries Admin sees every client organisation."""
     d = login(world["op_admin"]).get("/api/v1/operator/analytics/").json()
-    assert set(d) == {"months", "series", "activity", "by_status", "clients"}
+    assert set(d) == {"scope", "months", "series", "activity", "by_status", "clients", "client_assets"} and d["scope"] == "all"
     assert len(d["months"]) == 12 and all(len(v) == 12 for v in d["series"].values())
     # this month: one part and one manufacturing request in each of clients A and B
     assert d["series"]["parts"][-1] == 2 and d["series"]["requests"][-1] == 2
     assert d["by_status"] == {"submitted": 2}
     assert sum(map(sum, d["activity"]["days"])) == 2 and len(d["activity"]["days"]) == 7
     assert sum(d["clients"][str(world["a"].pk)]) == 2  # its request and its part
-    assert login(world["op_eng"], world["operator"]).get("/api/v1/operator/analytics/").status_code == 403
-    for who in ("a_admin", "b_admin"):
+    assert {r["name"] for r in d["client_assets"]} == {"Client A Energy", "Client B Marine"}
+    assert set(d["client_assets"][0]) == {"id", "name", "counts"}  # no records
+    for who in ("a_admin", "b_admin", "a_user"):
         assert login(world[who]).get("/api/v1/operator/analytics/").status_code == 403
+
+
+def test_operator_analytics_for_engineers_counts_only_their_assigned_clients_and_projects(world, requests_ab):
+    """Aries Engineers, QA and support: the same charts over what they can open themselves (the queue's rule)."""
+    from apps.projects.models import EngineerAccess
+    from apps.tenancy.context import tenant_context
+
+    d = login(world["op_eng"], world["operator"]).get("/api/v1/operator/analytics/").json()  # assigned to client A only
+    assert d["scope"] == "assigned"
+    assert [r["name"] for r in d["client_assets"]] == ["Client A Energy"]
+    assert d["client_assets"][0]["counts"] == {"parts": 1, "passports": 0, "open_requests": 1}
+    assert d["series"]["parts"][-1] == 1 and d["series"]["requests"][-1] == 1 and d["by_status"] == {"submitted": 1}
+    assert set(d["clients"]) <= {str(world["a"].pk)} and sum(d["series"]["registrations"]) == 0
+    # project-limited with no projects: nothing of client A is counted (as in the queue, which lists nothing)
+    with tenant_context(world["a"]):
+        EngineerAccess.objects.create(tenant=world["a"], user=world["op_eng"], scope=EngineerAccess.Scope.PROJECTS)
+    eng = login(world["op_eng"], world["operator"])
+    assert eng.get("/api/v1/operator/requests/").json() == []
+    d = eng.get("/api/v1/operator/analytics/").json()
+    assert d["client_assets"][0]["counts"] == {"parts": 0, "passports": 0, "open_requests": 0}
+    assert d["by_status"] == {} and sum(d["series"]["parts"]) == 0 and sum(d["series"]["requests"]) == 0
+
+
+def test_client_dashboard_analytics_counts_only_the_own_organisation(world, requests_ab):
+    for who, other in (("a_admin", "SC-B"), ("b_admin", "SC-A")):
+        c = login(world[who])
+        d = c.get("/api/v1/dashboard/analytics/").json()
+        assert set(d) == {"months", "series", "requests_visible", "activity", "by_status"}
+        assert d["series"]["parts"][-1] == 1 and d["series"]["requests"][-1] == 1  # its own part and request, not the other's
+        assert d["by_status"] == {"submitted": 1} and d["requests_visible"] is True
+        assert other not in str(d)
+
 
 
 def test_assigned_engineer_is_not_offered_the_operator_organisation(world, client):

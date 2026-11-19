@@ -1909,7 +1909,10 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .quotation-line { margin: 6px 0 0; }
 
 /* ---------- dashboards: slim title banner + analysis layout (KPIs beside attention, requests | messages + charts) */
-.marine-banner-slim { grid-template-columns: minmax(0, 1fr); min-height: 0; height: 118px; margin-bottom: 16px; }
+.marine-banner-slim { grid-template-columns: minmax(0, 1fr); min-height: 118px; height: auto; margin-bottom: 16px; }
+/* section pages: buttons sit under the subtitle, the banner grows only as much as they need */
+.marine-banner-slim .page-header .page-actions { margin-top: 2px; }
+.marine-banner-slim:has(.page-actions) .marine-banner-body { max-width: 70%; padding-bottom: 18px; }
 .marine-banner-slim .marine-banner-body { padding: 16px 28px; max-width: 62%; }
 .marine-banner-slim .marine-banner-body::before { width: 44px; height: 3px; margin-bottom: 10px; }
 .marine-banner-slim .page-header h1 { font-size: clamp(1.25rem, 1.7vw, 1.65rem); }
@@ -1986,8 +1989,10 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .analytics .stats .stat > .icon { width: 42px; height: 42px; padding: 10px; }
 .analytics .stats .stat-value { font-size: 1.5rem; }
 .analytics .stats .stat .muted.small { font-size: 0.72rem; color: var(--accent-strong, var(--accent)); }
-@media (max-width: 1500px) { .stats.stats-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .stats.stats-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stats.stats-6:not(:has(> :nth-child(6))) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.stats.stats-6:has(> :nth-child(7)) { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 1500px) { .stats.stats-6, .stats.stats-6:not(:has(> :nth-child(6))), .stats.stats-6:has(> :nth-child(7)) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .stats.stats-6, .stats.stats-6:not(:has(> :nth-child(6))), .stats.stats-6:has(> :nth-child(7)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .chart-grid-foot { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); }
@@ -2094,3 +2099,10 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 .nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 0.7rem;
   font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; line-height: 1; }
 .is-rail .nav-badge { position: absolute; top: 2px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 0.6rem; margin: 0; }
+
+.analytics > .card.attention, .analytics > .card { margin-bottom: 16px; }
+.chart-card h3 { font-size: var(--fs-sm); margin: 12px 0 4px; }
+.chart-grid-foot:has(> :nth-child(3)) { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1280px) { .chart-grid-foot:has(> :nth-child(3)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } .chart-grid-foot:has(> :nth-child(3)) > .chart-wide { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .chart-grid-foot:has(> :nth-child(3)) { grid-template-columns: minmax(0, 1fr); } }
+.marine-banner-slim .page-header h1, .marine-banner-slim .page-header .muted { text-shadow: 0 1px 10px rgba(4, 18, 37, 0.95), 0 0 2px rgba(4, 18, 37, 0.8); }

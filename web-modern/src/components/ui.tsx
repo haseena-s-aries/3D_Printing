@@ -12,7 +12,7 @@ export function Breakable({ text }: { text: string }) {
   return <>{parts.map((p, i) => <span key={i}>{p}{i < parts.length - 1 && <wbr />}</span>)}</>;
 }
 
-/** Page title. marine: shown on a compact marine banner (main section pages; detail pages and forms stay plain). */
+/** Page title. marine: shown on the slim marine banner, as on the dashboards (main section pages; detail pages and forms stay plain). */
 export function PageHeader({ title, subtitle, actions, marine = false }: { title: string; subtitle?: ReactNode; actions?: ReactNode; marine?: boolean }) {
   const header = (
     <header className="page-header">
@@ -23,7 +23,7 @@ export function PageHeader({ title, subtitle, actions, marine = false }: { title
       {actions && <div className="page-actions">{actions}</div>}
     </header>
   );
-  return marine ? <MarineBanner compact>{header}</MarineBanner> : header;
+  return marine ? <MarineBanner slim>{header}</MarineBanner> : header;
 }
 
 export function Card({ title, children, actions }: { title?: string; children: ReactNode; actions?: ReactNode }) {
