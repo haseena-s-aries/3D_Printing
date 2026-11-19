@@ -147,3 +147,11 @@ class Invitation(TimeStampedModel):
         ordering = ["-created_at"]
         constraints = [models.UniqueConstraint(fields=["tenant", "email"], condition=models.Q(status="pending"),
                                                name="one_pending_invitation_per_email")]
+
+
+def aries_access_withdrawn(user) -> bool:
+    """An Aries staff member deactivated in the Aries organisation: their client-company assignments (operator-role
+    memberships in client companies) give no access either, at sign-in or on any request. The assignments themselves are
+    kept unchanged, so reactivating the person restores them exactly. People with no Aries membership are not affected."""
+    operator = Membership.objects.filter(user=user, tenant__kind=Tenant.Kind.OPERATOR)
+    return operator.exists() and not operator.filter(is_active=True).exists()

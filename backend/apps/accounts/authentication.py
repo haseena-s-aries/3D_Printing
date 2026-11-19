@@ -9,7 +9,7 @@ from rest_framework import exceptions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.tenancy.context import set_tenant_context, set_user_context
-from apps.tenancy.models import Membership, Tenant
+from apps.tenancy.models import OPERATOR_ROLES, Membership, Tenant, aries_access_withdrawn
 
 
 def load_membership(user, mid, tid):
@@ -21,6 +21,9 @@ def load_membership(user, mid, tid):
         raise exceptions.AuthenticationFailed("Membership is no longer valid.", code="membership_invalid")
     if m.tenant.status != Tenant.Status.ACTIVE:
         raise exceptions.AuthenticationFailed("This organisation is suspended.", code="tenant_suspended")
+    if m.tenant.kind == Tenant.Kind.CLIENT and m.role in OPERATOR_ROLES and aries_access_withdrawn(user):
+        # deactivated in the Aries organisation: open sessions in assigned client companies end at once
+        raise exceptions.AuthenticationFailed("Membership is no longer valid.", code="membership_invalid")
     from apps.tenancy import admin_workspace
 
     if not admin_workspace.usable(m):  # Aries Admin company workspaces exist only while ADMIN_WORKSPACE_ENABLED is on
