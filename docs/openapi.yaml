@@ -3016,6 +3016,51 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/operator/archive/:
+    get:
+      operationId: v1_operator_archive_retrieve
+      description: 'The Archive screen (Aries Admin or Manager): archived parts and
+        requests of every company, and their restore.'
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1_operator_archive_create
+      description: 'The Archive screen (Aries Admin or Manager): archived parts and
+        requests of every company, and their restore.'
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArchiveRestoreRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ArchiveRestoreRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ArchiveRestoreRequest'
+        required: true
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/operator/estimate-rates/:
     get:
       operationId: v1_operator_estimate_rates_retrieve
@@ -3481,6 +3526,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperatorRequest'
+          description: ''
+  /api/v1/operator/requests/{id}/archive/:
+    post:
+      operationId: v1_operator_requests_archive_create
+      description: |-
+        Hide a request from the client's and Aries' lists without erasing anything (Aries Admin or Manager; decision of
+        19 Nov 2026). Not while the order is released or in production. Restore from the Archive screen.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this request envelope.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/operator/requests/{id}/attachments/{aid}/:
     get:
@@ -4106,6 +4177,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SparePart'
+          description: ''
+  /api/v1/parts/{id}/archive/:
+    post:
+      operationId: v1_parts_archive_create
+      description: |-
+        Hide a spare part (and its passport) everywhere, without erasing anything; an Aries Admin or Manager restores it
+        from the Archive screen. Refused while it has open requests or a published passport (decision of 19 Nov 2026).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this spare part.
+        required: true
+      tags:
+      - v1
+      security:
+      - tenantBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/parts/{id}/clone/:
     post:
@@ -6724,6 +6821,29 @@ components:
           type: string
       required:
       - allow
+    ArchiveRestoreKindEnum:
+      enum:
+      - part
+      - request
+      type: string
+      description: |-
+        * `part` - part
+        * `request` - request
+    ArchiveRestoreRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ArchiveRestoreKindEnum'
+        client_id:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+      required:
+      - client_id
+      - id
+      - kind
     AssessmentRequestRequestReasonEnum:
       enum:
       - assessment

@@ -478,7 +478,7 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
     permission_classes = [HasCapability]
     capabilities = {"list": "requests.handle", "retrieve": "requests.handle", "act": "requests.handle", "attachment": "requests.handle",
                     "passport": "requests.handle", "passport_file": "requests.handle", "passport_report": "requests.handle",
-                    "estimate": "requests.handle",
+                    "estimate": "requests.handle", "archive": "requests.handle",
                     # CN-004 draft job sheets: Aries Engineers prepare; QA has read access; gates stay closed
                     "jobsheet": "jobsheets.view", "jobsheet_revision": "jobsheets.view", "jobsheet_cancel": "jobsheets.prepare",
                     "jobsheet_gate": "jobsheets.prepare"}
@@ -599,6 +599,20 @@ class OperatorRequestViewSet(JobSheetActionsMixin, viewsets.GenericViewSet):
             data["production_route"] = _production_route(obj)
             data["quotation"] = _quotation_operator(obj)
         return Response(data)
+
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["post"])
+    def archive(self, request, pk=None):
+        """Hide a request from the client's and Aries' lists without erasing anything (Aries Admin or Manager; decision of
+        19 Nov 2026). Not while the order is released or in production. Restore from the Archive screen."""
+        from apps.tenancy.archive import archive_request
+
+        env = self._envelope(request, pk)
+        if "admin" not in svc.staff_roles(request):
+            raise DomainError("role_not_allowed", "Only an Aries Admin or Manager can archive a request.", http_status=403)
+        with tenant_context(env.client_tenant_id):
+            archive_request(request, self._load(env))
+        return Response({"archived": True})
 
     # ---- manufacturing cost estimate (decision of 16 Nov 2026): OEM / conventional / 3D printing compared on cost,
     # manpower and days, for Aries to choose a route. Internal to Aries (never in the client's view of the request).
@@ -885,3 +899,29 @@ class EstimateRatesView(APIView):
         if "admin" not in svc.staff_roles(request):
             raise DomainError("role_not_allowed", "Only an Aries Admin or Manager changes the estimate rates.", http_status=403)
         return Response({"rates": est.save_rates(request, request.data.get("rates") or {})})
+
+
+class OperatorArchiveView(APIView):
+    """The Archive screen (Aries Admin or Manager): archived parts and requests of every company, and their restore."""
+    permission_classes = [HasCapability]
+    capabilities = {"get": "clients.manage", "post": "clients.manage"}
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        from apps.tenancy.archive import archived_items
+
+        _operator_staff(request)
+        return Response(archived_items())
+
+    @extend_schema(request=inline_serializer("ArchiveRestore", {"kind": serializers.ChoiceField(choices=["part", "request"]),
+                                                                "client_id": serializers.UUIDField(), "id": serializers.UUIDField()}),
+                   responses={200: dict})
+    def post(self, request):
+        from apps.tenancy.archive import restore
+
+        _operator_staff(request)
+        client = Tenant.objects.filter(pk=request.data.get("client_id"), kind=Tenant.Kind.CLIENT).first()
+        if client is None:
+            raise DomainError("not_found", "Company not found.", http_status=404)
+        restore(request, str(request.data.get("kind", "")), client, request.data.get("id"))
+        return Response({"restored": True})

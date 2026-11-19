@@ -31,7 +31,7 @@ from apps.projects.api import ProjectViewSet
 from apps.registrations.api import (DevOutboxView, PasswordResetRequestView, PasswordResetView, RegistrationConfigView,
                                     RegistrationResendView, RegistrationSubmitView, RegistrationVerifyView, RegistrationViewSet,
                                     StaffRequestSubmitView)
-from apps.servicerequests.api import (ClientRequestViewSet, EstimateRatesView, NotificationListView, NotificationReadView, OperatorOverviewView,
+from apps.servicerequests.api import (ClientRequestViewSet, EstimateRatesView, OperatorArchiveView, NotificationListView, NotificationReadView, OperatorOverviewView,
                                       OperatorRequestViewSet)
 from apps.tenancy.api import ClientViewSet, OwnCompanyProfileView, UserViewSet
 from apps.tenancy.invitations import InvitationAcceptView, InvitationViewSet
@@ -123,6 +123,7 @@ urlpatterns = [
     path("downloads/<str:token>/", DownloadView.as_view(), name="download"),
     path("operator/overview/", OperatorOverviewView.as_view(), name="operator-overview"),
     path("operator/estimate-rates/", EstimateRatesView.as_view(), name="operator-estimate-rates"),
+    path("operator/archive/", OperatorArchiveView.as_view(), name="operator-archive"),
     path("operator/passport-approvals/", PassportApprovalQueueView.as_view(), name="passport-approvals"),
     path("operator/passports/", OperatorPassportListView.as_view(), name="operator-passports"),
     path("operator/passports/<uuid:client_id>/<uuid:passport_id>/", OperatorPassportDetailView.as_view(), name="operator-passport-detail"),

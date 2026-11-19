@@ -50,6 +50,21 @@ export default function PartDetailPage() {
       { replace: true });
   }, [location.hash]);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Hide the part and its passport everywhere (nothing is erased); an Aries Admin or Manager can restore it. */
+  async function archivePart() {
+    if (!window.confirm(`Archive ${p.part_number}? It is hidden everywhere, with its passport, and its part number becomes free. Nothing is erased; an Aries Admin or Manager can restore it from the Archive.`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/parts/${id}/archive/`, { body: {} });
+      toast(`${p.part_number} archived.`);
+      navigate("/parts", { replace: true });
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
+
   async function createPassport() {
     setBusy(true);
     setError(null);
@@ -105,7 +120,7 @@ export default function PartDetailPage() {
       <PageHeader
         title={`${p.part_number} · ${p.name}`}
         subtitle={<><Badge>{p.status}</Badge> <ReviewBadge part={p} /> <span className="muted small">Last activity {formatDate(p.last_activity)}</span></>}
-        actions={<div className="toolbar">{can("edits.request") && <button type="button" className="btn" onClick={() => setRequesting(true)}>Request edit</button>}{canClone(p, can) && <Link className="btn" to={`/parts/${p.id}/clone`}>Clone part</Link>}{
+        actions={<div className="toolbar">{can("parts.archive") && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void archivePart()}>Archive part</button>}{can("edits.request") && <button type="button" className="btn" onClick={() => setRequesting(true)}>Request edit</button>}{canClone(p, can) && <Link className="btn" to={`/parts/${p.id}/clone`}>Clone part</Link>}{
           p.passport_id ? (
             <Link className="btn btn-primary" to={`/passports/${p.passport_id}`}>Open digital passport</Link>
           ) : can("passports.edit_draft") ? (

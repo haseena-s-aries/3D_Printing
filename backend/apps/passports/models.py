@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
+from apps.core.archive import ActivePassportManager
 from apps.tenancy.owned import TenantOwnedModel
 
 
@@ -49,6 +50,9 @@ class DigitalPassport(TenantOwnedModel):
     # catalog can filter on it server-side. Guidance only: it never changes evidence_level, publication or
     # eligibility, which stay gated (OQ-35, OQ-36).
     data_captured = models.CharField(max_length=8, choices=DataCaptured.choices, default=DataCaptured.NONE, db_index=True)
+
+    objects = ActivePassportManager()  # a passport is hidden with its archived spare part
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ["-created_at"]

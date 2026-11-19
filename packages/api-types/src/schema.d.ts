@@ -1497,6 +1497,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The Archive screen (Aries Admin or Manager): archived parts and requests of every company, and their restore. */
+        get: operations["v1_operator_archive_retrieve"];
+        put?: never;
+        /** @description The Archive screen (Aries Admin or Manager): archived parts and requests of every company, and their restore. */
+        post: operations["v1_operator_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/estimate-rates/": {
         parameters: {
             query?: never;
@@ -1727,6 +1745,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests/{id}/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide a request from the client's and Aries' lists without erasing anything (Aries Admin or Manager; decision of
+         *     19 Nov 2026). Not while the order is released or in production. Restore from the Archive screen.
+         */
+        post: operations["v1_operator_requests_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/{id}/attachments/{aid}/": {
         parameters: {
             query?: never;
@@ -1942,6 +1980,26 @@ export interface paths {
         head?: never;
         /** @description No DELETE by default: business records are retired by status, not removed. */
         patch: operations["v1_parts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/parts/{id}/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide a spare part (and its passport) everywhere, without erasing anything; an Aries Admin or Manager restores it
+         *     from the Archive screen. Refused while it has open requests or a published passport (decision of 19 Nov 2026).
+         */
+        post: operations["v1_parts_archive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/parts/{id}/clone/": {
@@ -3066,6 +3124,19 @@ export interface components {
             allow: boolean;
             confirm_terms_version?: string;
             note?: string;
+        };
+        /**
+         * @description * `part` - part
+         *     * `request` - request
+         * @enum {string}
+         */
+        ArchiveRestoreKindEnum: "part" | "request";
+        ArchiveRestoreRequest: {
+            kind: components["schemas"]["ArchiveRestoreKindEnum"];
+            /** Format: uuid */
+            client_id: string;
+            /** Format: uuid */
+            id: string;
         };
         /**
          * @description * `assessment` - assessment
@@ -8590,6 +8661,54 @@ export interface operations {
             };
         };
     };
+    v1_operator_archive_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_operator_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArchiveRestoreRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ArchiveRestoreRequest"];
+                "multipart/form-data": components["schemas"]["ArchiveRestoreRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_operator_estimate_rates_retrieve: {
         parameters: {
             query?: never;
@@ -8971,6 +9090,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorRequest"];
+                };
+            };
+        };
+    };
+    v1_operator_requests_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this request envelope. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -9441,6 +9584,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SparePart"];
+                };
+            };
+        };
+    };
+    v1_parts_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this spare part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
