@@ -8,7 +8,7 @@
 import type { ReactNode } from "react";
 
 import ariesLogo from "../assets/aries-logo.png";
-import dashboardBanner from "../assets/dashboard-banner.webp";
+import dashboardBanner from "../assets/dashboard-banner.png";
 import hudDimensions from "../assets/hud-dimensions.jpg";
 import hudLayers from "../assets/hud-layers.jpg";
 import heroWave from "../assets/login_bottom_dotted_wave.svg";
