@@ -11,6 +11,7 @@ import { ListPager, ListToolbar, useListControls } from "../components/ListContr
 import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
+import { PassportsByClient, RequestsByStatus } from "../components/DashboardCharts";
 import { KpiWave, MarineBanner } from "../components/MarineHero";
 import { KindBadge, StatusBadge } from "../components/requests";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
@@ -143,7 +144,7 @@ function OrganisationDashboard() {
 
   return (
     <>
-      <MarineBanner>
+      <MarineBanner slim>
         <PageHeader
           title={isOperator ? "Operator dashboard" : `${session?.tenant.name}`}
           subtitle={isOperator ? "Digitalisation, passports and client organisations" : `Digital inventory of ${session?.tenant.name}`}
@@ -296,11 +297,11 @@ function OperatorHome() {
   });
   return (
     <>
-      <MarineBanner>
+      <MarineBanner slim>
         <PageHeader title={title} subtitle={platformAdmin ? "Manage client companies, registrations, assignments and incoming requests."
           : "Client requests from the companies you are assigned to, and the work waiting for you."} />
       </MarineBanner>
-      <NeedsAttention compact />
+      <div className="dash-top">
       <div className="stats stats-3">
         {can("registrations.review") && (
           <Stat label="Registrations pending approval" value={pendingRegs.data ? pendingRegs.data.count : "…"} to="/registrations" icon="inbox" />
@@ -315,6 +316,10 @@ function OperatorHome() {
           <Stat label="Client submissions awaiting approval" value={approvals.data ? approvals.data.length : "…"} to="/approvals" icon="boxes" />
         )}
       </div>
+      <NeedsAttention compact />
+      </div>
+      <div className="dash-main">
+      <div className="dash-col dash-col-wide">
       {can("requests.handle") && (
         <Card title={`Client requests (${open.length} open)`} actions={<Link className="btn btn-small" to="/incoming">Open all</Link>}>
           <ErrorNotice error={queue.error} />
@@ -335,6 +340,8 @@ function OperatorHome() {
           )}
         </Card>
       )}
+      </div>
+      <div className="dash-col">
       {messages.length > 0 && (
         <Card title="Client messages awaiting your reply">
           <ul className="list" aria-label="Client messages awaiting reply">
@@ -348,6 +355,14 @@ function OperatorHome() {
           </ul>
         </Card>
       )}
+      {((queue.data && open.length > 0) || (admin && overview.data)) && (
+        <div className="dash-charts">
+          {queue.data && open.length > 0 && <Card title="Requests by status"><RequestsByStatus requests={open} /></Card>}
+          {admin && overview.data && <Card title="Digital passports by client"><PassportsByClient rows={rows} /></Card>}
+        </div>
+      )}
+      </div>
+      </div>
       {(approvals.data?.length ?? 0) > 0 && (
         <Card title="Client submissions awaiting approval">
           <ul className="list" aria-label="Client submissions awaiting approval">
