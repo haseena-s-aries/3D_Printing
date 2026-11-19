@@ -1,5 +1,5 @@
 import type { Client, DashboardSummary, IntakeEnvelope, MembershipSummary, Paginated } from "@passport/api-types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useApi } from "../api/useApi";
@@ -11,8 +11,10 @@ import { ListPager, ListToolbar, useListControls } from "../components/ListContr
 import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
-import { ActivityHeatmap, BarChart, ChartCard, Growth, RangeSelect, RequestWorkflow, RequestsByStatus, Sparkline, TrendChart,
+import { ActivityHeatmap, BarChart, ChartCard, Donut, Growth, RangeSelect, RequestWorkflow, RequestsByStatus, Sparkline, TrendChart,
   monthLabel } from "../components/DashboardCharts";
+
+const countBy = (rows: { status: string }[]) => rows.reduce<Record<string, number>>((m, r) => ({ ...m, [r.status]: (m[r.status] ?? 0) + 1 }), {});
 import { KpiWave, MarineBanner } from "../components/MarineHero";
 import { KindBadge, StatusBadge } from "../components/requests";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
@@ -127,14 +129,37 @@ const CONVERSION_LABEL: [keyof DashboardSummary["conversions"], string][] = [
   ["succeeded", "3D view ready"], ["queued", "Queued"], ["running", "Converting"], ["failed", "Failed"], ["not_requested", "Not requested"],
 ];
 
+interface OrgAnalytics {
+  months: string[];
+  series: Record<"parts" | "passports" | "approvals" | "requests", number[]>;
+  requests_visible: boolean;
+  activity: { start: string; weeks: number; days: number[][] };
+  by_status: Record<string, number>;
+}
+
+const OPEN_REQUEST = new Set(["submitted", "acknowledged", "information_requested", "information_provided", "answered", "scheduled", "in_progress",
+  "engineering_checked", "qa_approved", "released", "in_production", "inspected"]);
+
+/** A client organisation (or Aries staff working inside one): the same analytics layout as the Aries dashboards, over
+ *  this organisation's records that the member may see (the server limits parts, passports and requests by project). */
 function OrganisationDashboard() {
   const { session, can } = useAuth();
   const oq = useDecision();
   const isOperator = session?.tenant.kind === "operator";
   const summary = useApi<DashboardSummary>("/dashboard/summary/");
+  const analytics = useApi<OrgAnalytics>("/dashboard/analytics/");
   const clients = useApi<Paginated<Client>>(isOperator && can("clients.view") ? "/clients/" : null);
+  const [range, setRange] = useState(6);
+  const [monthlyRange, setMonthlyRange] = useState(6);
   const s = summary.data;
+  const a = analytics.data;
   const busy = !!s && s.conversions.queued + s.conversions.running > 0;
+  const openCounts = a ? Object.fromEntries(Object.entries(a.by_status).filter(([k]) => OPEN_REQUEST.has(k))) : {};
+  const openTotal = Object.values(openCounts).reduce((x, y) => x + y, 0);
+  const requestsVisible = !!a?.requests_visible;
+  const last = <T,>(xs: T[], n: number) => xs.slice(-n);
+  const ic = (name: IconName) => <Icon name={name} size="sm" />;
+  const rangeOpts: [number, string][] = [[6, "Last 6 months"], [12, "Last 12 months"]];
 
   // Keep conversion status current while STEP files are being converted
   useEffect(() => {
@@ -144,99 +169,121 @@ function OrganisationDashboard() {
   }, [busy, summary.reload]);
 
   return (
-    <>
+    <div className="analytics">
       <MarineBanner slim>
         <PageHeader
           title={isOperator ? "Operator dashboard" : `${session?.tenant.name}`}
-          subtitle={isOperator ? "Digitalisation, passports and client organisations" : `Digital inventory of ${session?.tenant.name}`}
+          subtitle={isOperator ? "Digitalisation, passports and client organisations" : `Analytics for the digital inventory of ${session?.tenant.name}`}
         />
       </MarineBanner>
       {!isOperator && <EntryRoutes />}
-      <NeedsAttention compact />
-      <ClientIntelligenceCard />
-      <ErrorNotice error={summary.error} />
+      <ErrorNotice error={summary.error ?? analytics.error} />
       {summary.loading && !s ? (
         <Loading variant="cards" />
       ) : s ? (
         <>
-          <div className="stats">
+          <div className="stats stats-6">
             {isOperator && can("clients.view") && <Stat label="Client organisations" value={clients.data?.count ?? "…"} to="/clients" icon="building" />}
             <Stat label="Spare parts" value={s.parts.total} to="/parts" icon="boxes" />
             <Stat label="Digital passports" value={s.passports.total} to="/passports" icon="passport" />
             <Stat label="Open passport drafts" value={s.passports.open_drafts} to="/passports" icon="edit" />
             <Stat label="Parts with a 3D view" value={s.documents.parts_with_3d} to="/parts?has_3d=true" icon="cube" />
+            <Stat label="Engineering documents" value={s.documents.total} to="/parts" icon="file"
+              hint={s.documents.parts_without_documents ? `${s.documents.parts_without_documents} parts without documents` : undefined} />
+            {requestsVisible && <Stat label="Open requests" value={openTotal} to="/requests" icon="message" />}
           </div>
+          <NeedsAttention compact />
+          <ClientIntelligenceCard />
           {!isOperator && can("intelligence.view") && can("inventory.import") && <AssessmentSnapshot />}
-          {s.passports.total === 0 && s.documents.total === 0 && s.conversions.succeeded + s.conversions.queued + s.conversions.running + s.conversions.failed === 0 ? (
-            <p className="dash-quiet"><Icon name="info" size="sm" />No digital passports, engineering documents or 3D conversions yet. Passport data, document
-              coverage and 3D conversion status appear here once parts are digitised.</p>
-          ) : <div className="grid-3">
-            <Card title="Passport data captured">
-              <p className="muted small">Guidance on data entry. The official evidence level is a separate field that cannot change yet{oq("OQ-35")}.</p>
-              {(["none", "rl1", "rl2", "rl3"] as const).map((k) => (
-                <Meter key={k} label={DATA_LEVEL_LABEL[k]} value={s.passports.by_data_captured[k] ?? 0} total={s.passports.total} to={`/parts?data_level=${k}`} />
-              ))}
-              <p className="small">
-                Official evidence level: {s.passports.by_evidence_level.none ?? 0} of {s.passports.total} not assessed.
-              </p>
-            </Card>
-            <Card title="Engineering documents">
+          <div className="chart-grid">
+            <ChartCard title="Digital passport trend" icon={ic("chart")}
+              action={<RangeSelect label="Trend period" value={range} onChange={setRange} options={rangeOpts} />}>
+              {a ? <TrendChart months={last(a.months, range)} series={[
+                { label: "Digital passports (created)", values: last(a.series.passports, range), series: 1 },
+                { label: "Spare parts (added)", values: last(a.series.parts, range), series: 3 }]} />
+                : analytics.loading ? <Loading /> : null}
+            </ChartCard>
+            <ChartCard title="Passport data captured" icon={ic("layers")}>
+              <BarChart series={[{ label: "Digital passports", series: 1 }]}
+                groups={(["none", "rl1", "rl2", "rl3"] as const).map((k) => ({ key: k, label: DATA_LEVEL_LABEL[k],
+                  values: [s.passports.by_data_captured[k] ?? 0], to: `/parts?data_level=${k}` }))} />
+              <p className="muted small chart-note">Guidance on data entry. Official evidence level: {s.passports.by_evidence_level.none ?? 0} of{" "}
+                {s.passports.total} not assessed; it cannot change yet{oq("OQ-35")}.</p>
+            </ChartCard>
+            {requestsVisible ? (
+              <ChartCard title="Request status distribution" icon={ic("gauge")} action={<Link className="btn btn-small" to="/requests">Open all</Link>}>
+                <RequestsByStatus counts={openCounts} base="/requests" />
+              </ChartCard>
+            ) : (
+              <ConversionCard s={s} busy={busy} ic={ic} />
+            )}
+            {requestsVisible && a && (
+              <ChartCard title="Monthly approvals & requests" icon={ic("calendar")}
+                action={<RangeSelect label="Monthly period" value={monthlyRange} onChange={setMonthlyRange} options={rangeOpts} />}>
+                <BarChart stacked series={[{ label: "Passport approvals", series: 7 }, { label: "Requests", series: 2 }]}
+                  groups={last(a.months, monthlyRange).map((m, i) => {
+                    const at = a.months.length - monthlyRange + i;
+                    return { key: m, label: monthLabel(m), values: [a.series.approvals[at], a.series.requests[at]] };
+                  })} />
+              </ChartCard>
+            )}
+            {requestsVisible && a && (
+              <ChartCard title="Request workflow" icon={ic("route")}>
+                <RequestWorkflow byStatus={a.by_status} base="/requests" noun="requests" icon={(n) => <Icon name={n as IconName} />} />
+              </ChartCard>
+            )}
+            <ChartCard title="Engineering documents" icon={ic("file")}>
               <Meter label="Parts with a drawing" value={s.documents.parts_with_drawing} total={s.parts.total} />
               <Meter label="Parts with a specification" value={s.documents.parts_with_specification} total={s.parts.total} />
               <Meter label="Parts with a 3D view" value={s.documents.parts_with_3d} total={s.parts.total} to="/parts?has_3d=true" />
               <Meter label="Parts with a photograph" value={s.documents.parts_with_photo} total={s.parts.total} />
-              <p className="small">
+              <p className="small chart-note">
                 {s.documents.total} files: {s.documents.by_kind.step ?? 0} STEP · {s.documents.by_kind.dwg ?? 0} DWG · {s.documents.by_kind.pdf ?? 0} PDF ·{" "}
                 {s.documents.by_kind.image ?? 0} photos. {s.documents.parts_without_documents} parts have no documents yet.
               </p>
-            </Card>
-            <Card title="3D conversion" actions={busy ? <span className="muted small" aria-live="polite">Updating…</span> : undefined}>
-              <ul className="list compact-list" aria-label="Conversion status">
-                {CONVERSION_LABEL.map(([k, l]) => (
-                  <li key={k} className="row-between">
-                    <span>{l}</span> <strong>{s.conversions[k] as number}</strong>
-                  </li>
-                ))}
-              </ul>
-              {s.conversions.failed_items.length > 0 && (
-                <>
-                  <h3>Needs attention</h3>
-                  <ul className="list compact-list">
-                    {s.conversions.failed_items.map((f) => (
-                      <li key={f.file}>
-                        <Link to={f.passport ? `/passports/${f.passport}?tab=documents` : `/parts/${f.part}`}>{f.part_number}</Link>{" "}
-                        <span className="muted small">{f.title}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </Card>
-          </div>}
-          <Card title="Recently updated parts" actions={<Link to="/parts">Open digital inventory</Link>}>
-            {s.recent_parts.length ? (
-              <ul className="list recent-parts">
-                {s.recent_parts.map((p) => (
-                  <li key={p.id}>
-                    <Thumbnail thumb={p.thumbnail} alt={p.part_number} size={44} />
-                    <div className="grow">
-                      <Link to={`/parts/${p.id}`}>
-                        <strong>{p.part_number}</strong>
-                      </Link>{" "}
-                      <span className="muted">{p.name}</span>
-                      <div className="small">
-                        {p.passport_id ? <><Link to={`/passports/${p.passport_id}`}>{p.passport_number}</Link> · <DataLevel level={p.data_captured} /></>
-                          : <span className="muted">No passport</span>}{" "}· <DocChips documents={p.documents} has3d={p.has_3d} />
+            </ChartCard>
+          </div>
+          <div className="chart-grid chart-grid-foot">
+            <ChartCard title="Recently updated parts" icon={ic("boxes")} className="chart-wide"
+              action={<Link className="btn btn-small" to="/parts">Open digital inventory</Link>}>
+              {s.recent_parts.length ? (
+                <ul className="list recent-parts">
+                  {s.recent_parts.slice(0, 5).map((p) => (
+                    <li key={p.id}>
+                      <Thumbnail thumb={p.thumbnail} alt={p.part_number} size={44} />
+                      <div className="grow">
+                        <Link to={`/parts/${p.id}`}>
+                          <strong>{p.part_number}</strong>
+                        </Link>{" "}
+                        <span className="muted">{p.name}</span>
+                        <div className="small">
+                          {p.passport_id ? <><Link to={`/passports/${p.passport_id}`}>{p.passport_number}</Link> · <DataLevel level={p.data_captured} /></>
+                            : <span className="muted">No passport</span>}{" "}· <DocChips documents={p.documents} has3d={p.has_3d} />
+                        </div>
                       </div>
-                    </div>
-                    <span className="muted small">{formatDate(p.last_activity)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Empty>No spare parts yet.</Empty>
+                      <span className="muted small">{formatDate(p.last_activity)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty>No spare parts yet.</Empty>
+              )}
+            </ChartCard>
+            {requestsVisible && a && (
+              <ChartCard title="Request activity" icon={ic("history")}>
+                <ActivityHeatmap start={a.activity.start} days={a.activity.days} />
+                <p className="muted small chart-note">Requests submitted per day, last {a.activity.weeks} weeks.</p>
+              </ChartCard>
             )}
-          </Card>
+            {requestsVisible ? <ConversionCard s={s} busy={busy} ic={ic} /> : a ? (
+              <ChartCard title="At a glance" icon={ic("gauge")}>
+                <div className="glance">
+                  <Growth values={a.series.passports} n={6} label="Digital passports created (vs. previous 6 months)" />
+                  <Growth values={a.series.parts} n={6} label="Spare parts added (vs. previous 6 months)" />
+                </div>
+              </ChartCard>
+            ) : null}
+          </div>
         </>
       ) : null}
       <MyOrganisations />
@@ -249,7 +296,30 @@ function OrganisationDashboard() {
           <Notice>DWG drawings can be downloaded; in-browser DWG preview is not available yet{oq("OQ-27")}.</Notice>
         </Card>
       </div>
-    </>
+    </div>
+  );
+}
+
+/** 3D conversion of STEP files: status as a donut, failed conversions listed with links (kept current while converting). */
+function ConversionCard({ s, busy, ic }: { s: DashboardSummary; busy: boolean; ic: (n: IconName) => ReactNode }) {
+  return (
+    <ChartCard title="3D conversion" icon={ic("cube")} action={busy ? <span className="muted small" aria-live="polite">Updating…</span> : undefined}>
+      <Donut caption="STEP files" empty="No STEP files yet."
+        slices={CONVERSION_LABEL.map(([k, l], i) => ({ key: k, label: l, value: s.conversions[k] as number, series: [3, 4, 1, 2, 0][i] }))} />
+      {s.conversions.failed_items.length > 0 && (
+        <>
+          <h3>Needs attention</h3>
+          <ul className="list compact-list">
+            {s.conversions.failed_items.map((f) => (
+              <li key={f.file}>
+                <Link to={f.passport ? `/passports/${f.passport}?tab=documents` : `/parts/${f.part}`}>{f.part_number}</Link>{" "}
+                <span className="muted small">{f.title}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </ChartCard>
   );
 }
 
@@ -285,7 +355,8 @@ function OperatorHome() {
   const approvals = { data: approvalRows.data ? approvalRows.data.filter((r) => r.review_state === "pending_review") : null };
   const rows = overview.data ?? [];
   const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
-  const analytics = useApi<Analytics>(admin ? "/operator/analytics/" : null);
+  const staffAnalytics = admin || can("requests.handle");
+  const analytics = useApi<Analytics>(staffAnalytics ? "/operator/analytics/" : null);
   // 70+ organisations, most of them test registrations with no activity: open on the active ones, everything one click away
   const activity = (r: OverviewRow) => r.counts.parts + r.counts.passports + r.counts.open_requests * 5;
   const c = useListControls(rows, {
@@ -297,8 +368,8 @@ function OperatorHome() {
       ["parts", "Spare parts", (a, b) => b.counts.parts - a.counts.parts || a.name.localeCompare(b.name)], ["name", "Name A–Z", (a, b) => a.name.localeCompare(b.name)]],
     pageSize: 10,
   });
-  if (admin) {
-    return <AnalyticsDashboard title={title} rows={rows} overview={overview} analytics={analytics} queue={queue} open={open} waiting={waiting}
+  if (staffAnalytics) {
+    return <AnalyticsDashboard title={title} admin={admin} rows={rows} overview={overview} analytics={analytics} queue={queue} open={open} waiting={waiting}
       messages={messages.length} pendingRegs={can("registrations.review") ? pendingRegs.data?.count ?? null : undefined} />;
   }
   return (
@@ -363,7 +434,7 @@ function OperatorHome() {
       )}
       {queue.data && open.length > 0 && (
         <div className="dash-charts">
-          <Card title="Requests by status"><RequestsByStatus requests={open} /></Card>
+          <Card title="Requests by status"><RequestsByStatus counts={countBy(open)} /></Card>
         </div>
       )}
       </div>
@@ -435,6 +506,8 @@ function OperatorHome() {
 }
 
 interface Analytics {
+  scope: "all" | "assigned";
+  client_assets: { id: string; name: string; counts: { parts: number; passports: number; open_requests: number } }[];
   months: string[];
   series: Record<"passports" | "parts" | "approvals" | "registrations" | "requests", number[]>;
   activity: { start: string; weeks: number; days: number[][] };
@@ -443,14 +516,19 @@ interface Analytics {
 }
 
 /** Aries Admin / Manager: platform analytics. Counts and charts only; each chart links to the list behind it. */
-function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, waiting, messages, pendingRegs }: {
-  title: string; rows: OverviewRow[]; overview: { data: OverviewRow[] | null; error: unknown; loading: boolean };
+function AnalyticsDashboard({ title, admin, rows: overviewRows, overview: adminOverview, analytics, queue, open, waiting, messages, pendingRegs }: {
+  title: string; admin: boolean; rows: OverviewRow[]; overview: { data: OverviewRow[] | null; error: unknown; loading: boolean };
   analytics: { data: Analytics | null; error: unknown; loading: boolean }; queue: { data: IntakeEnvelope[] | null; error: unknown };
   open: IntakeEnvelope[]; waiting: number; messages: number; pendingRegs: number | null | undefined;
 }) {
   const [range, setRange] = useState(6);
   const [monthlyRange, setMonthlyRange] = useState(6);
   const a = analytics.data;
+  // Aries Admin: every client organisation (overview); Engineers, QA and support: only their assigned clients and projects
+  const rows: OverviewRow[] = admin ? overviewRows : (a?.client_assets ?? []).map((r) => ({ ...r, slug: "", status: "active", hosting_model: "",
+    counts: { ...r.counts, awaiting_acknowledgement: 0, client_users: 0, assigned_staff: 0 } }));
+  const overview = admin ? adminOverview : { data: a ? rows : null, error: null, loading: analytics.loading };
+  const clientLink = (id: string) => (admin ? `/clients/${id}` : undefined);
   const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
   const last = <T,>(xs: T[], n: number) => xs.slice(-n);
   const activity = (r: OverviewRow) => r.counts.parts + r.counts.passports + r.counts.open_requests * 5;
@@ -460,8 +538,8 @@ function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, wai
   const topAssets = ranked.slice(0, ranked.length > 4 ? 3 : 4);
   const restAssets = ranked.slice(topAssets.length);
   const assetGroups = [
-    ...topAssets.map((r) => ({ key: r.id, label: r.name, values: [r.counts.parts, r.counts.passports], to: `/clients/${r.id}` })),
-    ...(restAssets.length ? [{ key: "others", label: `Others (${restAssets.length})`, to: "/clients",
+    ...topAssets.map((r) => ({ key: r.id, label: r.name, values: [r.counts.parts, r.counts.passports], to: clientLink(r.id) })),
+    ...(restAssets.length ? [{ key: "others", label: `Others (${restAssets.length})`, to: admin ? "/clients" : undefined,
       values: [restAssets.reduce((n, r) => n + r.counts.parts, 0), restAssets.reduce((n, r) => n + r.counts.passports, 0)] }] : []),
   ];
   const summary = [...rows].sort((x, y) => activity(y) - activity(x) || x.name.localeCompare(y.name)).slice(0, 5);
@@ -470,16 +548,19 @@ function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, wai
   return (
     <div className="analytics">
       <MarineBanner slim>
-        <PageHeader title={title} subtitle="Platform analytics for digital passports and marine spare parts." />
+        <PageHeader title={title} subtitle={admin ? "Platform analytics for digital passports and marine spare parts."
+          : "Analytics for the client organisations and projects you are assigned to."} />
       </MarineBanner>
       <div className="stats stats-6">
-        {pendingRegs !== undefined && <Stat label="Registrations pending approval" value={pendingRegs ?? "…"} to="/registrations" icon="inbox" />}
-        <Stat label="Client organisations" value={overview.data ? rows.length : "…"} to="/clients" icon="building" />
+        {admin && pendingRegs !== undefined && <Stat label="Registrations pending approval" value={pendingRegs ?? "…"} to="/registrations" icon="inbox" />}
+        <Stat label={admin ? "Client organisations" : "Assigned client organisations"} value={overview.data ? rows.length : "…"}
+          to={admin ? "/clients" : undefined} icon="building" />
         <Stat label="Spare parts across clients" value={overview.data ? sum("parts") : "…"} icon="boxes" />
         <Stat label="Digital passports across clients" value={overview.data ? sum("passports") : "…"} icon="passport" />
         <Stat label="Open requests" value={queue.data ? open.length : "…"} to="/incoming" icon="message"
           hint={messages ? `${messages} client message${messages === 1 ? "" : "s"} awaiting reply` : undefined} />
         <Stat label="Awaiting acknowledgement" value={queue.data ? waiting : "…"} to="/incoming?status=submitted" icon="clock" />
+        {!admin && <Stat label="Client messages awaiting reply" value={queue.data ? messages : "…"} to="/incoming?awaiting=true" icon="message" />}
       </div>
       <ErrorNotice error={analytics.error ?? overview.error ?? queue.error} />
       <div className="chart-grid">
@@ -491,20 +572,22 @@ function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, wai
             : analytics.loading ? <Loading /> : null}
         </ChartCard>
         <ChartCard title="Client organisations by digital assets" icon={ic("layers")}
-          action={<Link className="btn btn-small" to="/clients">Clients</Link>}>
+          action={admin ? <Link className="btn btn-small" to="/clients">Clients</Link> : undefined}>
           {!overview.data ? <Loading /> : assetGroups.length ? (
             <BarChart groups={assetGroups} series={[{ label: "Spare parts", series: 3 }, { label: "Digital passports", series: 1 }]} />
           ) : <p className="muted small chart-empty">No spare parts or passports yet.</p>}
         </ChartCard>
         <ChartCard title="Request status distribution" icon={ic("gauge")} action={<Link className="btn btn-small" to="/incoming">Open all</Link>}>
-          {queue.data ? <RequestsByStatus requests={open} /> : <Loading />}
+          {queue.data ? <RequestsByStatus counts={countBy(open)} /> : <Loading />}
         </ChartCard>
         <ChartCard title="Monthly approvals & requests" icon={ic("calendar")}
           action={<RangeSelect label="Monthly period" value={monthlyRange} onChange={setMonthlyRange} options={rangeOpts} />}>
-          {a ? <BarChart stacked series={[{ label: "Approvals", series: 7 }, { label: "Registrations", series: 4 }, { label: "Client requests", series: 2 }]}
+          {a ? <BarChart stacked series={admin ? [{ label: "Approvals", series: 7 }, { label: "Registrations", series: 4 }, { label: "Client requests", series: 2 }]
+            : [{ label: "Approvals", series: 7 }, { label: "Client requests", series: 2 }]}
             groups={last(a.months, monthlyRange).map((m, i) => {
               const at = a.months.length - monthlyRange + i;
-              return { key: m, label: monthLabel(m), values: [a.series.approvals[at], a.series.registrations[at], a.series.requests[at]] };
+              return { key: m, label: monthLabel(m), values: admin ? [a.series.approvals[at], a.series.registrations[at], a.series.requests[at]]
+                : [a.series.approvals[at], a.series.requests[at]] };
             })} /> : analytics.loading ? <Loading /> : null}
         </ChartCard>
         <ChartCard title="Client request workflow" icon={ic("route")}>
@@ -517,7 +600,7 @@ function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, wai
       </div>
       <div className="chart-grid chart-grid-foot">
         <ChartCard title="Client summary" icon={ic("users")} className="chart-wide"
-          action={<Link className="btn btn-small" to="/clients">All clients ({rows.length})</Link>}>
+          action={admin ? <Link className="btn btn-small" to="/clients">All clients ({rows.length})</Link> : undefined}>
           {!overview.data ? <Loading /> : summary.length ? (
             <div className="table-scroll">
               <table className="table summary-table" aria-label="Client summary">
@@ -528,7 +611,7 @@ function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, wai
                     const cover = r.counts.parts ? Math.round((Math.min(r.counts.passports, r.counts.parts) / r.counts.parts) * 100) : null;
                     return (
                       <tr key={r.id}>
-                        <td><Link to={`/clients/${r.id}`}><strong>{r.name}</strong></Link></td>
+                        <td>{admin ? <Link to={`/clients/${r.id}`}><strong>{r.name}</strong></Link> : <strong>{r.name}</strong>}</td>
                         <td className="num">{r.counts.parts}</td>
                         <td className="num">{r.counts.passports}</td>
                         <td className="num">{r.counts.open_requests ? <Link to={`/incoming?client=${r.id}`}>{r.counts.open_requests}</Link> : 0}</td>

@@ -17,7 +17,7 @@ from apps.intelligence.client_api import (AdminAIManagementView, AdminClientWork
 from apps.edits.api import EditRequestViewSet
 from apps.files.api import DownloadView, EngineeringFileViewSet
 from apps.parts.api import SparePartViewSet
-from apps.parts.dashboard import DashboardSummaryView
+from apps.parts.dashboard import DashboardAnalyticsView, DashboardSummaryView
 from apps.files.admin_thumbnails import AdminThumbnailConsentView, AdminThumbnailView
 from apps.files.thumbnail_provenance import (ContractAuthorizationEventView, ContractAuthorizationView, ContractListView,
                                              ImageOriginView, OriginClaimsQueueView)
@@ -68,6 +68,7 @@ urlpatterns = [
     path("auth/me/", MeView.as_view(), name="auth-me"),
     path("auth/memberships/", MembershipsView.as_view(), name="auth-memberships"),
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
+    path("dashboard/analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
     path("organisation/profile/", OwnCompanyProfileView.as_view(), name="own-company-profile"),
     path("admin/inventory/", AdminInventoryView.as_view(), name="admin-inventory"),
     path("admin/inventory/thumbnails/<str:token>/", AdminThumbnailView.as_view(), name="admin-inventory-thumbnail"),
