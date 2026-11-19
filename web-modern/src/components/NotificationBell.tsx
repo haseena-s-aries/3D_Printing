@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
+import { NOTIFICATIONS_CHANGED } from "./Unread";
 import { useAuth } from "../auth/AuthContext";
 import { Icon } from "./icons";
 import { formatDate } from "./ui";
@@ -31,7 +32,9 @@ export default function NotificationBell() {
 
   useEffect(() => {
     const t = window.setInterval(() => void list.reload(), 15000);
-    return () => window.clearInterval(t);
+    const onChange = () => void list.reload();  // opening an item elsewhere read its notifications
+    window.addEventListener(NOTIFICATIONS_CHANGED, onChange);
+    return () => { window.clearInterval(t); window.removeEventListener(NOTIFICATIONS_CHANGED, onChange); };
   }, [list.reload]);
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function NotificationBell() {
           <div className="bell-head">
             <strong>Notifications</strong>
             {unread > 0 && (
-              <button type="button" className="link-button small" onClick={async () => { await api("/notifications/read-all/", { method: "POST" }); await list.reload(); }}>
+              <button type="button" className="link-button small" onClick={async () => { await api("/notifications/read-all/", { method: "POST" }); await list.reload(); window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); }}>
                 Mark all as read
               </button>
             )}
@@ -69,7 +72,7 @@ export default function NotificationBell() {
               {list.data.results.map((n) => (
                 <li key={n.id} className={n.read_at ? "" : "is-unread"}>
                   <button type="button" onClick={async () => {
-                    if (!n.read_at) await api(`/notifications/${n.id}/read/`, { method: "POST" });
+                    if (!n.read_at) { await api(`/notifications/${n.id}/read/`, { method: "POST" }); window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); }
                     setOpen(false);
                     await list.reload();
                     if (n.link) await go(n.link, n.organisation_name ?? "");

@@ -160,3 +160,23 @@ def test_client_dashboard_analytics_for_aries_staff_inside_the_company(world, re
         EngineerAccess.objects.create(tenant=world["a"], user=world["op_eng"], scope=EngineerAccess.Scope.PROJECTS)
     d = login(world["op_eng"], world["a"]).get("/api/v1/dashboard/analytics/").json()
     assert d["by_status"] == {} and sum(d["series"]["parts"]) == 0
+
+
+def test_unread_notification_links_follow_the_current_organisation(world, requests_ab):
+    """Sidebar counts and the "New" highlight: unread links of the organisation the person is in now; reading clears them."""
+    admin = login(world["op_admin"])
+    links = admin.get("/api/v1/notifications/unread/").json()
+    incoming = [n for n in links if n["link"].startswith("/incoming/")]
+    assert len(incoming) == 2 and set(links[0]) == {"id", "link"}  # both clients' new requests, in the Aries workspace
+    eng_a = login(world["op_eng"], world["a"])  # working inside client A: client A only
+    assert all(n["link"].startswith("/incoming/") for n in eng_a.get("/api/v1/notifications/unread/").json())
+    assert len(eng_a.get("/api/v1/notifications/unread/").json()) == 1
+    # Aries acknowledges client A's request: client A's admin gets a /requests/ link, client B's admin does not
+    row = next(r for r in admin.get("/api/v1/operator/requests/").json() if r["client_name"] == "Client A Energy")
+    assert admin.post(f"/api/v1/operator/requests/{row['id']}/act/", {"action": "acknowledge"}, format="json").status_code == 200
+    a_links = login(world["a_admin"]).get("/api/v1/notifications/unread/").json()
+    assert [n["link"].split("/")[1] for n in a_links] == ["requests"]
+    assert login(world["b_admin"]).get("/api/v1/notifications/unread/").json() == []
+    a = login(world["a_admin"])
+    assert a.post(f"/api/v1/notifications/{a_links[0]['id']}/read/").status_code == 204
+    assert a.get("/api/v1/notifications/unread/").json() == []

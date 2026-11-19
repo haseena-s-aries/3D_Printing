@@ -31,7 +31,7 @@ from apps.projects.api import ProjectViewSet
 from apps.registrations.api import (DevOutboxView, PasswordResetRequestView, PasswordResetView, RegistrationConfigView,
                                     RegistrationResendView, RegistrationSubmitView, RegistrationVerifyView, RegistrationViewSet,
                                     StaffRequestSubmitView)
-from apps.servicerequests.api import (ClientRequestViewSet, EstimateRatesView, OperatorArchiveView, NotificationListView, NotificationReadView, OperatorOverviewView, OperatorAnalyticsView,
+from apps.servicerequests.api import (ClientRequestViewSet, EstimateRatesView, OperatorArchiveView, NotificationListView, NotificationReadView, NotificationUnreadView, OperatorOverviewView, OperatorAnalyticsView,
                                       OperatorRequestViewSet)
 from apps.tenancy.api import ClientViewSet, OwnCompanyProfileView, UserViewSet
 from apps.tenancy.invitations import InvitationAcceptView, InvitationViewSet
@@ -144,6 +144,7 @@ urlpatterns = [
     path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/reports/<uuid:report_id>/", PassportApprovalReportView.as_view(),
          name="passport-approval-report"),
     path("notifications/", NotificationListView.as_view(), name="notifications"),
+    path("notifications/unread/", NotificationUnreadView.as_view(), name="notifications-unread"),
     path("notifications/read-all/", NotificationReadView.as_view(), name="notifications-read-all"),
     path("notifications/<uuid:pk>/read/", NotificationReadView.as_view(), name="notification-read"),
     path("invitation-acceptance/<str:token>/", InvitationAcceptView.as_view(), name="invitation-accept"),

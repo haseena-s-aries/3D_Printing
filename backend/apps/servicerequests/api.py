@@ -837,6 +837,24 @@ class NotificationListView(APIView):
         return Response({"unread": qs.filter(read_at__isnull=True).count(), "results": NotificationSerializer(qs[:30], many=True).data})
 
 
+class NotificationUnreadView(APIView):
+    """Unread notifications behind the menu of the organisation the person is in now (sidebar counts and the "New"
+    highlight in lists): that organisation's notifications; in the Aries workspace also the client-request notifications,
+    which are filed under the client's name but listed in the Aries Incoming requests. Links only, no texts."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: inline_serializer("NotificationUnread", {"id": serializers.UUIDField(), "link": serializers.CharField()}, many=True)})
+    def get(self, request):
+        tenant = getattr(request, "tenant", None)
+        qs = Notification.objects.filter(recipient=request.user, read_at__isnull=True).exclude(link="")
+        if tenant is not None:
+            here = Q(organisation_name=tenant.name)
+            if tenant.kind == Tenant.Kind.OPERATOR:
+                here |= Q(link__startswith="/incoming/")
+            qs = qs.filter(here)
+        return Response([{"id": str(i), "link": link} for i, link in qs.values_list("id", "link")[:500]])
+
+
 class NotificationReadView(APIView):
     permission_classes = [IsAuthenticated]
 

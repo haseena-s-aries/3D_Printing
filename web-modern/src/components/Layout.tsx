@@ -12,6 +12,7 @@ import { ThemeToggle, useAppKeyboard } from "./theme";
 import { Loading } from "./ui";
 import ariesMark from "../assets/aries-mark.png";
 import { SidebarWave, ariesLogo } from "./MarineHero";
+import { UnreadProvider, useUnreadState, type Unread } from "./Unread";
 
 interface NavItem {
   to: string;
@@ -195,13 +196,13 @@ const initials = (email: string) => email.split("@")[0].split(/[._-]/).filter(Bo
  * acknowledgement, client submissions awaiting approval, registrations to approve and invitations not yet accepted.
  * The same queries and filters as the pages they open; refreshed on every navigation.
  */
-function useNavBadges(): Record<string, number> {
+function useNavBadges(unread: Unread): Record<string, number> {
   const { session, can } = useAuth();
   const { pathname } = useLocation();
   const isOperator = session?.tenant.kind === "operator";
   const role = session?.membership.role ?? "";
   const platformAdmin = role === "operator_admin" || role === "operator_manager";
-  const incoming = useApi<{ status: string }[]>(can("requests.handle") ? "/operator/requests/" : null, { query: { open: "true" } });
+  const incoming = useApi<{ id: string; status: string }[]>(can("requests.handle") ? "/operator/requests/" : null, { query: { open: "true" } });
   const approvals = useApi<{ review_state: string }[]>(isOperator && platformAdmin && can("passports.approve") ? "/operator/approvals/" : null);
   const regs = useApi<{ count: number }>(isOperator && can("registrations.review") ? "/registrations/" : null, { query: { status: "pending", page_size: 1 } });
   const invites = useApi<{ results: { state: string }[] }>(can("users.manage") ? "/invitations/" : null);
@@ -211,20 +212,30 @@ function useNavBadges(): Record<string, number> {
     void incoming.reload(); void approvals.reload(); void regs.reload(); void invites.reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+  // work waiting, plus anything new for the person (unread notifications: a quotation accepted or rejected, a client
+  // message, information provided...), counted once per item where both point at the same request
+  const waitingIncoming = (incoming.data ?? []).filter((r) => r.status === "submitted").map((r) => r.id);
+  const either = (waiting: number, section: string) => Math.max(waiting, unread.count(section));
   return {
-    "/incoming": incoming.data?.filter((r) => r.status === "submitted").length ?? 0,
-    "/approvals": approvals.data?.filter((r) => r.review_state === "pending_review").length ?? 0,
-    "/registrations": regs.data?.count ?? 0,
+    "/incoming": new Set([...waitingIncoming, ...unread.ids("/incoming")]).size,
+    "/approvals": either(approvals.data?.filter((r) => r.review_state === "pending_review").length ?? 0, "/approvals"),
+    "/registrations": either(regs.data?.count ?? 0, "/registrations"),
     "/users": invites.data?.results?.filter((i) => i.state === "pending").length ?? 0,
+    "/requests": unread.count("/requests"),
+    "/edit-requests": unread.count("/edit-requests"),
+    "/parts": unread.count("/parts"),
+    "/ai/my-parts": unread.count("/ai/my-parts"),
   };
 }
 
-const BADGE_TEXT: Record<string, string> = { "/incoming": "awaiting acknowledgement", "/approvals": "awaiting approval",
-  "/registrations": "awaiting approval", "/users": "invitations not yet accepted" };
+const BADGE_TEXT: Record<string, string> = { "/incoming": "new or awaiting acknowledgement", "/approvals": "new or awaiting approval",
+  "/registrations": "new or awaiting approval", "/users": "invitations not yet accepted", "/requests": "with new updates",
+  "/edit-requests": "with new updates", "/parts": "with new updates", "/ai/my-parts": "with new updates" };
 
 export default function Layout({ children }: { children?: ReactNode }) {
   const { session, can, logout } = useAuth();
-  const badges = useNavBadges();
+  const unread = useUnreadState(!!session);
+  const badges = useNavBadges(unread);
   const navigate = useNavigate();
   const superAdmin = useIsSuperAdmin();
   const [open, setOpen] = useState(false);
@@ -278,6 +289,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
     );
   };
   return (
+    <UnreadProvider value={unread}>
     <div className={`shell ${open ? "nav-open" : ""} ${rail ? "is-rail" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <aside className="sidebar" aria-label="Main navigation">
@@ -363,6 +375,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
       </div>
       {open && <div className="scrim" onClick={() => setOpen(false)} aria-hidden />}
     </div>
+    </UnreadProvider>
   );
 }
 

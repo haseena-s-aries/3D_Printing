@@ -12,6 +12,7 @@ import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { show } from "../components/EditRequestDialog";
 import { BackLink, Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate } from "../components/ui";
+import { NewTag, useUnread } from "../components/Unread";
 
 export const EDIT_STATUS: Record<string, [string, "neutral" | "info" | "success" | "warning" | "danger"]> = {
   draft: ["Draft", "neutral"], submitted: ["Submitted", "info"], under_review: ["Under Review", "info"],
@@ -25,6 +26,7 @@ export function EditStatus({ status }: { status: string }) {
 }
 
 export function EditRequestList({ query, empty }: { query: Record<string, string>; empty: string }) {
+  const unread = useUnread();  // rows with something new for this person
   const list = useApi<Paginated<EditRequest>>("/edit-requests/", { query: { ...query, page_size: 100 } });
   if (list.loading && !list.data) return <Loading />;
   if (list.error) return <ErrorNotice error={list.error} />;
@@ -35,8 +37,8 @@ export function EditRequestList({ query, empty }: { query: Record<string, string
         <thead><tr><th>Request</th><th>Target</th><th>Fields</th><th>Status</th><th>Requester</th><th>Updated</th></tr></thead>
         <tbody>
           {list.data.results.map((r) => (
-            <tr key={r.id}>
-              <td><Link to={`/edit-requests/${r.id}`}><strong>{r.reference}</strong></Link></td>
+            <tr key={r.id} className={unread.has(`/edit-requests/${r.id}`) ? "row-new" : ""}>
+              <td><Link to={`/edit-requests/${r.id}`}><strong>{r.reference}</strong></Link>{unread.has(`/edit-requests/${r.id}`) && <> <NewTag /></>}</td>
               <td>{r.part_number}{r.passport_number ? ` · ${r.passport_number} (rev ${r.base_revision_number})` : ""}<div className="muted small">{r.part_name}</div></td>
               <td className="small">{(r.changes as { label: string }[]).map((c) => c.label).join(", ")}</td>
               <td><EditStatus status={r.status ?? "draft"} /></td>

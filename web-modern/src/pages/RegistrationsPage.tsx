@@ -12,6 +12,7 @@ import { useApi } from "../api/useApi";
 import { useRegistrationConfig } from "../components/PublicShell";
 import { roleLabel } from "../components/roles";
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, PageHeader, formatDate } from "../components/ui";
+import { NewTag, useUnread } from "../components/Unread";
 
 export interface Registration {
   id: string;
@@ -145,6 +146,7 @@ function Detail({ reg, onDone }: { reg: Registration; onDone: () => void }) {
 }
 
 export default function RegistrationsPage() {
+  const unread = useUnread();  // rows with something new for this person
   const { id } = useParams();
   const [tab, setTab] = useState<Registration["status"]>("pending");
   const list = useApi<Paginated<Registration>>("/registrations/", { query: { status: tab, page_size: 50 } });
@@ -170,8 +172,9 @@ export default function RegistrationsPage() {
           {list.loading ? <Loading /> : list.data?.results.length ? (
             <ul className="list" aria-label="Registrations">
               {list.data.results.map((r) => (
-                <li key={r.id} className={r.id === id ? "selected" : ""}>
+                <li key={r.id} className={r.id === id ? "selected" : unread.has(`/registrations/${r.id}`) ? "row-new" : ""}>
                   <Link to={`/registrations/${r.id}`}><strong>{isStaff(r) ? r.contact_name : r.company_name}</strong></Link>{" "}
+                  {unread.has(`/registrations/${r.id}`) && <><NewTag />{" "}</>}
                   {isStaff(r) ? <Badge tone="info">Aries staff · {roleLabel(r.requested_role ?? "")}</Badge> : <Badge>Company</Badge>}
                   {r.possible_duplicates.length > 0 && <> <Badge tone="warning">check duplicates</Badge></>}
                   <div className="muted small">{isStaff(r) ? r.email : `${r.contact_name} · ${r.email}`} · {formatDate(r.created_at)}</div>

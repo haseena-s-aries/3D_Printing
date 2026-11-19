@@ -9,6 +9,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { ArchiveButton } from "../components/ArchiveButton";
+import { NewTag, useUnread } from "../components/Unread";
 import { KIND, KindBadge, STATUS, StatusBadge } from "../components/requests";
 import { ListPager, ListToolbar, useListControls } from "../components/ListControls";
 import { Badge, Card, Empty, ErrorNotice, Loading, PageHeader, formatDate } from "../components/ui";
@@ -21,6 +22,7 @@ export default function IncomingRequestsPage() {
   const clientId = params.get("client") ?? "";
   const awaiting = params.get("awaiting") === "true";
   const { session } = useAuth();
+  const unread = useUnread();
   // Aries Admin or Manager: archive a request from the list (not while the order is released, in production or inspected)
   const canArchive = ["operator_admin", "operator_manager"].includes(session?.membership.role ?? "");
   const list = useApi<IntakeEnvelope[]>("/operator/requests/", { query: { kind, status, client_tenant: clientId, open: openOnly && !status ? "true" : "",
@@ -75,9 +77,9 @@ export default function IncomingRequestsPage() {
             </thead>
             <tbody>
               {c.visible.map((r) => (
-                <tr key={r.id} className={r.status === "submitted" ? "row-attention" : ""}>
+                <tr key={r.id} className={unread.has(`/incoming/${r.id}`) ? "row-new" : r.status === "submitted" ? "row-attention" : ""}>
                   <td className="ref-cell">{r.assigned ? <Link to={`/incoming/${r.id}`}><strong>{r.intake_number || r.reference}</strong></Link>
-                    : <span title="You are not assigned to this client organisation"><strong>{r.intake_number || r.reference}</strong> <span className="muted small">(not assigned)</span></span>}
+                    : <span title="You are not assigned to this client organisation"><strong>{r.intake_number || r.reference}</strong> <span className="muted small">(not assigned)</span></span>}{unread.has(`/incoming/${r.id}`) && <> <NewTag /></>}
                     <div className="small">{r.client_name} · <span className="muted">client ref.</span> {r.reference}</div></td>
                   <td><KindBadge kind={r.kind} /></td>
                   <td>{r.part_number && <strong>{r.part_number} </strong>}{r.part_name}</td>
