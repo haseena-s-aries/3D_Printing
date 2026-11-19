@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useApi } from "../api/useApi";
+import { useAuth } from "../auth/AuthContext";
+import { ArchiveButton } from "../components/ArchiveButton";
 import { KIND, KindBadge, STATUS, StatusBadge } from "../components/requests";
 import { ListPager, ListToolbar, useListControls } from "../components/ListControls";
 import { Badge, Card, Empty, ErrorNotice, Loading, PageHeader, formatDate } from "../components/ui";
@@ -18,6 +20,9 @@ export default function IncomingRequestsPage() {
   const openOnly = params.get("all") !== "true";
   const clientId = params.get("client") ?? "";
   const awaiting = params.get("awaiting") === "true";
+  const { session } = useAuth();
+  // Aries Admin or Manager: archive a request from the list (not while the order is released, in production or inspected)
+  const canArchive = ["operator_admin", "operator_manager"].includes(session?.membership.role ?? "");
   const list = useApi<IntakeEnvelope[]>("/operator/requests/", { query: { kind, status, client_tenant: clientId, open: openOnly && !status ? "true" : "",
     awaiting: awaiting ? "true" : "" } });
 
@@ -66,7 +71,7 @@ export default function IncomingRequestsPage() {
           <div className="table-scroll">
           <table className="table requests-table table-stack" aria-label="Incoming requests">
             <thead>
-              <tr><th>Intake no. · client reference</th><th>Type</th><th>Part / subject</th><th className="num">Qty</th><th>Required</th><th>Priority</th><th>Status</th><th>Submitted</th></tr>
+              <tr><th>Intake no. · client reference</th><th>Type</th><th>Part / subject</th><th className="num">Qty</th><th>Required</th><th>Priority</th><th>Status</th><th>Submitted</th>{canArchive && <th><span className="sr-only">Actions</span></th>}</tr>
             </thead>
             <tbody>
               {c.visible.map((r) => (
@@ -81,6 +86,8 @@ export default function IncomingRequestsPage() {
                   <td>{r.priority === "urgent" ? <Badge tone="danger">Urgent</Badge> : <span className="muted small">Routine</span>}</td>
                   <td><StatusBadge status={r.status} />{r.awaiting_reply && r.status !== "submitted" && <> <Badge tone="warning">New client message</Badge></>}</td>
                   <td className="small">{formatDate(r.submitted_at)}</td>
+                  {canArchive && <td className="actions">{!["released", "in_production", "inspected"].includes(String(r.status)) && (
+                    <ArchiveButton kind="request" id={r.id} title={r.intake_number || r.reference} onDone={() => void list.reload()} />)}</td>}
                 </tr>
               ))}
             </tbody>

@@ -2121,3 +2121,9 @@ a.stat:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21, 34,
 @media (max-width: 1280px) { .dash-fit { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
 @media (max-width: 760px) { .dash-fit { grid-template-columns: minmax(0, 1fr); } }
 .chart-card .glance { min-height: 120px; }
+
+/* archive / deactivate in lists: visible, quiet until hovered, red on hover */
+.btn-archive { color: var(--muted); }
+.btn-archive:hover:not(:disabled) { color: #c0364f; border-color: color-mix(in srgb, #c0364f 45%, transparent); background: color-mix(in srgb, #c0364f 8%, transparent); }
+.admin-row-actions { white-space: nowrap; }
+.admin-row-actions .btn + .btn, .admin-card-actions .btn + .btn { margin-left: 6px; }

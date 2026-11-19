@@ -77,6 +77,29 @@ def archived_items() -> list[dict]:
     return sorted(rows, key=lambda r: r["archived_at"], reverse=True)
 
 
+def archive(request, kind: str, client: Tenant, item_id) -> None:
+    """The Aries Admin archives a part (with its passport) or a request from the Aries workspace lists (Digital inventory,
+    Incoming requests), without opening the record; the same rules and audit events as archiving it on its own page."""
+    from apps.parts.models import SparePart
+    from apps.servicerequests.models import ClientRequest
+
+    if client.kind != Tenant.Kind.CLIENT:
+        raise DomainError("not_found", "Company not found.", http_status=404)
+    with tenant_context(client):
+        if kind == "part":
+            obj = SparePart.all_objects.filter(pk=item_id).first()
+            if obj is None:
+                raise DomainError("not_found", "Spare part not found.", http_status=404)
+            archive_part(request, obj)
+        elif kind == "request":
+            obj = ClientRequest.all_objects.filter(pk=item_id).first()
+            if obj is None:
+                raise DomainError("not_found", "Request not found.", http_status=404)
+            archive_request(request, obj)
+        else:
+            raise DomainError("invalid_kind", "Choose part or request.", http_status=400)
+
+
 def restore(request, kind: str, client: Tenant, item_id) -> None:
     from apps.parts.models import SparePart
     from apps.servicerequests.models import ClientRequest
