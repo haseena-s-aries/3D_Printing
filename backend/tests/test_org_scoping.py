@@ -72,6 +72,21 @@ def test_operator_overview_is_aggregate_and_admin_only(world, requests_ab):
     assert login(world["op_eng"], world["operator"]).get("/api/v1/operator/overview/").status_code == 403
 
 
+def test_operator_analytics_is_aggregate_and_admin_only(world, requests_ab):
+    """Dashboard charts: counts per month / day / status only, for Aries Admins and Managers in the operator organisation."""
+    d = login(world["op_admin"]).get("/api/v1/operator/analytics/").json()
+    assert set(d) == {"months", "series", "activity", "by_status", "clients"}
+    assert len(d["months"]) == 12 and all(len(v) == 12 for v in d["series"].values())
+    # this month: one part and one manufacturing request in each of clients A and B
+    assert d["series"]["parts"][-1] == 2 and d["series"]["requests"][-1] == 2
+    assert d["by_status"] == {"submitted": 2}
+    assert sum(map(sum, d["activity"]["days"])) == 2 and len(d["activity"]["days"]) == 7
+    assert sum(d["clients"][str(world["a"].pk)]) == 2  # its request and its part
+    assert login(world["op_eng"], world["operator"]).get("/api/v1/operator/analytics/").status_code == 403
+    for who in ("a_admin", "b_admin"):
+        assert login(world[who]).get("/api/v1/operator/analytics/").status_code == 403
+
+
 def test_assigned_engineer_is_not_offered_the_operator_organisation(world, client):
     # one client assignment: signs straight into it, without choosing
     r = client.post("/api/v1/auth/token/", {"email": "op.eng@example.test", "password": PASSWORD}, format="json")

@@ -190,8 +190,41 @@ function useStackTables() {
 }
 const initials = (email: string) => email.split("@")[0].split(/[._-]/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("") || "?";
 
+/**
+ * Work waiting behind a few menu destinations, shown as a count next to the item: client requests awaiting
+ * acknowledgement, client submissions awaiting approval, registrations to approve and invitations not yet accepted.
+ * The same queries and filters as the pages they open; refreshed on every navigation.
+ */
+function useNavBadges(): Record<string, number> {
+  const { session, can } = useAuth();
+  const { pathname } = useLocation();
+  const isOperator = session?.tenant.kind === "operator";
+  const role = session?.membership.role ?? "";
+  const platformAdmin = role === "operator_admin" || role === "operator_manager";
+  const incoming = useApi<{ status: string }[]>(can("requests.handle") ? "/operator/requests/" : null, { query: { open: "true" } });
+  const approvals = useApi<{ review_state: string }[]>(isOperator && platformAdmin && can("passports.approve") ? "/operator/approvals/" : null);
+  const regs = useApi<{ count: number }>(isOperator && can("registrations.review") ? "/registrations/" : null, { query: { status: "pending", page_size: 1 } });
+  const invites = useApi<{ results: { state: string }[] }>(can("users.manage") ? "/invitations/" : null);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    void incoming.reload(); void approvals.reload(); void regs.reload(); void invites.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+  return {
+    "/incoming": incoming.data?.filter((r) => r.status === "submitted").length ?? 0,
+    "/approvals": approvals.data?.filter((r) => r.review_state === "pending_review").length ?? 0,
+    "/registrations": regs.data?.count ?? 0,
+    "/users": invites.data?.results?.filter((i) => i.state === "pending").length ?? 0,
+  };
+}
+
+const BADGE_TEXT: Record<string, string> = { "/incoming": "awaiting acknowledgement", "/approvals": "awaiting approval",
+  "/registrations": "awaiting approval", "/users": "invitations not yet accepted" };
+
 export default function Layout({ children }: { children?: ReactNode }) {
   const { session, can, logout } = useAuth();
+  const badges = useNavBadges();
   const navigate = useNavigate();
   const superAdmin = useIsSuperAdmin();
   const [open, setOpen] = useState(false);
@@ -233,12 +266,17 @@ export default function Layout({ children }: { children?: ReactNode }) {
     try { window.localStorage.setItem(railKey, next ? "1" : "0"); } catch { /* none */ }
     setPref((p) => ({ ...p, [railKey]: next }));
   };
-  const navLink = (to: string, label: string, icon: IconName, active?: boolean) => (
-    <NavLink key={to} to={to} end={to === "/"} title={rail ? label : undefined}
-      className={({ isActive }) => ((active ?? isActive) ? "active" : "")}>
-      <Icon name={icon} /><span className="nav-label">{label}</span>
-    </NavLink>
-  );
+  const navLink = (to: string, label: string, icon: IconName, active?: boolean) => {
+    const n = badges[to] ?? 0;
+    return (
+      <NavLink key={to} to={to} end={to === "/"} title={rail ? (n ? `${label} (${n} ${BADGE_TEXT[to]})` : label) : undefined}
+        className={({ isActive }) => ((active ?? isActive) ? "active" : "")}>
+        <Icon name={icon} /><span className="nav-label">{label}</span>
+        {n > 0 && <span className="nav-badge" title={`${n} ${BADGE_TEXT[to]}`}><span aria-hidden="true">{n > 99 ? "99+" : n}</span>
+          <span className="sr-only">, {n} {BADGE_TEXT[to]}</span></span>}
+      </NavLink>
+    );
+  };
   return (
     <div className={`shell ${open ? "nav-open" : ""} ${rail ? "is-rail" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>

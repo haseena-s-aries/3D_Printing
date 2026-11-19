@@ -11,7 +11,8 @@ import { ListPager, ListToolbar, useListControls } from "../components/ListContr
 import { NeedsAttention } from "../components/NeedsAttention";
 import { ClientIntelligenceCard } from "../components/ClientIntelligenceLinks";
 import { EntryRoutes } from "../components/EntryRoutes";
-import { PassportsByClient, RequestsByStatus } from "../components/DashboardCharts";
+import { ActivityHeatmap, BarChart, ChartCard, Growth, RangeSelect, RequestWorkflow, RequestsByStatus, Sparkline, TrendChart,
+  monthLabel } from "../components/DashboardCharts";
 import { KpiWave, MarineBanner } from "../components/MarineHero";
 import { KindBadge, StatusBadge } from "../components/requests";
 import { Badge, Card, Empty, ErrorNotice, Loading, Notice, PageHeader, formatDate, label } from "../components/ui";
@@ -284,6 +285,7 @@ function OperatorHome() {
   const approvals = { data: approvalRows.data ? approvalRows.data.filter((r) => r.review_state === "pending_review") : null };
   const rows = overview.data ?? [];
   const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
+  const analytics = useApi<Analytics>(admin ? "/operator/analytics/" : null);
   // 70+ organisations, most of them test registrations with no activity: open on the active ones, everything one click away
   const activity = (r: OverviewRow) => r.counts.parts + r.counts.passports + r.counts.open_requests * 5;
   const c = useListControls(rows, {
@@ -295,6 +297,10 @@ function OperatorHome() {
       ["parts", "Spare parts", (a, b) => b.counts.parts - a.counts.parts || a.name.localeCompare(b.name)], ["name", "Name A–Z", (a, b) => a.name.localeCompare(b.name)]],
     pageSize: 10,
   });
+  if (admin) {
+    return <AnalyticsDashboard title={title} rows={rows} overview={overview} analytics={analytics} queue={queue} open={open} waiting={waiting}
+      messages={messages.length} pendingRegs={can("registrations.review") ? pendingRegs.data?.count ?? null : undefined} />;
+  }
   return (
     <>
       <MarineBanner slim>
@@ -355,10 +361,9 @@ function OperatorHome() {
           </ul>
         </Card>
       )}
-      {((queue.data && open.length > 0) || (admin && overview.data)) && (
+      {queue.data && open.length > 0 && (
         <div className="dash-charts">
-          {queue.data && open.length > 0 && <Card title="Requests by status"><RequestsByStatus requests={open} /></Card>}
-          {admin && overview.data && <Card title="Digital passports by client"><PassportsByClient rows={rows} /></Card>}
+          <Card title="Requests by status"><RequestsByStatus requests={open} /></Card>
         </div>
       )}
       </div>
@@ -426,6 +431,129 @@ function OperatorHome() {
       )}
       <MyOrganisations />
     </>
+  );
+}
+
+interface Analytics {
+  months: string[];
+  series: Record<"passports" | "parts" | "approvals" | "registrations" | "requests", number[]>;
+  activity: { start: string; weeks: number; days: number[][] };
+  by_status: Record<string, number>;
+  clients: Record<string, number[]>;
+}
+
+/** Aries Admin / Manager: platform analytics. Counts and charts only; each chart links to the list behind it. */
+function AnalyticsDashboard({ title, rows, overview, analytics, queue, open, waiting, messages, pendingRegs }: {
+  title: string; rows: OverviewRow[]; overview: { data: OverviewRow[] | null; error: unknown; loading: boolean };
+  analytics: { data: Analytics | null; error: unknown; loading: boolean }; queue: { data: IntakeEnvelope[] | null; error: unknown };
+  open: IntakeEnvelope[]; waiting: number; messages: number; pendingRegs: number | null | undefined;
+}) {
+  const [range, setRange] = useState(6);
+  const [monthlyRange, setMonthlyRange] = useState(6);
+  const a = analytics.data;
+  const sum = (k: keyof OverviewRow["counts"]) => rows.reduce((n, r) => n + r.counts[k], 0);
+  const last = <T,>(xs: T[], n: number) => xs.slice(-n);
+  const activity = (r: OverviewRow) => r.counts.parts + r.counts.passports + r.counts.open_requests * 5;
+  // busiest clients by name, the rest as "Others" (counts only)
+  const ranked = [...rows].filter((r) => r.counts.parts + r.counts.passports > 0)
+    .sort((x, y) => y.counts.parts + y.counts.passports - (x.counts.parts + x.counts.passports) || x.name.localeCompare(y.name));
+  const topAssets = ranked.slice(0, ranked.length > 4 ? 3 : 4);
+  const restAssets = ranked.slice(topAssets.length);
+  const assetGroups = [
+    ...topAssets.map((r) => ({ key: r.id, label: r.name, values: [r.counts.parts, r.counts.passports], to: `/clients/${r.id}` })),
+    ...(restAssets.length ? [{ key: "others", label: `Others (${restAssets.length})`, to: "/clients",
+      values: [restAssets.reduce((n, r) => n + r.counts.parts, 0), restAssets.reduce((n, r) => n + r.counts.passports, 0)] }] : []),
+  ];
+  const summary = [...rows].sort((x, y) => activity(y) - activity(x) || x.name.localeCompare(y.name)).slice(0, 5);
+  const ic = (name: IconName) => <Icon name={name} size="sm" />;
+  const rangeOpts: [number, string][] = [[6, "Last 6 months"], [12, "Last 12 months"]];
+  return (
+    <div className="analytics">
+      <MarineBanner slim>
+        <PageHeader title={title} subtitle="Platform analytics for digital passports and marine spare parts." />
+      </MarineBanner>
+      <div className="stats stats-6">
+        {pendingRegs !== undefined && <Stat label="Registrations pending approval" value={pendingRegs ?? "…"} to="/registrations" icon="inbox" />}
+        <Stat label="Client organisations" value={overview.data ? rows.length : "…"} to="/clients" icon="building" />
+        <Stat label="Spare parts across clients" value={overview.data ? sum("parts") : "…"} icon="boxes" />
+        <Stat label="Digital passports across clients" value={overview.data ? sum("passports") : "…"} icon="passport" />
+        <Stat label="Open requests" value={queue.data ? open.length : "…"} to="/incoming" icon="message"
+          hint={messages ? `${messages} client message${messages === 1 ? "" : "s"} awaiting reply` : undefined} />
+        <Stat label="Awaiting acknowledgement" value={queue.data ? waiting : "…"} to="/incoming?status=submitted" icon="clock" />
+      </div>
+      <ErrorNotice error={analytics.error ?? overview.error ?? queue.error} />
+      <div className="chart-grid">
+        <ChartCard title="Digital passport trend" icon={ic("chart")}
+          action={<RangeSelect label="Trend period" value={range} onChange={setRange} options={rangeOpts} />}>
+          {a ? <TrendChart months={last(a.months, range)} series={[
+            { label: "Digital passports (created)", values: last(a.series.passports, range), series: 1 },
+            { label: "Spare parts (added)", values: last(a.series.parts, range), series: 3 }]} />
+            : analytics.loading ? <Loading /> : null}
+        </ChartCard>
+        <ChartCard title="Client organisations by digital assets" icon={ic("layers")}
+          action={<Link className="btn btn-small" to="/clients">Clients</Link>}>
+          {!overview.data ? <Loading /> : assetGroups.length ? (
+            <BarChart groups={assetGroups} series={[{ label: "Spare parts", series: 3 }, { label: "Digital passports", series: 1 }]} />
+          ) : <p className="muted small chart-empty">No spare parts or passports yet.</p>}
+        </ChartCard>
+        <ChartCard title="Request status distribution" icon={ic("gauge")} action={<Link className="btn btn-small" to="/incoming">Open all</Link>}>
+          {queue.data ? <RequestsByStatus requests={open} /> : <Loading />}
+        </ChartCard>
+        <ChartCard title="Monthly approvals & requests" icon={ic("calendar")}
+          action={<RangeSelect label="Monthly period" value={monthlyRange} onChange={setMonthlyRange} options={rangeOpts} />}>
+          {a ? <BarChart stacked series={[{ label: "Approvals", series: 7 }, { label: "Registrations", series: 4 }, { label: "Client requests", series: 2 }]}
+            groups={last(a.months, monthlyRange).map((m, i) => {
+              const at = a.months.length - monthlyRange + i;
+              return { key: m, label: monthLabel(m), values: [a.series.approvals[at], a.series.registrations[at], a.series.requests[at]] };
+            })} /> : analytics.loading ? <Loading /> : null}
+        </ChartCard>
+        <ChartCard title="Client request workflow" icon={ic("route")}>
+          {a ? <RequestWorkflow byStatus={a.by_status} icon={(n) => <Icon name={n as IconName} />} /> : analytics.loading ? <Loading /> : null}
+        </ChartCard>
+        <ChartCard title="Platform activity (requests)" icon={ic("history")}>
+          {a ? <ActivityHeatmap start={a.activity.start} days={a.activity.days} /> : analytics.loading ? <Loading /> : null}
+          {a && <p className="muted small chart-note">Client requests submitted per day, last {a.activity.weeks} weeks.</p>}
+        </ChartCard>
+      </div>
+      <div className="chart-grid chart-grid-foot">
+        <ChartCard title="Client summary" icon={ic("users")} className="chart-wide"
+          action={<Link className="btn btn-small" to="/clients">All clients ({rows.length})</Link>}>
+          {!overview.data ? <Loading /> : summary.length ? (
+            <div className="table-scroll">
+              <table className="table summary-table" aria-label="Client summary">
+                <thead><tr><th>Client organisation</th><th className="num">Spare parts</th><th className="num">Digital passports</th>
+                  <th className="num">Open requests</th><th>Passport coverage</th><th>Activity (8 weeks)</th></tr></thead>
+                <tbody>
+                  {summary.map((r) => {
+                    const cover = r.counts.parts ? Math.round((Math.min(r.counts.passports, r.counts.parts) / r.counts.parts) * 100) : null;
+                    return (
+                      <tr key={r.id}>
+                        <td><Link to={`/clients/${r.id}`}><strong>{r.name}</strong></Link></td>
+                        <td className="num">{r.counts.parts}</td>
+                        <td className="num">{r.counts.passports}</td>
+                        <td className="num">{r.counts.open_requests ? <Link to={`/incoming?client=${r.id}`}>{r.counts.open_requests}</Link> : 0}</td>
+                        <td>{cover === null ? <span className="muted small">No parts</span> : (
+                          <span className="coverage" title={`${r.counts.passports} passports for ${r.counts.parts} spare parts`}>
+                            <span>{cover}%</span><span className="coverage-track"><span style={{ width: `${cover}%` }} /></span></span>)}</td>
+                        <td>{a ? <Sparkline values={a.clients[r.id] ?? Array(8).fill(0)} label={`${r.name} activity`} /> : null}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <Empty>No client organisations yet.</Empty>}
+        </ChartCard>
+        <ChartCard title="Platform at a glance" icon={ic("gauge")}>
+          {a ? (
+            <div className="glance">
+              <Growth values={a.series.passports} n={6} label="Digital passports created (vs. previous 6 months)" />
+              <Growth values={a.series.parts} n={6} label="Spare parts added (vs. previous 6 months)" />
+            </div>
+          ) : analytics.loading ? <Loading /> : null}
+        </ChartCard>
+      </div>
+    </div>
   );
 }
 
