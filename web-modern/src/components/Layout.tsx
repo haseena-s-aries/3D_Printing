@@ -13,6 +13,7 @@ import { Loading } from "./ui";
 import ariesMark from "../assets/aries-mark.png";
 import { SidebarWave, ariesLogo } from "./MarineHero";
 import { UnreadProvider, useUnreadState, type Unread } from "./Unread";
+import Assistant from "./Assistant";
 
 interface NavItem {
   to: string;
@@ -374,6 +375,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
         </main>
       </div>
       {open && <div className="scrim" onClick={() => setOpen(false)} aria-hidden />}
+      {session && <Assistant />}
     </div>
     </UnreadProvider>
   );

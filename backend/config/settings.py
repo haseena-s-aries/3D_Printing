@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     "apps.edits",
     "apps.imports",
     "apps.intelligence",
+    "apps.assistant",
 ]
 
 MIDDLEWARE = [
@@ -300,6 +301,8 @@ REST_FRAMEWORK = {
         "register": env("REGISTER_THROTTLE", "5/hour"),
         "verify": env("VERIFY_THROTTLE", "20/hour"),
         "password_reset": env("PASSWORD_RESET_THROTTLE", "5/hour"),
+        # In-app assistant (per signed-in user): each question runs several searches
+        "assistant": env("ASSISTANT_THROTTLE", "60/min"),
     },
 }
 
