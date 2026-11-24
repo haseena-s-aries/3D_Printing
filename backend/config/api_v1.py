@@ -18,6 +18,7 @@ from apps.edits.api import EditRequestViewSet
 from apps.files.api import DownloadView, EngineeringFileViewSet
 from apps.parts.api import SparePartViewSet
 from apps.parts.dashboard import DashboardAnalyticsView, DashboardSummaryView
+from apps.assistant.api import AssistantView
 from apps.files.admin_thumbnails import AdminThumbnailConsentView, AdminThumbnailView
 from apps.files.thumbnail_provenance import (ContractAuthorizationEventView, ContractAuthorizationView, ContractListView,
                                              ImageOriginView, OriginClaimsQueueView)
@@ -143,6 +144,7 @@ urlpatterns = [
          name="passport-approval-file"),
     path("operator/passport-approvals/<uuid:client_id>/<uuid:passport_id>/reports/<uuid:report_id>/", PassportApprovalReportView.as_view(),
          name="passport-approval-report"),
+    path("assistant/", AssistantView.as_view(), name="assistant"),
     path("notifications/", NotificationListView.as_view(), name="notifications"),
     path("notifications/unread/", NotificationUnreadView.as_view(), name="notifications-unread"),
     path("notifications/read-all/", NotificationReadView.as_view(), name="notifications-read-all"),
